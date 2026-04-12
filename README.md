@@ -125,7 +125,7 @@ Please make sure to read the [Contributing Guide](https://github.com/nxsjs/nxspu
 Thank you to all the people who already contributed to Nxspub!
 
 <a href="https://github.com/nxsjs/nxspub/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=nxsjs/nxspub&max=20&columns=10" />
+  <img src="https://contrib.rocks/image?repo=nxsjs/nxspub&max=20&columns=12" />
 </a>
 
 <sub>_Note: Showing the first 500 contributors only due to GitHub image size limitations_</sub>
