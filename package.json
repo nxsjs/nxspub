@@ -1,0 +1,96 @@
+{
+  "name": "nxspub",
+  "version": "0.0.1",
+  "description": "Automated release tool tailored for modern multi-branch workflows.",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.12.3"
+  },
+  "packageManager": "pnpm@9.12.3",
+  "type": "module",
+  "types": "dist/index.d.mts",
+  "bin": {
+    "nxspub": "bin/nxspub.mjs"
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./cli": "./dist/cli.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "postinstall.mjs"
+  ],
+  "scripts": {
+    "start": "tsx ./src/cli.ts",
+    "build": "tsdown",
+    "test": "tsdown && vitest",
+    "check": "tsc --incremental --noEmit",
+    "lint": "eslint --cache .",
+    "format": "prettier --write --cache .",
+    "format-check": "prettier --check --cache .",
+    "preinstall": "npx only-allow pnpm",
+    "postinstall": "node ./postinstall.mjs",
+    "version": "pnpm run start version",
+    "release": "pnpm run start release"
+  },
+  "nxspub": {
+    "git-hooks": {
+      "pre-commit": "pnpm lint-staged && pnpm check"
+    }
+  },
+  "lint-staged": {
+    "*.{js,json}": [
+      "prettier --write"
+    ],
+    "*.ts?(x)": [
+      "eslint --fix",
+      "prettier --parser=typescript --write"
+    ]
+  },
+  "dependencies": {
+    "cac": "^7.0.0",
+    "chalk": "^5.6.2",
+    "defu": "^6.1.7",
+    "execa": "^9.6.1",
+    "jiti": "^2.6.1",
+    "semver-es": "^0.1.1"
+  },
+  "devDependencies": {
+    "@rolldown/binding-darwin-arm64": "1.0.0-rc.15",
+    "@types/node": "^22.15.18",
+    "@typescript-eslint/eslint-plugin": "^8.58.1",
+    "@typescript-eslint/parser": "^8.58.1",
+    "eslint": "^10.1.0",
+    "eslint-plugin-import-x": "^4.16.2",
+    "globals": "^17.4.0",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "tsdown": "^0.21.7",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.4"
+  },
+  "keywords": [
+    "nxspub",
+    "publish",
+    "git-hooks",
+    "recommended",
+    "changelog",
+    "automatic",
+    "workflow",
+    "version",
+    "angular",
+    "standard"
+  ],
+  "author": "nyxsola",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nxsjs/nxspub.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nxsjs/nxspub/issues"
+  },
+  "homepage": "https://github.com/nxsjs/nxspub#readme"
+}
