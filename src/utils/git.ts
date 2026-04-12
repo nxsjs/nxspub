@@ -116,7 +116,7 @@ export async function getLastReleaseCommit() {
     const { stdout } = await execa('git', [
       'log',
       '--first-parent',
-      '--grep=^release: v',
+      '--grep=^release\(.*\)\?: v',
       '-n',
       '1',
       '--pretty=format:%H|%s',
@@ -125,7 +125,11 @@ export async function getLastReleaseCommit() {
     if (!stdout) return null
 
     const [hash, msg] = stdout.split('|')
-    const version = msg.replace('release: v', '').trim()
+
+    const versionMatch = msg.match(/v(\d+\.\d+\.\d+.*)$/)
+    const version = versionMatch
+      ? versionMatch[1]
+      : msg.split('v').pop()?.trim()
 
     return { hash, version }
   } catch {
