@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   test:
@@ -40,7 +40,7 @@ jobs:
       - name: Build and publish
         id: publish
         run: |
-          pnpm release --provenance
+          pnpm release --provenance --branch main
 
       - name: Create GitHub release
         id: release_tag

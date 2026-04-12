@@ -115,9 +115,6 @@ export const DEFAULT_CONFIG: NxspubConfig = {
   branches: {
     main: 'latest',
     master: 'latest',
-    alpha: 'preminor',
-    beta: 'preminor',
-    rc: 'preminor',
   },
 
   versioning: {

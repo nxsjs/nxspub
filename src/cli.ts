@@ -49,6 +49,7 @@ cli
   .option('--registry <url>', 'Override default registry')
   .option('--access <access>', 'public | restricted', { default: 'public' })
   .option('--tag <tag>', 'Override default tag')
+  .option('--branch <branch>', 'Override default branch')
   .action(async options => {
     printBanner()
     await releaseCommand(options)

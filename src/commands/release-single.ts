@@ -15,14 +15,23 @@ export async function releaseSingle(
     registry?: string
     access?: string
     tag?: string
+    branch?: string
   },
   config: NxspubConfig,
 ) {
-  const { cwd, dry, provenance, registry, access = 'public', tag } = options
+  const {
+    cwd,
+    dry,
+    provenance,
+    registry,
+    access = 'public',
+    tag,
+    branch,
+  } = options
   const pkgPath = path.resolve(cwd, 'package.json')
 
   const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8'))
-  const currentBranch = await getCurrentBranch(cwd)
+  const currentBranch = branch || (await getCurrentBranch(cwd))
 
   if (!currentBranch) {
     nxsLog.error('Admission Denied: No current branch found.')

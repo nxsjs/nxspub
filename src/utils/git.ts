@@ -137,27 +137,23 @@ export async function getLastReleaseCommit() {
  * @en Get the current branch name.
  * @zh 获取当前分支名称。
  */
-export async function getCurrentBranch(cwd: string) {
+export async function getCurrentBranch(
+  cwd: string,
+): Promise<string | undefined> {
   const env = process.env
 
-  const isTag =
-    env.GITHUB_REF_TYPE === 'tag' || !!env.CI_COMMIT_TAG || !!env.TRAVIS_TAG
-
-  if (isTag) {
-    return env.GITHUB_BASE_REF || env.CI_DEFAULT_BRANCH
+  if (env.GITHUB_REF_TYPE === 'branch') {
+    return env.GITHUB_REF_NAME
   }
 
-  const ciBranch =
-    env.GITHUB_REF_NAME || // GitHub Actions (Branch mode)
-    env.CI_COMMIT_REF_NAME || // GitLab CI / Jenkins
+  const possibleCIBranch =
+    env.CI_COMMIT_REF_NAME || // GitLab
     env.VERCEL_GIT_COMMIT_REF || // Vercel
     env.CIRCLE_BRANCH || // CircleCI
-    env.TRAVIS_BRANCH || // Travis CI
-    env.DRONE_BRANCH || // Drone CI
-    env.CF_PAGES_BRANCH // Cloudflare Pages
+    env.GITHUB_HEAD_REF // GitHub PR (Head branch)
 
-  if (ciBranch && ciBranch !== 'HEAD') {
-    return ciBranch
+  if (possibleCIBranch && possibleCIBranch !== 'HEAD') {
+    return possibleCIBranch
   }
 
   try {
@@ -166,19 +162,9 @@ export async function getCurrentBranch(cwd: string) {
       ['rev-parse', '--abbrev-ref', 'HEAD'],
       { cwd },
     )
-    const branch = stdout.trim()
+    const result = stdout.trim()
+    if (result && result !== 'HEAD') return result
+  } catch {}
 
-    if (branch === 'HEAD') {
-      const { stdout: refStdout } = await execa(
-        'git',
-        ['show', '-s', '--format=%d', 'HEAD'],
-        { cwd },
-      )
-      const match = refStdout.match(/HEAD -> ([^,)]+)/)
-      return match ? match[1] : ''
-    }
-    return branch
-  } catch {
-    return ''
-  }
+  return undefined
 }
