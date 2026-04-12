@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { NxspubConfig } from '../config'
-import { run, runSafe } from '../utils/git'
+import { getCurrentBranch, run } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { checkVersionExists } from '../utils/npm'
 import { normalizeRegExp } from '../utils/regexp'
@@ -22,11 +22,7 @@ export async function releaseSingle(
   const pkgPath = path.resolve(cwd, 'package.json')
 
   const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8'))
-  const { stdout: currentBranch } = await runSafe(
-    'git',
-    ['rev-parse', '--abbrev-ref', 'HEAD'],
-    { cwd },
-  )
+  const currentBranch = await getCurrentBranch(cwd)
 
   let branchContract: string | null = null
   if (config.branches) {
@@ -39,17 +35,17 @@ export async function releaseSingle(
   }
 
   if (!branchContract) {
-    return nxsLog.error(
-      `Release Denied: Branch "${currentBranch}" is not authorized.`,
-    )
+    nxsLog.error(`Release Denied: Branch "${currentBranch}" is not authorized.`)
+    process.exit(1)
   }
 
   const isPreContract = branchContract.startsWith('pre')
   const preTags = semver.prerelease(pkg.version) || []
   if (isPreContract && preTags.length < 2) {
-    return nxsLog.error(
+    nxsLog.error(
       `Release Denied: Version "${pkg.version}" is not a prerelease version.`,
     )
+    process.exit(1)
   }
 
   nxsLog.step(`Checking registry...`)
@@ -108,5 +104,6 @@ export async function releaseSingle(
     }
   } catch {
     nxsLog.error('NPM Publish command failed.')
+    process.exit(1)
   }
 }

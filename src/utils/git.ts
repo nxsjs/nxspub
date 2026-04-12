@@ -132,3 +132,23 @@ export async function getLastReleaseCommit() {
     return null
   }
 }
+
+/**
+ * @en Get the current branch name.
+ * @zh 获取当前分支名称。
+ */
+export async function getCurrentBranch(cwd: string) {
+  const ciBranch =
+    process.env.GITHUB_REF_NAME ||
+    process.env.CI_COMMIT_REF_NAME ||
+    process.env.VERCEL_GIT_COMMIT_REF
+
+  if (ciBranch) return ciBranch
+
+  const { stdout } = await runSafe(
+    'git',
+    ['rev-parse', '--abbrev-ref', 'HEAD'],
+    { cwd },
+  )
+  return stdout.trim()
+}

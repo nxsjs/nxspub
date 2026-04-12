@@ -5,6 +5,7 @@ import type { BrancheType, NxspubConfig } from '../config'
 import { formatDate } from '../utils/date'
 import {
   getCompareUrl,
+  getCurrentBranch,
   getLastReleaseCommit,
   getRawCommits,
   getRepoUrl,
@@ -23,11 +24,8 @@ export async function versionSingle(
   const changelogPath = path.resolve(cwd, 'CHANGELOG.md')
   const changelogsDir = path.resolve(cwd, 'changelogs')
 
-  const { stdout: currentBranch } = await runSafe(
-    'git',
-    ['rev-parse', '--abbrev-ref', 'HEAD'],
-    { cwd },
-  )
+  const currentBranch = await getCurrentBranch(cwd)
+
   let branchContract: BrancheType | null = null
 
   if (config.branches) {
