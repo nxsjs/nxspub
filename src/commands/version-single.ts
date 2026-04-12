@@ -24,7 +24,7 @@ export async function versionSingle(
   const changelogPath = path.resolve(cwd, 'CHANGELOG.md')
   const changelogsDir = path.resolve(cwd, 'changelogs')
 
-  const currentBranch = await getCurrentBranch(cwd)
+  const currentBranch = await getCurrentBranch()
 
   if (!currentBranch) {
     nxsLog.error('Admission Denied: No current branch found.')

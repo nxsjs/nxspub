@@ -31,7 +31,7 @@ export async function releaseSingle(
   const pkgPath = path.resolve(cwd, 'package.json')
 
   const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8'))
-  const currentBranch = branch || (await getCurrentBranch(cwd))
+  const currentBranch = branch || (await getCurrentBranch())
 
   if (!currentBranch) {
     nxsLog.error('Admission Denied: No current branch found.')

@@ -116,7 +116,7 @@ export async function getLastReleaseCommit() {
     const { stdout } = await execa('git', [
       'log',
       '--first-parent',
-      '--grep=^release\(.*\)\?: v',
+      '--grep=^release(\(.*\))\?:',
       '-n',
       '1',
       '--pretty=format:%H|%s',
@@ -126,12 +126,26 @@ export async function getLastReleaseCommit() {
 
     const [hash, msg] = stdout.split('|')
 
-    const versionMatch = msg.match(/v(\d+\.\d+\.\d+.*)$/)
-    const version = versionMatch
-      ? versionMatch[1]
-      : msg.split('v').pop()?.trim()
+    const mainVersionMatch = msg.match(/v(\d+\.\d+\.\d+)/)
+    const version = mainVersionMatch ? mainVersionMatch[1] : 'unknown'
 
-    return { hash, version }
+    const rawPackages =
+      msg.match(/(@[^\s@]+\/[^\s@]+|[^\s@,]+)@(\d+\.\d+\.\d+(?:-[^\s,]+)?)/g) ||
+      []
+
+    const workspacePackages = rawPackages.map(item => {
+      const lastAt = item.lastIndexOf('@')
+      return {
+        name: item.slice(0, lastAt),
+        version: item.slice(lastAt + 1),
+      }
+    })
+
+    return {
+      hash,
+      version,
+      workspacePackages,
+    }
   } catch {
     return null
   }
@@ -141,9 +155,7 @@ export async function getLastReleaseCommit() {
  * @en Get the current branch name.
  * @zh 获取当前分支名称。
  */
-export async function getCurrentBranch(
-  cwd: string,
-): Promise<string | undefined> {
+export async function getCurrentBranch(): Promise<string | undefined> {
   const env = process.env
 
   if (env.GITHUB_REF_TYPE === 'branch') {
@@ -161,11 +173,7 @@ export async function getCurrentBranch(
   }
 
   try {
-    const { stdout } = await execa(
-      'git',
-      ['rev-parse', '--abbrev-ref', 'HEAD'],
-      { cwd },
-    )
+    const { stdout } = await execa('git', ['rev-parse', '--abbrev-ref', 'HEAD'])
     const result = stdout.trim()
     if (result && result !== 'HEAD') return result
   } catch {}
