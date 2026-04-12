@@ -1,10 +1,10 @@
-import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { NxspubConfig } from '../config'
 import { getCurrentBranch, run } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { checkVersionExists } from '../utils/npm'
+import { readJSON } from '../utils/packages'
 import { normalizeRegExp } from '../utils/regexp'
 
 export async function releaseSingle(
@@ -30,7 +30,7 @@ export async function releaseSingle(
   } = options
   const pkgPath = path.resolve(cwd, 'package.json')
 
-  const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8'))
+  const pkg = await readJSON(pkgPath)
   const currentBranch = branch || (await getCurrentBranch())
 
   if (!currentBranch) {

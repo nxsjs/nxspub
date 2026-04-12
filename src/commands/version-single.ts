@@ -13,6 +13,7 @@ import {
   runSafe,
 } from '../utils/git'
 import { nxsLog } from '../utils/logger'
+import { readJSON, writeJSON } from '../utils/packages'
 import { normalizeRegExp } from '../utils/regexp'
 
 export async function versionSingle(
@@ -59,7 +60,7 @@ export async function versionSingle(
     return
   }
 
-  const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8'))
+  const pkg = await readJSON(pkgPath)
   const currentPkgVersion = pkg.version
   const repoUrl = await getRepoUrl()
 
@@ -260,7 +261,8 @@ export async function versionSingle(
 
   pkg.version = targetVersion
   nxsLog.item(`Updating ${pkgPath}...`)
-  await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+
+  await writeJSON(pkgPath, pkg)
   nxsLog.item(`Updating ${changelogPath}...`)
   await fs.writeFile(changelogPath, (newEntry + currentChangelog).trim() + '\n')
 

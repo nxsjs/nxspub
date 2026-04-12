@@ -1,9 +1,10 @@
 import { defu } from 'defu'
 import { createJiti } from 'jiti'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { NxspubConfig } from '../config'
 import { DEFAULT_CONFIG } from '../config'
+import { readJSON } from './packages'
 
 /**
  * @en Initialize jiti to support loading TS/ESM config files on the fly.
@@ -53,7 +54,7 @@ export async function loadConfig(
   const pkgPath = resolve(cwd, 'package.json')
   if (existsSync(pkgPath)) {
     try {
-      const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
+      const pkg = await readJSON(pkgPath)
       if (pkg.nxspub) {
         pkgConfig = pkg.nxspub
       }
