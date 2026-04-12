@@ -24,6 +24,11 @@ export async function releaseSingle(
   const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8'))
   const currentBranch = await getCurrentBranch(cwd)
 
+  if (!currentBranch) {
+    nxsLog.error('Admission Denied: No current branch found.')
+    process.exit(1)
+  }
+
   let branchContract: string | null = null
   if (config.branches) {
     for (const [key, value] of Object.entries(config.branches)) {

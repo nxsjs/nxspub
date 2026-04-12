@@ -26,6 +26,11 @@ export async function versionSingle(
 
   const currentBranch = await getCurrentBranch(cwd)
 
+  if (!currentBranch) {
+    nxsLog.error('Admission Denied: No current branch found.')
+    process.exit(1)
+  }
+
   let branchContract: BrancheType | null = null
 
   if (config.branches) {
