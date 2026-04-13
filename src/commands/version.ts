@@ -2,6 +2,7 @@ import { runSafe } from '../utils/git'
 import { loadConfig } from '../utils/load-config'
 import { nxsLog } from '../utils/logger'
 import { versionSingle } from './version-single'
+import { versionWorkspace } from './version-workspace'
 
 export async function versionCommand(options: { cwd: string; dry?: boolean }) {
   const { cwd, dry } = options
@@ -21,7 +22,7 @@ export async function versionCommand(options: { cwd: string; dry?: boolean }) {
   }
 
   if (config.workspace) {
-    // await versionWorkspace(options, config)
+    await versionWorkspace(options, config)
   } else {
     await versionSingle(options, config)
   }

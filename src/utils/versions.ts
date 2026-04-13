@@ -1,4 +1,5 @@
 import type { BrancheType, NxspubConfig } from '../config'
+import type { PackageTask } from './packages'
 
 /**
  * @en Analyzes commit messages to determine the highest required version bump type
@@ -33,4 +34,43 @@ export function determineBumpType(
       type = 'patch'
   }
   return type
+}
+
+/**
+ * @en SemVer weight mapping. Higher value = Higher priority
+ * @zh SemVer 权重映射。数值越高，优先级越高
+ */
+export const BUMP_WEIGHTS: Record<BrancheType, number> = {
+  major: 3,
+  premajor: 3,
+  minor: 2,
+  preminor: 2,
+  patch: 1,
+  prepatch: 1,
+  latest: 1,
+}
+
+/**
+ * @en Returns the highest bump type from a list of types
+ * @zh 从一组类型中返回最高等级的升级类型
+ */
+export function getMaxBumpType(
+  types: (BrancheType | null | undefined)[],
+): BrancheType {
+  const validTypes = types.filter((t): t is BrancheType => !!t)
+  if (validTypes.length === 0) return 'patch'
+
+  return [...validTypes].sort((a, b) => BUMP_WEIGHTS[b] - BUMP_WEIGHTS[a])[0]
+}
+
+/**
+ * @en Gets the highest bump type among a task's dependencies
+ * @zh 获取任务依赖项中最高的变更类型
+ */
+export function getHighestBumpType(
+  task: PackageTask,
+  tasks: Map<string, PackageTask>,
+): BrancheType {
+  const depTypes = task.dependencies.map(dep => tasks.get(dep)?.bumpType)
+  return getMaxBumpType(depTypes)
 }

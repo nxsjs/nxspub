@@ -3,6 +3,7 @@ import fg from 'fast-glob'
 import yaml from 'js-yaml'
 import { promises as fs } from 'node:fs'
 import path, { resolve } from 'node:path'
+import type { BrancheType } from '../config'
 
 /**
  * @en Read and parse a JSON file.
@@ -150,6 +151,21 @@ export interface PackageInfo {
   archiveDir: string
   /** @en List of dependency names. @zh 依赖项名称列表。 */
   dependencies: string[]
+}
+
+/**
+ * @en Full versioning task with runtime state.
+ * @zh 带有运行时状态的完整版本管理任务。
+ */
+export interface PackageTask extends PackageInfo {
+  /** @en Git commits since last release. @zh 自上次发布以来的 Git 提交。 */
+  commits: { message: string; hash: string }[]
+  /** @en Determined bump type. @zh 确定的升级类型。 */
+  bumpType: BrancheType | null
+  /** @en Triggered by dependency change. @zh 是否由依赖变动被动触发。 */
+  isPassive: boolean
+  /** @en Calculated next version. @zh 计算出的新版本。 */
+  nextVersion?: string
 }
 
 export async function scanWorkspacePackages(

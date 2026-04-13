@@ -47,21 +47,59 @@ type GitHookType =
   | 'post-index-change'
 
 /**
+ * @en Workspace mode.
+ * - 'locked': All packages share the same version (Fixed mode).
+ * - 'independent': Packages are versioned individually.
+ * @zh 工作区模式。
+ * - 'locked': 固定模式（全家桶），所有包版本对齐。
+ * - 'independent': 独立模式，每个包单独计算版本。
+ * @default locked
+ */
+export type WorkspaceMode = 'locked' | 'independent'
+
+/**
+ * @en Strategy for passive version bumps when dependencies change.
+ * - 'patch': Always bump a patch version (Default).
+ * - 'follow': Follow the highest bump type of its dependencies.
+ * - 'none': Do not bump version or modify package.json.
+ * @zh 当依赖变动时的被动升级策略。
+ * - 'patch': 统一升级补丁版本（默认）。
+ * - 'follow': 跟随依赖项中最高的升级类型。
+ * - 'none': 不自动升级，也不改写该包的文件。
+ * @default patch
+ */
+export type WorkspacePassive = 'patch' | 'follow' | 'none'
+
+/**
  * @en Main configuration interface for nxspub.
  * @zh nxspub 的核心配置接口。
  */
 export interface NxspubConfig {
-  /**
-   * @en Whether the project is a monorepo workspace.
-   * @zh 项目是否为 Monorepo 工作区。
-   */
-  workspace?: boolean
+  workspace?: {
+    /**
+     * @en Workspace mode.
+     * - 'locked': All packages share the same version (Fixed mode).
+     * - 'independent': Packages are versioned individually.
+     * @zh 工作区模式。
+     * - 'locked': 固定模式（全家桶），所有包版本对齐。
+     * - 'independent': 独立模式，每个包单独计算版本。
+     * @default locked
+     */
+    mode: WorkspaceMode
 
-  /**
-   * @en Workspace mode for monorepo projects.
-   * @zh Monorepo 工作区的工作模式。
-   */
-  workspaceMode?: 'independent' | 'locked'
+    /**
+     * @en Strategy for passive version bumps when dependencies change.
+     * - 'patch': Always bump a patch version (Default).
+     * - 'follow': Follow the highest bump type of its dependencies.
+     * - 'none': Do not bump version or modify package.json.
+     * @zh 当依赖变动时的被动升级策略。
+     * - 'patch': 统一升级补丁版本（默认）。
+     * - 'follow': 跟随依赖项中最高的升级类型。
+     * - 'none': 不自动升级，也不改写该包的文件。
+     * @default patch
+     */
+    passive?: WorkspacePassive
+  }
 
   /**
    * @en Mapping of branch patterns to release types.
@@ -117,8 +155,6 @@ export interface NxspubConfig {
 }
 
 export const DEFAULT_CONFIG: NxspubConfig = {
-  workspace: false,
-  workspaceMode: 'locked',
   branches: {
     main: 'latest',
     master: 'latest',
