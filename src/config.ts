@@ -56,6 +56,13 @@ export interface NxspubConfig {
    * @zh 项目是否为 Monorepo 工作区。
    */
   workspace?: boolean
+
+  /**
+   * @en Workspace mode for monorepo projects.
+   * @zh Monorepo 工作区的工作模式。
+   */
+  workspaceMode?: 'independent' | 'locked'
+
   /**
    * @en Mapping of branch patterns to release types.
    * @zh 分支模式与发布类型的映射关系。

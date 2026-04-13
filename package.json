@@ -55,7 +55,10 @@
     "detect-indent": "^7.0.2",
     "execa": "^9.6.1",
     "jiti": "^2.6.1",
-    "semver-es": "^0.1.1"
+    "package-manager-detector": "^1.6.0",
+    "pnpm-workspace-yaml": "^1.6.0",
+    "semver-es": "^0.1.1",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@rolldown/binding-darwin-arm64": "1.0.0-rc.15",
