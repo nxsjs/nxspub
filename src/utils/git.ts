@@ -1,4 +1,6 @@
 import { execa } from 'execa'
+import type { BrancheType } from '../config'
+import { normalizeRegExp } from './regexp'
 
 /**
  * @en Execute a command and inherit stdio (suitable for interactive commands).
@@ -179,4 +181,115 @@ export async function getCurrentBranch(): Promise<string | undefined> {
   } catch {}
 
   return undefined
+}
+
+/**
+ * @en Matches the current branch against configured patterns to determine the release type.
+ * @zh 将当前分支与配置的模式进行匹配，以确定发布类型。
+ *
+ * @param branch
+ * @en The name of the current git branch
+ * @zh 当前 Git 分支名称
+ *
+ * @param branches
+ * @en Mapping of branch patterns (string or regex) to release types
+ * @zh 分支模式（字符串或正则）与发布类型的映射关系。
+ *
+ * @returns
+ * @en The matched release type, or null if no pattern matches
+ * @zh 匹配到的发布类型，如果没有匹配项则返回 null。
+ *
+ * @example
+ * // If branches is { "main": "latest", "feat/*": "preminor" }
+ * getBranchContract("main", branches) // returns "latest"
+ * getBranchContract("feat/ui-button", branches) // returns "preminor"
+ */
+export function getBranchContract(
+  branch: string,
+  branches?: Record<string, BrancheType>,
+): BrancheType | null {
+  if (!branches) return null
+  for (const [pattern, type] of Object.entries(branches))
+    if (normalizeRegExp(pattern).test(branch)) return type
+  return null
+}
+
+/**
+ * @en Retrieves the git commit history for a specific package directory.
+ * @zh 获取特定包目录的 Git 提交历史记录。
+ *
+ * @param cwd
+ * @en Current working directory
+ * @zh 当前工作目录
+ *
+ * @param relPath
+ * @en Relative path of the package (e.g., 'packages/pkg-a')
+ * @zh 包的相对路径（如 'packages/pkg-a'）
+ *
+ * @param since
+ * @en Optional commit hash or tag to start the range from
+ * @zh 可选的起始提交哈希或标签
+ *
+ * @returns
+ * @en A list of commit objects containing hash and message
+ * @zh 包含哈希和消息的提交对象列表
+ */
+export async function getPackageCommits(
+  cwd: string,
+  relPath: string,
+  since?: string,
+) {
+  const args = ['log', '--first-parent', '--pretty=format:%H|%s']
+  if (since) args.push(`${since}..HEAD`)
+  args.push('--', relPath)
+
+  const { stdout } = await runSafe('git', args, { cwd })
+  if (!stdout.trim()) return []
+
+  const mainLineCommits = stdout.split('\n').filter(Boolean)
+  const allRelevantCommits: { message: string; hash: string }[] = []
+
+  for (const line of mainLineCommits) {
+    const [hash, subject] = line.split('|')
+
+    const { stdout: parents } = await runSafe(
+      'git',
+      ['show', '-s', '--format=%P', hash],
+      { cwd },
+    )
+    const parentHashes = parents.trim().split(/\s+/)
+
+    if (parentHashes.length > 1) {
+      /**
+       * @en If it's a merge, dive into the side branch (parent1..parent2).
+       * @en CRITICAL: We MUST still filter by '-- relPath' to avoid cross-package contamination.
+       *
+       * @zh 如果是合并提交，深入侧边分支 (parent1..parent2)。
+       * @zh 关键：必须依然保留 '-- relPath' 过滤，防止跨包变更污染。
+       */
+      const { stdout: sideCommits } = await runSafe(
+        'git',
+        [
+          'log',
+          `${parentHashes[0]}..${parentHashes[1]}`,
+          '--pretty=format:%H|%s',
+          '--',
+          relPath,
+        ],
+        { cwd },
+      )
+
+      sideCommits
+        .split('\n')
+        .filter(Boolean)
+        .forEach(s => {
+          const [h, m] = s.split('|')
+          allRelevantCommits.push({ hash: h, message: m })
+        })
+    }
+
+    allRelevantCommits.push({ hash, message: subject })
+  }
+
+  return allRelevantCommits
 }

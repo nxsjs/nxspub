@@ -4,6 +4,7 @@ import * as semver from 'semver-es'
 import type { BrancheType, NxspubConfig } from '../config'
 import { formatDate } from '../utils/date'
 import {
+  getBranchContract,
   getCompareUrl,
   getCurrentBranch,
   getLastReleaseCommit,
@@ -14,7 +15,6 @@ import {
 } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { readJSON, writeJSON } from '../utils/packages'
-import { normalizeRegExp } from '../utils/regexp'
 
 export async function versionSingle(
   options: { cwd: string; dry?: boolean },
@@ -26,27 +26,9 @@ export async function versionSingle(
   const changelogsDir = path.resolve(cwd, 'changelogs')
 
   const currentBranch = await getCurrentBranch()
-
-  if (!currentBranch) {
-    nxsLog.error('Admission Denied: No current branch found.')
-    process.exit(1)
-  }
-
-  let branchContract: BrancheType | null = null
-
-  if (config.branches) {
-    for (const [key, value] of Object.entries(config.branches)) {
-      if (normalizeRegExp(key).test(currentBranch)) {
-        branchContract = value
-        break
-      }
-    }
-  }
-
+  const branchContract = getBranchContract(currentBranch!, config.branches)
   if (!branchContract) {
-    nxsLog.error(
-      `Admission Denied: Branch "${currentBranch}" is not configured for release.`,
-    )
+    nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
     process.exit(1)
   }
 
@@ -124,7 +106,7 @@ export async function versionSingle(
 
   let targetVersion: string
   const isPreContract = branchContract.startsWith('pre')
-  const preid = currentBranch
+  const preid = currentBranch!
 
   if (isPreContract) {
     const isCurrentlyPre = !!semver.prerelease(currentPkgVersion)

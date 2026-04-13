@@ -3,17 +3,37 @@ import path from 'node:path'
 import * as semver from 'semver-es'
 import type { BrancheType, NxspubConfig } from '../config'
 import { formatDate } from '../utils/date'
-import { getLastReleaseCommit, getRawCommits, run, runSafe } from '../utils/git'
+import {
+  getBranchContract,
+  getCompareUrl,
+  getCurrentBranch,
+  getLastReleaseCommit,
+  getPackageCommits,
+  getRepoUrl,
+  run,
+  runSafe,
+} from '../utils/git'
 import { nxsLog } from '../utils/logger'
-import { readJSON } from '../utils/packages'
+import {
+  readJSON,
+  scanWorkspacePackages,
+  writeJSON,
+  type PackageInfo,
+} from '../utils/packages'
 
-function getHighestBump(bumps: BrancheType[]): BrancheType {
-  const priority: Record<string, number> = {
-    patch: 1,
-    minor: 2,
-    major: 3,
-  }
-  return bumps.sort((a, b) => priority[b] - priority[a])[0]
+/**
+ * @en Full versioning task with runtime state.
+ * @zh 带有运行时状态的完整版本管理任务。
+ */
+interface PackageTask extends PackageInfo {
+  /** @en Git commits since last release. @zh 自上次发布以来的 Git 提交。 */
+  commits: { message: string; hash: string }[]
+  /** @en Determined bump type. @zh 确定的升级类型。 */
+  bumpType: BrancheType | null
+  /** @en Triggered by dependency change. @zh 是否由依赖变动被动触发。 */
+  isPassive: boolean
+  /** @en Calculated next version. @zh 计算出的新版本。 */
+  nextVersion?: string
 }
 
 export async function versionWorkspace(
@@ -21,295 +41,292 @@ export async function versionWorkspace(
   config: NxspubConfig,
 ) {
   const { cwd, dry } = options
-  const mode = config.workspaceMode || 'independent'
+  const mode = config.workspaceMode || 'locked'
 
-  nxsLog.step(`Workspace mode: ${mode}`)
+  const currentBranch = await getCurrentBranch()
+  const branchContract = getBranchContract(currentBranch!, config.branches)
+  if (!branchContract) {
+    nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
+    process.exit(1)
+  }
 
-  const packages = await scanPackages(cwd)
+  nxsLog.step(`Workspace Release: ${mode.toUpperCase()} MODE`)
+
   const lastRelease = await getLastReleaseCommit()
+  const allInfos = await scanWorkspacePackages(cwd)
+  const repoUrl = await getRepoUrl()
 
-  const changed = await detectChangedPackages(cwd, packages, lastRelease?.hash)
+  const tasks = new Map<string, PackageTask>()
+  for (const info of allInfos) {
+    const commits = await getPackageCommits(
+      cwd,
+      info.relativeDir,
+      lastRelease?.hash,
+    )
+    const bumpType = determineBumpType(commits, config)
 
-  const graph = buildDependencyGraph(packages)
-  propagateChanges(changed, graph)
+    tasks.set(info.name, {
+      ...info,
+      commits,
+      bumpType,
+      isPassive: false,
+    })
+  }
 
-  if (changed.size === 0) {
-    nxsLog.success('No changes.')
+  propagateWorkspaceChanges(tasks)
+
+  const changedTasks = Array.from(tasks.values()).filter(
+    t => t.bumpType || t.isPassive,
+  )
+  if (changedTasks.length === 0) {
+    nxsLog.success('No incremental changes detected in any packages.')
     return
   }
 
-  const commits = await getRawCommits(lastRelease?.hash)
-
-  const bumpMap = new Map<string, BrancheType>()
-
-  for (const pkg of packages) {
-    if (!changed.has(pkg.name)) continue
-
-    let bump: BrancheType | null = null
-
-    for (const { message } of commits) {
-      if (config.versioning?.major?.some(r => new RegExp(r).test(message))) {
-        bump = 'major'
-        break
-      }
-      if (config.versioning?.minor?.some(r => new RegExp(r).test(message))) {
-        bump = (bump as any) === 'major' ? bump : 'minor'
-      }
-      if (config.versioning?.patch?.some(r => new RegExp(r).test(message))) {
-        bump = bump ?? 'patch'
-      }
-    }
-
-    if (bump) bumpMap.set(pkg.name, bump)
-  }
-
-  if (bumpMap.size === 0) {
-    nxsLog.success('No version bump needed.')
-    return
-  }
-
-  const nextVersions = new Map<string, string>()
-
-  if (mode === 'independent') {
-    for (const pkg of packages) {
-      if (!bumpMap.has(pkg.name)) continue
-
-      const next = semver.inc(
-        pkg.version,
-        bumpMap.get(pkg.name)! as semver.ReleaseType,
-      )!
-
-      nextVersions.set(pkg.name, next)
-      nxsLog.item(`${pkg.name}: ${pkg.version} → ${next}`)
-    }
-  } else {
-    const highest = getHighestBump(Array.from(bumpMap.values()))
-
-    const baseVersion = packages.map(p => p.version).sort(semver.rcompare)[0]
-
-    const nextVersion = semver.inc(baseVersion, highest as semver.ReleaseType)!
-
-    nxsLog.step(`Locked version: ${baseVersion} → ${nextVersion}`)
-
-    for (const pkg of packages) {
-      nextVersions.set(pkg.name, nextVersion)
-      nxsLog.item(`${pkg.name}: ${pkg.version} → ${nextVersion}`)
-    }
-  }
+  calculateVersions(tasks, branchContract, currentBranch!, mode)
 
   if (dry) {
-    nxsLog.warn('DRY RUN')
+    nxsLog.warn('DRY RUN: Version changes preview:')
+    changedTasks.forEach(t => {
+      const tag = t.private ? '[PRIVATE]' : ''
+      nxsLog.item(`${t.name}: ${t.version} → ${t.nextVersion} ${tag}`)
+    })
     return
   }
 
-  for (const pkg of packages) {
-    if (!nextVersions.has(pkg.name)) continue
+  nxsLog.step('Updating workspace files...')
+  const rootNewEntries: string[] = []
 
-    const pkgPath = path.join(pkg.dir, 'package.json')
-    const json = await readJSON(pkgPath)
+  for (const task of tasks.values()) {
+    if (!task.nextVersion || task.nextVersion === task.version) continue
 
-    json.version = nextVersions.get(pkg.name)
-
-    await fs.writeFile(pkgPath, JSON.stringify(json, null, 2) + '\n')
-  }
-
-  await updateWorkspaceDeps(packages, nextVersions)
-
-  await generateWorkspaceChangelog(cwd, commits, nextVersions, config)
-
-  await run('pnpm', ['install'], { cwd })
-
-  await commitAndTagWorkspace(cwd, nextVersions, mode)
-}
-
-export interface PackageInfo {
-  name: string
-  version: string
-  dir: string
-  dependencies: string[]
-}
-
-export async function scanPackages(cwd: string): Promise<PackageInfo[]> {
-  const pkgsDir = path.join(cwd, 'packages')
-  const dirs = await fs.readdir(pkgsDir)
-
-  const result: PackageInfo[] = []
-
-  for (const dir of dirs) {
-    const pkgPath = path.join(pkgsDir, dir, 'package.json')
-
-    try {
-      const json = await readJSON(pkgPath)
-
-      result.push({
-        name: json.name,
-        version: json.version,
-        dir: path.join(pkgsDir, dir),
-        dependencies: Object.keys({
-          ...json.dependencies,
-          ...json.devDependencies,
-          ...json.peerDependencies,
-        }),
-      })
-    } catch {}
-  }
-
-  return result
-}
-
-export async function detectChangedPackages(
-  cwd: string,
-  packages: { name: string; dir: string }[],
-  since?: string,
-) {
-  const args = ['diff', '--name-only']
-  if (since) args.push(`${since}..HEAD`)
-
-  const { stdout } = await runSafe('git', args, { cwd })
-
-  const files = stdout.split('\n').filter(Boolean)
-  const changed = new Set<string>()
-
-  for (const file of files) {
-    for (const pkg of packages) {
-      const rel = pkg.dir.replace(cwd + '/', '')
-      if (file.startsWith(rel)) {
-        changed.add(pkg.name)
-      }
-    }
-  }
-
-  return changed
-}
-
-export function buildDependencyGraph(packages: PackageInfo[]) {
-  const graph = new Map<string, string[]>()
-
-  for (const pkg of packages) {
-    graph.set(pkg.name, pkg.dependencies)
-  }
-
-  return graph
-}
-
-export function propagateChanges(
-  changed: Set<string>,
-  graph: Map<string, string[]>,
-) {
-  let updated = true
-
-  while (updated) {
-    updated = false
-
-    for (const [pkg, deps] of graph) {
-      if (changed.has(pkg)) continue
-
-      if (deps.some(dep => changed.has(dep))) {
-        changed.add(pkg)
-        updated = true
-      }
-    }
-  }
-
-  return changed
-}
-
-export async function updateWorkspaceDeps(
-  packages: PackageInfo[],
-  nextVersions: Map<string, string>,
-) {
-  for (const pkg of packages) {
-    const pkgPath = path.join(pkg.dir, 'package.json')
-    const json = await readJSON(pkgPath)
-
-    let changed = false
-
-    const update = (deps?: Record<string, string>) => {
-      if (!deps) return
-      for (const dep in deps) {
-        if (nextVersions.has(dep)) {
-          deps[dep] = `^${nextVersions.get(dep)}`
-          changed = true
-        }
-      }
+    if (!task.private) {
+      const entry = await updatePackageChangelog(
+        task,
+        config,
+        repoUrl,
+        lastRelease?.version,
+      )
+      if (entry) rootNewEntries.push(entry)
     }
 
-    update(json.dependencies)
-    update(json.devDependencies)
-    update(json.peerDependencies)
+    const rawPkg = await readJSON(task.pkgPath)
+    rawPkg.version = task.nextVersion
+    updateInternalDeps(rawPkg, tasks)
+    await writeJSON(task.pkgPath, rawPkg)
 
-    if (changed) {
-      await fs.writeFile(pkgPath, JSON.stringify(json, null, 2) + '\n')
-    }
+    nxsLog.success(
+      `Updated ${task.name} to ${task.nextVersion} ${task.private ? '(Private)' : ''}`,
+    )
   }
+
+  if (rootNewEntries.length > 0) {
+    await updateRootChangelog(cwd, rootNewEntries, branchContract)
+  }
+
+  await commitAndTagWorkspace(cwd, tasks, mode, branchContract)
 }
 
-export async function generateWorkspaceChangelog(
-  cwd: string,
-  commits: { message: string; hash: string }[],
-  nextVersions: Map<string, string>,
+function determineBumpType(
+  commits: { message: string }[],
   config: NxspubConfig,
-) {
-  const changelogPath = path.join(cwd, 'CHANGELOG.md')
-  const date = formatDate()
-
-  let content = `## Workspace Release (${date})\n\n`
-
-  for (const [pkg, version] of nextVersions) {
-    content += `### ${pkg}@${version}\n\n`
-
-    for (const { message, hash } of commits) {
-      const type = message.match(/^(\w+)/)?.[1]
-      const label = config.changelog?.labels?.[type || '']
-      if (!label) continue
-
-      content += `- ${message} (${hash.slice(0, 7)})\n`
-    }
-
-    content += '\n'
+): BrancheType | null {
+  let type: BrancheType | null = null
+  for (const { message } of commits) {
+    if (config.versioning?.major?.some(re => new RegExp(re).test(message)))
+      return 'major'
+    if (config.versioning?.minor?.some(re => new RegExp(re).test(message)))
+      type = 'minor'
+    if (
+      config.versioning?.patch?.some(re => new RegExp(re).test(message)) &&
+      !type
+    )
+      type = 'patch'
   }
-
-  let existing = ''
-  try {
-    existing = await fs.readFile(changelogPath, 'utf-8')
-  } catch {}
-
-  await fs.writeFile(changelogPath, (content + '\n' + existing).trim() + '\n')
+  return type
 }
 
-export async function commitAndTagWorkspace(
-  cwd: string,
-  nextVersions: Map<string, string>,
+function propagateWorkspaceChanges(tasks: Map<string, PackageTask>) {
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const task of tasks.values()) {
+      if (task.bumpType) continue
+      if (
+        task.dependencies.some(
+          dep => tasks.get(dep)?.bumpType || tasks.get(dep)?.isPassive,
+        )
+      ) {
+        task.isPassive = true
+        task.bumpType = 'patch'
+        changed = true
+      }
+    }
+  }
+}
+
+function calculateVersions(
+  tasks: Map<string, PackageTask>,
+  contract: BrancheType,
+  branch: string,
   mode: 'independent' | 'locked',
 ) {
-  const message =
-    'release(workspace): ' +
-    Array.from(nextVersions.entries())
-      .map(([name, v]) => `${name}@${v}`)
-      .join(', ')
+  const preid = branch.replace(/\//g, '-')
+  const weights: Record<BrancheType, number> = {
+    major: 3,
+    premajor: 3,
+    minor: 2,
+    preminor: 2,
+    patch: 1,
+    prepatch: 1,
+    latest: 1,
+  }
+
+  if (mode === 'locked') {
+    const bumps = Array.from(tasks.values())
+      .map(t => t.bumpType)
+      .filter((b): b is BrancheType => b !== null)
+    const highest = bumps.sort((a, b) => weights[b] - weights[a])[0] || 'patch'
+    const maxVer = Array.from(tasks.values())
+      .map(t => t.version)
+      .sort(semver.rcompare)[0]
+    const next = inc(maxVer, highest, contract, preid)
+    for (const t of tasks.values()) t.nextVersion = next
+  } else {
+    for (const t of tasks.values()) {
+      if (t.bumpType)
+        t.nextVersion = inc(t.version, t.bumpType, contract, preid)
+    }
+  }
+}
+
+function inc(
+  v: string,
+  bump: BrancheType,
+  contract: BrancheType,
+  preid: string,
+) {
+  if (contract.startsWith('pre')) {
+    const isPre = !!semver.prerelease(v)
+    return semver.inc(
+      v,
+      isPre ? 'prerelease' : (contract as semver.ReleaseType),
+      preid,
+    )!
+  }
+  return semver.inc(v, bump as semver.ReleaseType)!
+}
+
+async function updatePackageChangelog(
+  task: PackageTask,
+  config: NxspubConfig,
+  repoUrl: string,
+  lastVer?: string,
+) {
+  if (task.commits.length === 0 && !task.isPassive) return null
+  if (
+    !semver.prerelease(task.nextVersion!) &&
+    (task.bumpType === 'major' || task.bumpType === 'minor')
+  ) {
+    await archiveChangelog(task)
+  }
+  const date = formatDate()
+  const compareUrl = getCompareUrl(
+    repoUrl,
+    lastVer || task.version,
+    task.nextVersion!,
+  )
+  let entry = `## [${task.nextVersion}](${compareUrl}) (${date})\n\n`
+  if (task.isPassive) entry += `* **deps:** internal dependency upgrade\n`
+  const groups: Record<string, string[]> = {}
+  task.commits.forEach(c => {
+    const type = c.message.match(/^(\w+)/)?.[1] || 'other'
+    const label = config.changelog?.labels?.[type] || 'Others'
+    if (!groups[label]) groups[label] = []
+    groups[label].push(
+      `* ${c.message} ([${c.hash.slice(0, 7)}](${repoUrl}/commit/${c.hash}))`,
+    )
+  })
+  for (const [l, lines] of Object.entries(groups))
+    entry += `### ${l}\n${lines.join('\n')}\n\n`
+  const existing = await fs
+    .readFile(task.changelogPath, 'utf-8')
+    .catch(() => '')
+  await fs.writeFile(task.changelogPath, (entry + existing).trim() + '\n')
+  return `### ${task.name}@${task.nextVersion}\n${entry.split('\n').slice(1).join('\n')}`
+}
+
+async function archiveChangelog(task: PackageTask) {
+  try {
+    const content = await fs.readFile(task.changelogPath, 'utf-8')
+    if (!content.trim() || content.includes('Previous Changelogs')) return
+    await fs.mkdir(task.archiveDir, { recursive: true })
+    const base = `${semver.major(task.version)}.${semver.minor(task.version)}`
+    await fs.writeFile(
+      path.join(task.archiveDir, `CHANGELOG-v${base}.md`),
+      content,
+    )
+    await fs.writeFile(
+      task.changelogPath,
+      `## Previous Changelogs\n\nSee [v${base}](./changelogs/CHANGELOG-v${base}.md)\n`,
+    )
+  } catch {}
+}
+
+async function updateRootChangelog(
+  cwd: string,
+  entries: string[],
+  contract: BrancheType,
+) {
+  const rootPath = path.join(cwd, 'CHANGELOG.md')
+  const header = `## Workspace Release (${formatDate()}) ${contract.startsWith('pre') ? '[Pre-release]' : ''}\n\n`
+  const existing = await fs.readFile(rootPath, 'utf-8').catch(() => '')
+  await fs.writeFile(
+    rootPath,
+    header + entries.join('\n---\n') + '\n\n' + existing,
+  )
+}
+
+function updateInternalDeps(raw: any, tasks: Map<string, PackageTask>) {
+  ;['dependencies', 'devDependencies'].forEach(f => {
+    if (!raw[f]) return
+    for (const d in raw[f]) {
+      const depTask = tasks.get(d)
+      if (depTask?.nextVersion) raw[f][d] = `^${depTask.nextVersion}`
+    }
+  })
+}
+
+async function commitAndTagWorkspace(
+  cwd: string,
+  tasks: Map<string, PackageTask>,
+  mode: 'independent' | 'locked',
+  contract: BrancheType,
+) {
+  const changed = Array.from(tasks.values()).filter(
+    t => t.nextVersion && t.nextVersion !== t.version,
+  )
+  let msg = `release: workspace ${formatDate()}\n\n`
+  changed.forEach(
+    t =>
+      (msg += `- ${t.name}@${t.nextVersion}${t.private ? ' (private)' : ''}\n`),
+  )
 
   await run('git', ['add', '-A'], { cwd })
-  await run('git', ['commit', '-m', message], { cwd })
+  await run('git', ['commit', '-m', msg], { cwd })
 
-  const tags = new Set<string>()
-
-  for (const [name, version] of nextVersions) {
-    tags.add(`${name}@${version}`)
+  const taggable = changed.filter(t => !t.private)
+  if (mode === 'locked' && taggable.length > 0) {
+    const tagName = `v${taggable[0].nextVersion}`
+    await runSafe('git', ['tag', tagName], { cwd })
+  } else {
+    for (const t of taggable)
+      await runSafe('git', ['tag', `${t.name}@${t.nextVersion}`], { cwd })
   }
 
-  // 🔥 locked 模式 root tag
-  if (mode === 'locked') {
-    const version = Array.from(nextVersions.values())[0]
-    tags.add(`v${version}`)
-  }
-
-  for (const tag of tags) {
-    nxsLog.item(tag)
-    await run('git', ['tag', tag], { cwd })
-  }
-
-  await run('git', ['push'], { cwd })
-  await run('git', ['push', '--tags'], { cwd })
-
-  nxsLog.success('Workspace release done.')
+  await run('git', ['push', 'origin', '--tags'], { cwd })
+  await run('git', ['push', 'origin'], { cwd })
+  nxsLog.success(
+    `Released ${taggable.length} public packages on ${contract} track.`,
+  )
 }

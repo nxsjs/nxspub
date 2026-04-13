@@ -1,11 +1,10 @@
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { NxspubConfig } from '../config'
-import { getCurrentBranch, run } from '../utils/git'
+import { getBranchContract, getCurrentBranch, run } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { checkVersionExists } from '../utils/npm'
 import { readJSON } from '../utils/packages'
-import { normalizeRegExp } from '../utils/regexp'
 
 export async function releaseSingle(
   options: {
@@ -32,24 +31,9 @@ export async function releaseSingle(
 
   const pkg = await readJSON(pkgPath)
   const currentBranch = branch || (await getCurrentBranch())
-
-  if (!currentBranch) {
-    nxsLog.error('Admission Denied: No current branch found.')
-    process.exit(1)
-  }
-
-  let branchContract: string | null = null
-  if (config.branches) {
-    for (const [key, value] of Object.entries(config.branches)) {
-      if (normalizeRegExp(key).test(currentBranch)) {
-        branchContract = value
-        break
-      }
-    }
-  }
-
+  const branchContract = getBranchContract(currentBranch!, config.branches)
   if (!branchContract) {
-    nxsLog.error(`Release Denied: Branch "${currentBranch}" is not authorized.`)
+    nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
     process.exit(1)
   }
 

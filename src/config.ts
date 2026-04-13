@@ -117,18 +117,15 @@ export interface NxspubConfig {
 }
 
 export const DEFAULT_CONFIG: NxspubConfig = {
-  workspace: false,
-
+  workspace: true,
+  workspaceMode: 'locked',
   branches: {
     main: 'latest',
     master: 'latest',
   },
-
   versioning: {
     major: [/(\w+)\((.+)\)!:/, /(\w+)!:/, /BREAKING CHANGE:/],
-
     minor: [/feat\((.+)\):/, /feat:/],
-
     patch: [
       /fix\((.+)\):/,
       /fix:/,
@@ -138,7 +135,6 @@ export const DEFAULT_CONFIG: NxspubConfig = {
       /refactor:/,
     ],
   },
-
   changelog: {
     labels: {
       feat: 'Features',

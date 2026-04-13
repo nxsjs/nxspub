@@ -1,6 +1,8 @@
 import detectIndent from 'detect-indent'
+import fg from 'fast-glob'
+import yaml from 'js-yaml'
 import { promises as fs } from 'node:fs'
-import { resolve } from 'node:path'
+import path, { resolve } from 'node:path'
 
 /**
  * @en Read and parse a JSON file.
@@ -123,4 +125,92 @@ export async function loadPackageJSON(
  */
 export async function savePackageJSON(pkg: PackageMeta) {
   return await writeJSON(pkg.filepath, pkg.raw)
+}
+
+/**
+ * @en Basic metadata scanned from the file system.
+ * @zh 从文件系统扫描到的基础元数据。
+ */
+export interface PackageInfo {
+  /** @en Name of the package from package.json. @zh 来自 package.json 的包名。 */
+  name: string
+  /** @en Current version of the package. @zh 包的当前版本。 */
+  version: string
+  /** @en Whether the package is marked as private. @zh 是否为私有包。 */
+  private: boolean
+  /** @en Absolute path to the package directory. @zh 包目录的绝对路径。 */
+  dir: string
+  /** @en Relative path from the workspace root. @zh 相对于工作区根目录的路径。 */
+  relativeDir: string
+  /** @en Absolute path to the package.json file. @zh package.json 文件的绝对路径。 */
+  pkgPath: string
+  /** @en Absolute path to the CHANGELOG.md file. @zh CHANGELOG.md 文件的绝对路径。 */
+  changelogPath: string
+  /** @en Directory for archived changelog files. @zh 归档日志文件的目录。 */
+  archiveDir: string
+  /** @en List of dependency names. @zh 依赖项名称列表。 */
+  dependencies: string[]
+}
+
+export async function scanWorkspacePackages(
+  cwd: string,
+): Promise<PackageInfo[]> {
+  let patterns: string[] = ['packages/*']
+
+  try {
+    const yamlContent = await fs.readFile(
+      path.join(cwd, 'pnpm-workspace.yaml'),
+      'utf8',
+    )
+    const yamlData = yaml.load(yamlContent) as any
+    if (yamlData?.packages) patterns = yamlData.packages
+  } catch {
+    try {
+      const rootPkg = await readJSON(path.join(cwd, 'package.json'))
+      if (Array.isArray(rootPkg.workspaces)) patterns = rootPkg.workspaces
+      else if (rootPkg.workspaces?.packages)
+        patterns = rootPkg.workspaces.packages
+    } catch {}
+  }
+
+  const globPatterns = patterns.map(p => {
+    const base = p.replace(/\/$/, '')
+    return base.startsWith('!')
+      ? `!${base.slice(1)}/package.json`
+      : `${base}/package.json`
+  })
+
+  const files = await fg(globPatterns, {
+    cwd,
+    absolute: true,
+    ignore: ['**/node_modules/**'],
+  })
+
+  const results: PackageInfo[] = []
+  for (const file of files) {
+    try {
+      const raw = await readJSON(file)
+
+      if (file === path.join(cwd, 'package.json')) continue
+
+      const dir = path.dirname(file)
+      results.push({
+        name: raw.name,
+        version: raw.version || '0.0.0',
+        private: !!raw.private,
+        dir,
+        relativeDir: path.relative(cwd, dir),
+        pkgPath: file,
+        changelogPath: path.join(dir, 'CHANGELOG.md'),
+        archiveDir: path.join(dir, 'changelogs'),
+        dependencies: Object.keys({
+          ...raw.dependencies,
+          ...raw.devDependencies,
+          ...raw.peerDependencies,
+          ...raw.optionalDependencies,
+        }),
+      })
+    } catch {}
+  }
+  return results
 }

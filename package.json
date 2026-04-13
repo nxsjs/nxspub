@@ -54,14 +54,15 @@
     "defu": "^6.1.7",
     "detect-indent": "^7.0.2",
     "execa": "^9.6.1",
+    "fast-glob": "^3.3.3",
     "jiti": "^2.6.1",
-    "package-manager-detector": "^1.6.0",
-    "pnpm-workspace-yaml": "^1.6.0",
+    "js-yaml": "^4.1.1",
     "semver-es": "^0.1.1",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@rolldown/binding-darwin-arm64": "1.0.0-rc.15",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
     "@typescript-eslint/eslint-plugin": "^8.58.1",
     "@typescript-eslint/parser": "^8.58.1",
