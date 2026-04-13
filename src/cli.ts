@@ -6,7 +6,7 @@ import { releaseCommand } from './commands/release'
 import { versionCommand } from './commands/version'
 import { printBanner } from './utils/logger'
 
-const cli = cac('nxspack')
+const cli = cac('nxspub')
 
 cli
   .command('git-hooks', 'Install git hooks')
