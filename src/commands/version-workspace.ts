@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { BrancheType, NxspubConfig, WorkspaceMode } from '../config'
+import { archiveChangelogIfNeeded } from '../utils/changelog'
 import { formatDate } from '../utils/date'
 import {
   getBranchContract,
@@ -86,8 +87,9 @@ export async function versionWorkspace(
     nxsLog.warn('DRY RUN: Version changes preview:')
     if (mode === 'locked') nxsLog.item(`Root: -> ${globalNextVersion}`)
     changedTasks.forEach(t => {
-      const tag = t.private ? '[PRIVATE]' : ''
-      nxsLog.item(`${t.name}: ${t.version} → ${t.nextVersion} ${tag}`)
+      nxsLog.item(
+        `${t.name}: ${t.version} → ${t.nextVersion} ${t.private ? '[PRIVATE]' : ''}`,
+      )
     })
     return
   }
@@ -107,25 +109,31 @@ export async function versionWorkspace(
     if (!task.nextVersion || task.nextVersion === task.version) continue
 
     if (!task.private) {
-      const entry = await updatePackageChangelog(
+      const archivedFooter = await archiveChangelogIfNeeded(
+        task.changelogPath,
+        task.version,
+        task.bumpType || 'patch',
+        branchContract.startsWith('pre'),
+      )
+
+      const result = await updatePackageChangelog(
         task,
         config,
         repoUrl,
         lastRelease?.version,
+        archivedFooter,
       )
-      if (entry) rootNewEntries.push(entry)
+
+      if (result?.entry) rootNewEntries.push(result.entry)
     }
 
     const rawPkg = await readJSON(task.pkgPath)
     rawPkg.version = task.nextVersion
-
     updateInternalDeps(rawPkg, tasks)
     await writeJSON(task.pkgPath, rawPkg)
 
     if (task.bumpType || task.isPassive) {
-      nxsLog.success(
-        `Updated ${task.name} to ${task.nextVersion} ${task.private ? '(Private)' : ''}`,
-      )
+      nxsLog.success(`Updated ${task.name} to ${task.nextVersion}`)
     }
   }
 
@@ -259,16 +267,10 @@ async function updatePackageChangelog(
   task: PackageTask,
   config: NxspubConfig,
   repoUrl: string,
-  lastVer?: string,
+  lastVer: string | undefined,
+  archivedFooter?: string,
 ) {
   if (task.commits.length === 0 && !task.isPassive) return null
-
-  if (
-    !semver.prerelease(task.nextVersion!) &&
-    (task.bumpType === 'major' || task.bumpType === 'minor')
-  ) {
-    await archiveChangelog(task)
-  }
 
   const date = formatDate()
   const compareUrl = getCompareUrl(
@@ -294,29 +296,17 @@ async function updatePackageChangelog(
     entry += `### ${l}\n${lines.join('\n')}\n\n`
   }
 
-  const existing = await fs
-    .readFile(task.changelogPath, 'utf-8')
-    .catch(() => '')
+  let existing = archivedFooter
+  if (existing === undefined) {
+    existing = await fs.readFile(task.changelogPath, 'utf-8').catch(() => '')
+  }
+
   await fs.writeFile(task.changelogPath, (entry + existing).trim() + '\n')
 
-  return `### ${task.name}@${task.nextVersion}\n${entry.split('\n').slice(1).join('\n')}`
-}
-
-async function archiveChangelog(task: PackageTask) {
-  try {
-    const content = await fs.readFile(task.changelogPath, 'utf-8')
-    if (!content.trim() || content.includes('Previous Changelogs')) return
-    await fs.mkdir(task.archiveDir, { recursive: true })
-    const base = `${semver.major(task.version)}.${semver.minor(task.version)}`
-    await fs.writeFile(
-      path.join(task.archiveDir, `CHANGELOG-v${base}.md`),
-      content,
-    )
-    await fs.writeFile(
-      task.changelogPath,
-      `## Previous Changelogs\n\nSee [v${base}](./changelogs/CHANGELOG-v${base}.md)\n`,
-    )
-  } catch {}
+  return {
+    entry: `### ${task.name}@${task.nextVersion}\n${entry.split('\n').slice(1).join('\n')}`,
+    fullContent: entry + existing,
+  }
 }
 
 async function updateRootChangelog(
