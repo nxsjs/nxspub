@@ -118,10 +118,11 @@ export async function getLastReleaseCommit() {
     const { stdout } = await execa('git', [
       'log',
       '--first-parent',
-      '--grep=^release(\(.*\))\?:',
+      '--grep=^release\(.*\)\?:',
       '-n',
       '1',
       '--pretty=format:%H|%s',
+      '--extended-regexp',
     ])
 
     if (!stdout) return null

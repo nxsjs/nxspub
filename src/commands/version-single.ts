@@ -92,7 +92,6 @@ export async function versionSingle(
   let targetVersion: string
   const isPreContract = branchContract.startsWith('pre')
   const preid = currentBranch!
-
   if (isPreContract) {
     const isCurrentlyPre = !!semver.prerelease(currentPkgVersion)
     const action = isCurrentlyPre
