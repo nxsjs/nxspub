@@ -279,8 +279,8 @@ async function updatePackageChangelog(
     task.nextVersion!,
   )
 
-  let entry = `## [${task.nextVersion}](${compareUrl}) (${date})\n\n`
-  if (task.isPassive) entry += `* **deps:** internal dependency upgrade\n`
+  let localEntry = `## [${task.nextVersion}](${compareUrl}) (${date})\n\n`
+  if (task.isPassive) localEntry += `* **deps:** internal dependency upgrade\n`
 
   const groups: Record<string, string[]> = {}
   task.commits.forEach(c => {
@@ -293,19 +293,34 @@ async function updatePackageChangelog(
   })
 
   for (const [l, lines] of Object.entries(groups)) {
-    entry += `### ${l}\n${lines.join('\n')}\n\n`
+    localEntry += `### ${l}\n${lines.join('\n')}\n\n`
   }
 
-  let existing = archivedFooter
-  if (existing === undefined) {
-    existing = await fs.readFile(task.changelogPath, 'utf-8').catch(() => '')
+  const existing =
+    archivedFooter !== undefined
+      ? archivedFooter
+      : await fs.readFile(task.changelogPath, 'utf-8').catch(() => '')
+
+  await fs.writeFile(task.changelogPath, (localEntry + existing).trim() + '\n')
+
+  const rootLines: string[] = []
+
+  if (task.isPassive) {
+    rootLines.push(`- **deps:** internal dependency upgrade`)
   }
 
-  await fs.writeFile(task.changelogPath, (entry + existing).trim() + '\n')
+  for (const [label, lines] of Object.entries(groups)) {
+    rootLines.push(`- **${label}**`)
+    lines.forEach(line => {
+      rootLines.push(`  ${line.replace(/^\* /, '-')}`)
+    })
+  }
+
+  const rootEntry = `### ${task.name} ${task.nextVersion}\n${rootLines.join('\n')}`
 
   return {
-    entry: `### ${task.name}@${task.nextVersion}\n${entry.split('\n').slice(1).join('\n')}`,
-    fullContent: entry + existing,
+    entry: rootEntry,
+    fullContent: localEntry + existing,
   }
 }
 
