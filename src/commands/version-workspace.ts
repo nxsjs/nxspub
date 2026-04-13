@@ -324,11 +324,33 @@ async function updateRootChangelog(
 }
 
 function updateInternalDeps(raw: any, tasks: Map<string, PackageTask>) {
-  ;['dependencies', 'devDependencies'].forEach(f => {
-    if (!raw[f]) return
-    for (const d in raw[f]) {
-      const depTask = tasks.get(d)
-      if (depTask?.nextVersion) raw[f][d] = `^${depTask.nextVersion}`
+  const dependencyFields = [
+    'dependencies',
+    'devDependencies',
+    'peerDependencies',
+    'optionalDependencies',
+  ]
+
+  dependencyFields.forEach(field => {
+    const deps = raw[field]
+    if (!deps) return
+
+    for (const depName in deps) {
+      const depTask = tasks.get(depName)
+      if (!depTask?.nextVersion) continue
+
+      const currentRange = deps[depName]
+
+      if (
+        ['workspace:*', 'workspace:~', 'workspace:^'].includes(currentRange)
+      ) {
+        continue
+      }
+
+      const prefixMatch = currentRange.match(/^([^0-9]+)/)
+      const prefix = prefixMatch ? prefixMatch[1] : ''
+
+      deps[depName] = `${prefix}${depTask.nextVersion}`
     }
   })
 }
