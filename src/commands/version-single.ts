@@ -169,10 +169,17 @@ export async function versionSingle(
   try {
     currentChangelog = await fs.readFile(changelogPath, 'utf-8')
   } catch {}
+
+  const MAX_CHANGELOG_SIZE = 1 * 1024 * 1024 // 1MB
   const PREVIOUS_HEADER = '## Previous Changelogs'
 
-  if (!isPreContract && (bumpType === 'minor' || bumpType === 'major')) {
-    nxsLog.step('Archiving stable release...')
+  const stats = await fs.stat(changelogPath).catch(() => ({ size: 0 }))
+  const isTooLarge = stats.size > MAX_CHANGELOG_SIZE
+
+  if (!isPreContract && (bumpType === 'major' || isTooLarge)) {
+    const reason =
+      bumpType === 'major' ? 'Major Release' : 'File size limit exceeded'
+    nxsLog.step(`Archiving stable release (${reason})...`)
 
     if (
       !(await fs
@@ -180,7 +187,6 @@ export async function versionSingle(
         .then(() => true)
         .catch(() => false))
     ) {
-      nxsLog.item(`Creating directory: ${changelogsDir}`)
       await fs.mkdir(changelogsDir, { recursive: true })
     }
 
@@ -189,27 +195,36 @@ export async function versionSingle(
     if (mainContent) {
       const dateMatches = mainContent.match(/\d{4}-\d{2}-\d{2}/g)
       let dateRange = `(${date})`
-
       if (dateMatches && dateMatches.length > 0) {
         const latestDate = dateMatches[0]
         const earliestDate = dateMatches[dateMatches.length - 1]
-
         dateRange =
           latestDate === earliestDate
             ? `(${latestDate})`
             : `(${earliestDate} - ${latestDate})`
       }
 
-      const lastVersionBase = `${semver.major(currentPkgVersion)}.${semver.minor(currentPkgVersion)}`
-      const archivePath = path.resolve(
-        changelogsDir,
-        `CHANGELOG-${lastVersionBase}.md`,
-      )
+      const lastMajor = semver.major(currentPkgVersion)
+      let archiveFileName = `CHANGELOG-v${lastMajor}.x.md`
+      let archivePath = path.resolve(changelogsDir, archiveFileName)
+
+      let counter = 1
+      while (
+        await fs
+          .access(archivePath)
+          .then(() => true)
+          .catch(() => false)
+      ) {
+        archiveFileName = `CHANGELOG-v${lastMajor}.x-${counter}.md`
+        archivePath = path.resolve(changelogsDir, archiveFileName)
+        counter++
+      }
 
       nxsLog.item(`Archiving to: ${archivePath}`)
       await fs.writeFile(archivePath, mainContent + '\n')
 
-      const newArchiveEntry = `### ${lastVersionBase}.x ${dateRange}\n\nSee [${lastVersionBase} changelog](./changelogs/CHANGELOG-${lastVersionBase}.md)`
+      const partLabel = counter > 1 ? ` (Part ${counter - 1})` : ''
+      const newArchiveEntry = `### v${lastMajor}.x${partLabel} ${dateRange}\n\nSee [v${lastMajor} changelog](./changelogs/${archiveFileName})`
 
       const oldPrevious = currentChangelog.includes(PREVIOUS_HEADER)
         ? currentChangelog.split(PREVIOUS_HEADER)[1].trim()

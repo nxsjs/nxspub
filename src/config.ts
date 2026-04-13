@@ -117,7 +117,7 @@ export interface NxspubConfig {
 }
 
 export const DEFAULT_CONFIG: NxspubConfig = {
-  workspace: true,
+  workspace: false,
   workspaceMode: 'locked',
   branches: {
     main: 'latest',
