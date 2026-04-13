@@ -33,12 +33,12 @@ export async function installGitHooks(
   nxsLog.step('Installing Git Hooks...')
 
   if (!hooksToInstall['commit-msg']) {
-    const isSelfDev = await fs
-      .access(path.resolve(cwd, 'bin/nxspub.mjs'))
+    const isDevelopment = await fs
+      .access(path.resolve(cwd, 'src/cli.ts'))
       .then(() => true)
       .catch(() => false)
 
-    if (isSelfDev) {
+    if (isDevelopment) {
       hooksToInstall['commit-msg'] = 'pnpm run start lint --edit "$1"'
     } else {
       hooksToInstall['commit-msg'] = 'npx nxspub lint --edit "$1"'
