@@ -1,3 +1,15 @@
+## [0.2.0](https://github.com/nxsjs/nxspub/compare/v0.1.1...v0.2.0) (2026-04-13)
+
+### Features
+
+* **workspace:** implement monorepo release system with independent/locked modes ([3e8997b](https://github.com/nxsjs/nxspub/commit/3e8997b))
+
+### Refactors
+
+* streamline workspace changelog architecture ([8c29c08](https://github.com/nxsjs/nxspub/commit/8c29c08))
+* **version:** enhance internal dependency update logic ([b5733f6](https://github.com/nxsjs/nxspub/commit/b5733f6))
+* unify changelog archiving and versioning logic ([0716b41](https://github.com/nxsjs/nxspub/commit/0716b41))
+
 ## [0.1.1](https://github.com/nxsjs/nxspub/compare/v0.1.0...v0.1.1) (2026-04-13)
 
 ### Bug Fixes
