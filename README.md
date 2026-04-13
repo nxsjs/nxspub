@@ -1,23 +1,3 @@
-## 1.2.0 (2026-04-13)
-
-### @nxs/core 1.2.0
-
-- **Bug Fixes**
-  - **runtime-core:** prevent currentInstance leak ([#14668](...)) ([f166353](...))
-- **Reverts**
-  - cleanup component effect scopes after SSR render ([219d83b](...))
-
-### @nxs/utils 1.1.0
-
-- **Bug Fixes**
-  - **runtime-core:** prevent currentInstance leak ([#14668](...)) ([f166353](...))
-
----
-
-## Previous Changelogs
-
-...
-
 <div align="center">
   <a href="https://nxsjs.com">
     <img width="100" alt="nxspub logo" src="logo.svg">
@@ -80,7 +60,11 @@ Best for Monorepos or projects requiring custom regex and complex logic.
 import { defineConfig } from 'nxspub'
 
 export default defineConfig({
-  workspace: true, // Currently under development (Coming Soon).
+  workspace: {
+    // Currently under development (Coming Soon).
+    mode: 'locked',
+    passive: 'patch',
+  },
   'git-hooks': {
     'pre-commit': 'pnpm lint-staged && pnpm check',
   },
