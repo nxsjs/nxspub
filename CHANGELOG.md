@@ -1,3 +1,10 @@
+## [0.1.1](https://github.com/nxsjs/nxspub/compare/v0.1.0...v0.1.1) (2026-04-13)
+
+### Bug Fixes
+
+* **git:** regex pattern for release commit lookup ([cb84f5f](https://github.com/nxsjs/nxspub/commit/cb84f5f))
+* **deps:** robust git-hooks setup in postinstall ([b4e83a7](https://github.com/nxsjs/nxspub/commit/b4e83a7))
+
 ## [0.1.0](https://github.com/nxsjs/nxspub/compare/v0.1.0) (2026-04-13)
 
 ### Features
