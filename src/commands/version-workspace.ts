@@ -20,6 +20,7 @@ import {
   writeJSON,
   type PackageInfo,
 } from '../utils/packages'
+import { determineBumpType } from '../utils/versions'
 
 /**
  * @en Full versioning task with runtime state.
@@ -125,25 +126,6 @@ export async function versionWorkspace(
   }
 
   await commitAndTagWorkspace(cwd, tasks, mode, branchContract)
-}
-
-function determineBumpType(
-  commits: { message: string }[],
-  config: NxspubConfig,
-): BrancheType | null {
-  let type: BrancheType | null = null
-  for (const { message } of commits) {
-    if (config.versioning?.major?.some(re => new RegExp(re).test(message)))
-      return 'major'
-    if (config.versioning?.minor?.some(re => new RegExp(re).test(message)))
-      type = 'minor'
-    if (
-      config.versioning?.patch?.some(re => new RegExp(re).test(message)) &&
-      !type
-    )
-      type = 'patch'
-  }
-  return type
 }
 
 function propagateWorkspaceChanges(tasks: Map<string, PackageTask>) {

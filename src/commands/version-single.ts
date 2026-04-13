@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
-import type { BrancheType, NxspubConfig } from '../config'
+import type { NxspubConfig } from '../config'
 import { formatDate } from '../utils/date'
 import {
   getBranchContract,
@@ -15,6 +15,7 @@ import {
 } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { readJSON, writeJSON } from '../utils/packages'
+import { determineBumpType } from '../utils/versions'
 
 export async function versionSingle(
   options: { cwd: string; dry?: boolean },
@@ -58,23 +59,7 @@ export async function versionSingle(
     return
   }
 
-  let bumpType: BrancheType | null = null
-  const vRules = config.versioning!
-  for (const { message } of commits) {
-    if (vRules.major?.some(re => new RegExp(re).test(message))) {
-      bumpType = 'major'
-      break
-    }
-    if (
-      vRules.minor?.some(re => new RegExp(re).test(message)) &&
-      (bumpType as any) !== 'major'
-    ) {
-      bumpType = 'minor'
-    }
-    if (vRules.patch?.some(re => new RegExp(re).test(message)) && !bumpType) {
-      bumpType = 'patch'
-    }
-  }
+  const bumpType = determineBumpType(commits, config)
 
   if (!bumpType) {
     nxsLog.success('No version-triggering commits found.')
@@ -115,7 +100,10 @@ export async function versionSingle(
       : (branchContract as semver.ReleaseType)
     targetVersion = semver.inc(currentPkgVersion, action, preid)!
   } else {
-    targetVersion = semver.inc(currentPkgVersion, bumpType)!
+    targetVersion = semver.inc(
+      currentPkgVersion,
+      bumpType as semver.ReleaseType,
+    )!
   }
 
   nxsLog.item(`Current Version: ${nxsLog.highlight(currentPkgVersion)}`)
