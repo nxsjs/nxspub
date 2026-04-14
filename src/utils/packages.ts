@@ -4,6 +4,7 @@ import yaml from 'js-yaml'
 import { promises as fs } from 'node:fs'
 import path, { resolve } from 'node:path'
 import type { BrancheType } from '../config'
+import { nxsLog } from './logger'
 
 /**
  * @en Read and parse a JSON file.
@@ -231,4 +232,33 @@ export async function scanWorkspacePackages(
     } catch {}
   }
   return results
+}
+
+export function topologicalSort(tasks: Map<string, PackageTask>): string[] {
+  const nodes = Array.from(tasks.keys())
+  const sorted: string[] = []
+  const visited = new Set<string>()
+  const visiting = new Set<string>()
+
+  function visit(name: string) {
+    if (visiting.has(name)) {
+      nxsLog.error(
+        `Circular dependency: ${Array.from(visiting).join(' -> ')} -> ${name}`,
+      )
+      process.exit(1)
+    }
+    if (!visited.has(name)) {
+      visiting.add(name)
+      const task = tasks.get(name)
+      if (task) {
+        for (const dep of task.dependencies) if (tasks.has(dep)) visit(dep)
+      }
+      visiting.delete(name)
+      visited.add(name)
+      sorted.push(name)
+    }
+  }
+
+  for (const node of nodes) visit(node)
+  return sorted
 }

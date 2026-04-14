@@ -1,8 +1,14 @@
 import { loadConfig } from '../utils/load-config'
 import { releaseSingle } from './release-single'
+import { releaseWorkspace } from './release-workspace'
 
 export async function releaseCommand(options: any) {
-  const config = await loadConfig(options.cwd)
+  const { cwd } = options
+  const config = await loadConfig(cwd)
 
-  await releaseSingle(options, config)
+  if (config.workspace) {
+    await releaseWorkspace(options, config)
+  } else {
+    await releaseSingle(options, config)
+  }
 }

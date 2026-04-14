@@ -23,6 +23,7 @@ import {
   readJSON,
   savePackageJSON,
   scanWorkspacePackages,
+  topologicalSort,
   writeJSON,
   type PackageTask,
 } from '../utils/packages'
@@ -180,35 +181,6 @@ function propagateWorkspaceChanges(
       )
     }
   }
-}
-
-function topologicalSort(tasks: Map<string, PackageTask>): string[] {
-  const nodes = Array.from(tasks.keys())
-  const sorted: string[] = []
-  const visited = new Set<string>()
-  const visiting = new Set<string>()
-
-  function visit(name: string) {
-    if (visiting.has(name)) {
-      nxsLog.error(
-        `Circular dependency: ${Array.from(visiting).join(' -> ')} -> ${name}`,
-      )
-      process.exit(1)
-    }
-    if (!visited.has(name)) {
-      visiting.add(name)
-      const task = tasks.get(name)
-      if (task) {
-        for (const dep of task.dependencies) if (tasks.has(dep)) visit(dep)
-      }
-      visiting.delete(name)
-      visited.add(name)
-      sorted.push(name)
-    }
-  }
-
-  for (const node of nodes) visit(node)
-  return sorted
 }
 
 function calculateVersions(
