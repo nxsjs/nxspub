@@ -164,6 +164,8 @@ export interface PackageTask extends PackageInfo {
   bumpType: BrancheType | null
   /** @en Triggered by dependency change. @zh 是否由依赖变动被动触发。 */
   isPassive: boolean
+  /** @en Reasons for passive trigger. @zh 依赖变动被动触发的原因。 */
+  passiveReasons?: string[]
   /** @en Calculated next version. @zh 计算出的新版本。 */
   nextVersion?: string
 }

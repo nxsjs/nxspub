@@ -2,7 +2,10 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { NxspubConfig } from '../config'
-import { archiveChangelogIfNeeded } from '../utils/changelog'
+import {
+  archiveChangelogIfNeeded,
+  cleanupExistingEntry,
+} from '../utils/changelog'
 import { formatDate } from '../utils/date'
 import {
   getBranchContract,
@@ -178,15 +181,7 @@ export async function versionSingle(
     }
   } catch {}
 
-  const versionHeader = `## [${targetVersion}]`
-  if (currentChangelog.includes(versionHeader)) {
-    nxsLog.warn(`Overwriting existing entry for ${targetVersion}`)
-    const segments = currentChangelog.split(/^## \[/m)
-    currentChangelog = segments
-      .filter(s => s && !s.startsWith(`${targetVersion}]`))
-      .map(s => `## [${s}`)
-      .join('')
-  }
+  currentChangelog = cleanupExistingEntry(currentChangelog, targetVersion)
 
   pkg.version = targetVersion
   nxsLog.item(`Updating ${pkgPath}...`)

@@ -2,7 +2,10 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { BrancheType, NxspubConfig, WorkspaceMode } from '../config'
-import { archiveChangelogIfNeeded } from '../utils/changelog'
+import {
+  archiveChangelogIfNeeded,
+  cleanupExistingEntry,
+} from '../utils/changelog'
 import { formatDate } from '../utils/date'
 import {
   getBranchContract,
@@ -85,7 +88,7 @@ export async function versionWorkspace(
 
   if (dry) {
     nxsLog.warn('DRY RUN: Version changes preview:')
-    if (mode === 'locked') nxsLog.item(`Root: -> ${globalNextVersion}`)
+    nxsLog.item(`Root Package: -> ${globalNextVersion}`)
     changedTasks.forEach(t => {
       nxsLog.item(
         `${t.name}: ${t.version} → ${t.nextVersion} ${t.private ? '[PRIVATE]' : ''}`,
@@ -96,7 +99,7 @@ export async function versionWorkspace(
 
   nxsLog.step('Updating workspace files...')
 
-  if (mode === 'locked' && globalNextVersion) {
+  if (globalNextVersion) {
     const pkg = await loadPackageJSON('package.json', cwd)
     pkg.raw.version = globalNextVersion
     await savePackageJSON(pkg)
@@ -137,18 +140,19 @@ export async function versionWorkspace(
     }
   }
 
-  if (rootNewEntries.length > 0) {
-    await updateRootChangelog(cwd, rootNewEntries, branchContract)
+  if (rootNewEntries.length > 0 && globalNextVersion) {
+    await updateRootChangelog(
+      cwd,
+      rootNewEntries,
+      repoUrl,
+      lastRelease?.version,
+      globalNextVersion,
+    )
   }
 
   await commitAndTagWorkspace(cwd, tasks, mode, branchContract)
 }
 
-/**
- * @en Propagate changes in topological order to ensure upstream packages
- * can sense downstream dependency updates.
- * @zh 拓扑序传播变更，确保上游包能感知到下游依赖的更新。
- */
 function propagateWorkspaceChanges(
   tasks: Map<string, PackageTask>,
   config: NxspubConfig,
@@ -162,22 +166,22 @@ function propagateWorkspaceChanges(
     const task = tasks.get(name)!
     if (task.bumpType) continue
 
-    const hasChangedDependency = task.dependencies.some(
-      dep => tasks.get(dep)?.bumpType || tasks.get(dep)?.isPassive,
-    )
+    const changedDeps = task.dependencies
+      .map(dep => tasks.get(dep))
+      .filter(depTask => depTask?.bumpType || depTask?.isPassive)
 
-    if (hasChangedDependency) {
+    if (changedDeps.length > 0) {
       task.isPassive = true
       task.bumpType =
         passiveStrategy === 'follow' ? getHighestBumpType(task, tasks) : 'patch'
+
+      task.passiveReasons = changedDeps.map(
+        d => `${d!.name}@${d!.nextVersion || d!.version}`,
+      )
     }
   }
 }
 
-/**
- * @en Topological sort implementation, supports circular dependency detection.
- * @zh 拓扑排序实现，支持循环依赖检测。
- */
 function topologicalSort(tasks: Map<string, PackageTask>): string[] {
   const nodes = Array.from(tasks.keys())
   const sorted: string[] = []
@@ -187,7 +191,7 @@ function topologicalSort(tasks: Map<string, PackageTask>): string[] {
   function visit(name: string) {
     if (visiting.has(name)) {
       nxsLog.error(
-        `Circular dependency detected: ${Array.from(visiting).join(' -> ')} -> ${name}`,
+        `Circular dependency: ${Array.from(visiting).join(' -> ')} -> ${name}`,
       )
       process.exit(1)
     }
@@ -195,9 +199,7 @@ function topologicalSort(tasks: Map<string, PackageTask>): string[] {
       visiting.add(name)
       const task = tasks.get(name)
       if (task) {
-        for (const dep of task.dependencies) {
-          if (tasks.has(dep)) visit(dep)
-        }
+        for (const dep of task.dependencies) if (tasks.has(dep)) visit(dep)
       }
       visiting.delete(name)
       visited.add(name)
@@ -209,11 +211,6 @@ function topologicalSort(tasks: Map<string, PackageTask>): string[] {
   return sorted
 }
 
-/**
- * @en Calculate versions based on the mode. In Locked mode,
- * returns a single global new version.
- * @zh 根据模式计算版本。在 Locked 模式下返回全局新版本。
- */
 function calculateVersions(
   tasks: Map<string, PackageTask>,
   contract: BrancheType,
@@ -222,27 +219,24 @@ function calculateVersions(
 ): string | undefined {
   const preid = branch.replace(/\//g, '-')
 
+  const allBumps = Array.from(tasks.values()).map(t => t.bumpType)
+  const highestBump = getMaxBumpType(allBumps)
+  const maxCurrentVer = Array.from(tasks.values())
+    .map(t => t.version)
+    .sort(semver.rcompare)[0]
+
+  const globalNext = inc(maxCurrentVer, highestBump, contract, preid)
+
   if (mode === 'locked') {
-    const allBumps = Array.from(tasks.values()).map(t => t.bumpType)
-    const highestBump = getMaxBumpType(allBumps)
-
-    const maxVer = Array.from(tasks.values())
-      .map(t => t.version)
-      .sort(semver.rcompare)[0]
-
-    const next = inc(maxVer, highestBump, contract, preid)
-
-    for (const t of tasks.values()) {
-      t.nextVersion = next
-    }
-    return next
+    for (const t of tasks.values()) t.nextVersion = globalNext
+    return globalNext
   } else {
     for (const t of tasks.values()) {
       if (t.bumpType) {
         t.nextVersion = inc(t.version, t.bumpType, contract, preid)
       }
     }
-    return undefined
+    return globalNext
   }
 }
 
@@ -279,36 +273,54 @@ async function updatePackageChangelog(
     task.nextVersion!,
   )
 
-  let localEntry = `## [${task.nextVersion}](${compareUrl}) (${date})\n\n`
-  if (task.isPassive) localEntry += `* **deps:** internal dependency upgrade\n`
-
   const groups: Record<string, string[]> = {}
+
+  if (task.isPassive && task.passiveReasons) {
+    const depsLabel = config.changelog?.labels?.['deps'] || 'Dependencies'
+    if (!groups[depsLabel]) groups[depsLabel] = []
+
+    const strategy = config.workspace?.passive ?? 'patch'
+    const reason = `internal dependency upgrade (due to ${task.passiveReasons.join(', ')} via \`${strategy}\` strategy)`
+
+    groups[depsLabel].push(`* **internal:** ${reason}`)
+  }
+
   task.commits.forEach(c => {
-    const type = c.message.match(/^(\w+)/)?.[1] || 'other'
-    const label = config.changelog?.labels?.[type] || 'Others'
-    if (!groups[label]) groups[label] = []
-    groups[label].push(
-      `* ${c.message} ([${c.hash.slice(0, 7)}](${repoUrl}/commit/${c.hash}))`,
-    )
+    const match = c.message.match(/^(\w+)(?:\(([^)]+)\))?:/)
+    const type = match?.[1] || 'other'
+    const scope = match?.[2]
+    const label = config.changelog?.labels?.[type] || ''
+
+    if (label) {
+      if (!groups[label]) groups[label] = []
+
+      const rawMsg = c.message.replace(/^.*?:\s*/, '')
+      const formattedMsg = scope ? `**${scope}:** ${rawMsg}` : rawMsg
+
+      groups[label].push(
+        `* ${formattedMsg} ([${c.hash.slice(0, 7)}](${repoUrl}/commit/${c.hash}))`,
+      )
+    }
   })
 
-  for (const [l, lines] of Object.entries(groups)) {
-    localEntry += `### ${l}\n${lines.join('\n')}\n\n`
+  let localEntry = `## [${task.nextVersion}](${compareUrl}) (${date})\n\n`
+
+  for (const [label, lines] of Object.entries(groups)) {
+    localEntry += `### ${label}\n${lines.join('\n')}\n\n`
   }
 
   const existing =
-    archivedFooter !== undefined
-      ? archivedFooter
-      : await fs.readFile(task.changelogPath, 'utf-8').catch(() => '')
+    archivedFooter ??
+    (await fs.readFile(task.changelogPath, 'utf-8').catch(() => ''))
 
-  await fs.writeFile(task.changelogPath, (localEntry + existing).trim() + '\n')
+  const cleanedExisting = cleanupExistingEntry(existing, task.nextVersion!)
+
+  await fs.writeFile(
+    task.changelogPath,
+    (localEntry + cleanedExisting).trim() + '\n',
+  )
 
   const rootLines: string[] = []
-
-  if (task.isPassive) {
-    rootLines.push(`- **deps:** internal dependency upgrade`)
-  }
-
   for (const [label, lines] of Object.entries(groups)) {
     rootLines.push(`- **${label}**`)
     lines.forEach(line => {
@@ -318,53 +330,47 @@ async function updatePackageChangelog(
 
   const rootEntry = `### ${task.name} ${task.nextVersion}\n${rootLines.join('\n')}`
 
-  return {
-    entry: rootEntry,
-    fullContent: localEntry + existing,
-  }
+  return { entry: rootEntry }
 }
 
 async function updateRootChangelog(
   cwd: string,
   entries: string[],
-  contract: BrancheType,
+  repoUrl: string,
+  lastVer: string | undefined,
+  nextVer: string,
 ) {
   const rootPath = path.join(cwd, 'CHANGELOG.md')
-  const header = `## Workspace Release (${formatDate()}) ${contract.startsWith('pre') ? '[Pre-release]' : ''}\n\n`
+  const date = formatDate()
+  const compareUrl = getCompareUrl(repoUrl, lastVer || '0.0.0', nextVer)
+
+  const header = `## [${nextVer}](${compareUrl}) (${date})\n\n`
+
   const existing = await fs.readFile(rootPath, 'utf-8').catch(() => '')
+  const cleanedExisting = cleanupExistingEntry(existing, nextVer)
   await fs.writeFile(
     rootPath,
-    header + entries.join('\n---\n') + '\n\n' + existing,
+    header + entries.join('\n---\n') + '\n\n' + cleanedExisting,
   )
 }
 
 function updateInternalDeps(raw: any, tasks: Map<string, PackageTask>) {
-  const dependencyFields = [
+  const fields = [
     'dependencies',
     'devDependencies',
     'peerDependencies',
     'optionalDependencies',
   ]
-
-  dependencyFields.forEach(field => {
+  fields.forEach(field => {
     const deps = raw[field]
     if (!deps) return
-
     for (const depName in deps) {
       const depTask = tasks.get(depName)
       if (!depTask?.nextVersion) continue
-
       const currentRange = deps[depName]
-
-      if (
-        ['workspace:*', 'workspace:~', 'workspace:^'].includes(currentRange)
-      ) {
+      if (['workspace:*', 'workspace:~', 'workspace:^'].includes(currentRange))
         continue
-      }
-
-      const prefixMatch = currentRange.match(/^([^0-9]+)/)
-      const prefix = prefixMatch ? prefixMatch[1] : ''
-
+      const prefix = currentRange.match(/^([^0-9]+)/)?.[1] || ''
       deps[depName] = `${prefix}${depTask.nextVersion}`
     }
   })
@@ -390,12 +396,10 @@ async function commitAndTagWorkspace(
 
   const taggable = changed.filter(t => !t.private)
   if (mode === 'locked' && taggable.length > 0) {
-    const tagName = `v${taggable[0].nextVersion}`
-    await runSafe('git', ['tag', tagName], { cwd })
+    await runSafe('git', ['tag', `v${taggable[0].nextVersion}`], { cwd })
   } else {
-    for (const t of taggable) {
+    for (const t of taggable)
       await runSafe('git', ['tag', `${t.name}@${t.nextVersion}`], { cwd })
-    }
   }
 
   await run('git', ['push', 'origin', '--tags'], { cwd })

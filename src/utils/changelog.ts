@@ -62,3 +62,22 @@ export async function archiveChangelogIfNeeded(
     return undefined
   }
 }
+
+/**
+ * @en Removes existing version entry from changelog content to prevent duplication.
+ * @zh 从 Changelog 内容中移除已存在的版本条目，防止重复堆叠。
+ */
+export function cleanupExistingEntry(content: string, version: string): string {
+  const versionHeader = `## [${version}]`
+
+  if (!content.includes(versionHeader)) {
+    return content
+  }
+
+  const segments = content.split(/^## \[/m)
+
+  return segments
+    .filter(s => s && !s.startsWith(`${version}]`))
+    .map(s => `## [${s}`)
+    .join('')
+}
