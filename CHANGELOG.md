@@ -1,3 +1,9 @@
+## [0.2.3](https://github.com/nxsjs/nxspub/compare/v0.2.2...v0.2.3) (2026-04-14)
+
+### Bug Fixes
+
+* **cli:** correct skipBuild option definition and improve argument tolerance ([4ccd6b0](https://github.com/nxsjs/nxspub/commit/4ccd6b0))
+
 ## [0.2.2](https://github.com/nxsjs/nxspub/compare/v0.2.1...v0.2.2) (2026-04-14)
 
 ### Refactors
