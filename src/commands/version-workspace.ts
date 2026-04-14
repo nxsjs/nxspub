@@ -151,7 +151,7 @@ export async function versionWorkspace(
     )
   }
 
-  await commitAndTagWorkspace(cwd, tasks, mode, branchContract)
+  await commitAndTagWorkspace(cwd, tasks, mode, globalNextVersion)
 }
 
 function propagateWorkspaceChanges(
@@ -188,7 +188,7 @@ function calculateVersions(
   contract: BrancheType,
   branch: string,
   mode: WorkspaceMode,
-): string | undefined {
+): string {
   const preid = branch.replace(/\//g, '-')
 
   const allBumps = Array.from(tasks.values()).map(t => t.bumpType)
@@ -352,31 +352,38 @@ async function commitAndTagWorkspace(
   cwd: string,
   tasks: Map<string, PackageTask>,
   mode: WorkspaceMode,
-  contract: BrancheType,
+  globalNextVersion: string,
 ) {
   const changed = Array.from(tasks.values()).filter(
     t => t.nextVersion && t.nextVersion !== t.version,
   )
-  let msg = `release: workspace ${formatDate()}\n\n`
-  changed.forEach(
-    t =>
-      (msg += `- ${t.name}@${t.nextVersion}${t.private ? ' (private)' : ''}\n`),
-  )
+
+  if (changed.length === 0) return
+
+  let msg = `release: v${globalNextVersion}\n\n`
+
+  changed.forEach(t => {
+    msg += `- ${t.name}@${t.nextVersion}${t.private ? ' (private)' : ''}\n`
+  })
 
   await run('git', ['add', '-A'], { cwd })
   await run('git', ['commit', '-m', msg], { cwd })
 
   const taggable = changed.filter(t => !t.private)
+
   if (mode === 'locked' && taggable.length > 0) {
-    await runSafe('git', ['tag', `v${taggable[0].nextVersion}`], { cwd })
+    await runSafe('git', ['tag', `v${globalNextVersion}`], { cwd })
   } else {
-    for (const t of taggable)
+    for (const t of taggable) {
       await runSafe('git', ['tag', `${t.name}@${t.nextVersion}`], { cwd })
+    }
+    await runSafe('git', ['tag', `v${globalNextVersion}`], { cwd })
   }
 
   await run('git', ['push', 'origin', '--tags'], { cwd })
   await run('git', ['push', 'origin'], { cwd })
+
   nxsLog.success(
-    `Released ${taggable.length} public packages on ${contract} track.`,
+    `Released ${taggable.length} public packages [Global: v${globalNextVersion}]`,
   )
 }

@@ -121,28 +121,35 @@ export async function getLastReleaseCommit() {
       '--grep=^release\(.*\)\?:',
       '-n',
       '1',
-      '--pretty=format:%H|%s',
+      '--pretty=format:%H|%B',
       '--extended-regexp',
     ])
-
     if (!stdout) return null
 
-    const [hash, msg] = stdout.split('|')
+    const firstPipeIndex = stdout.indexOf('|')
+    const hash = stdout.slice(0, firstPipeIndex)
+    const msg = stdout.slice(firstPipeIndex + 1)
 
     const mainVersionMatch = msg.match(/v(\d+\.\d+\.\d+)/)
     const version = mainVersionMatch ? mainVersionMatch[1] : 'unknown'
 
-    const rawPackages =
-      msg.match(/(@[^\s@]+\/[^\s@]+|[^\s@,]+)@(\d+\.\d+\.\d+(?:-[^\s,]+)?)/g) ||
-      []
+    const workspacePackages: {
+      name: string
+      version: string
+      private: boolean
+    }[] = []
 
-    const workspacePackages = rawPackages.map(item => {
-      const lastAt = item.lastIndexOf('@')
-      return {
-        name: item.slice(0, lastAt),
-        version: item.slice(lastAt + 1),
-      }
-    })
+    const packageLineRegex =
+      /^- (@?[^\s@/]+(?:\/[^\s@/]+)?)@([\d.]+[\w.-]*)(?:\s*(\(private\)))?/gm
+
+    let match
+    while ((match = packageLineRegex.exec(msg)) !== null) {
+      workspacePackages.push({
+        name: match[1],
+        version: match[2],
+        private: !!match[3],
+      })
+    }
 
     return {
       hash,
