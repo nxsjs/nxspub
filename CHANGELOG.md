@@ -1,3 +1,10 @@
+## [0.2.2](https://github.com/nxsjs/nxspub/compare/v0.2.1...v0.2.2) (2026-04-14)
+
+### Refactors
+
+* **release:** standardize release commit format and enhance parser ([327515e](https://github.com/nxsjs/nxspub/commit/327515e))
+* **release:** dispatch release command based on workspace config ([44e3e1b](https://github.com/nxsjs/nxspub/commit/44e3e1b))
+
 ## [0.2.1](https://github.com/nxsjs/nxspub/compare/v0.2.0...v0.2.1) (2026-04-14)
 
 ### Refactors
