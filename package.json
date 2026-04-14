@@ -78,15 +78,18 @@
   },
   "keywords": [
     "nxspub",
-    "publish",
-    "git-hooks",
-    "recommended",
+    "monorepo",
+    "workspace",
+    "versioning",
     "changelog",
-    "automatic",
-    "workflow",
-    "version",
-    "angular",
-    "standard"
+    "independent-mode",
+    "locked-mode",
+    "topological-propagation",
+    "conventional-commits",
+    "release-automation",
+    "publish-workflow",
+    "git-hooks",
+    "semver"
   ],
   "author": "nyxsola",
   "repository": {
