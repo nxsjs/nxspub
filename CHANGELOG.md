@@ -1,3 +1,10 @@
+## [0.2.1](https://github.com/nxsjs/nxspub/compare/v0.2.0...v0.2.1) (2026-04-14)
+
+### Refactors
+
+* **cli:** enhance workspace versioning and industrial-grade changelog ([9d528b8](https://github.com/nxsjs/nxspub/commit/9d528b8))
+* rename CLI entry point to nxspub ([336fc75](https://github.com/nxsjs/nxspub/commit/336fc75))
+
 ## [0.2.0](https://github.com/nxsjs/nxspub/compare/v0.1.1...v0.2.0) (2026-04-13)
 
 ### Features
