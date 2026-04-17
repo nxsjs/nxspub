@@ -1,3 +1,15 @@
+## [0.3.1](https://github.com/nxsjs/nxspub/compare/v0.3.0...v0.3.1) (2026-04-17)
+
+### Bug Fixes
+
+* **changelog:** fix avatar layout to display as inline-flow ([023608d](https://github.com/nxsjs/nxspub/commit/023608d))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.3.0](https://github.com/nxsjs/nxspub/compare/v0.2.3...v0.3.0) (2026-04-17)
 
 ### Features
