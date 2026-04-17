@@ -62,6 +62,7 @@ export function getCompareUrl(repoUrl: string, from: string = '', to: string) {
  */
 export async function getRawCommits(from?: string) {
   const args = ['log', '--first-parent', '--pretty=format:%H|%s']
+
   if (from) args.push(`${from}..HEAD`)
 
   try {
@@ -83,19 +84,30 @@ export async function getRawCommits(from?: string) {
       const parentHashes = parents.trim().split(/\s+/)
 
       if (parentHashes.length > 1) {
-        const { stdout: sideCommits } = await execa('git', [
+        const { stdout: sideCommitsRaw } = await execa('git', [
           'log',
           `${parentHashes[0]}..${parentHashes[1]}`,
-          '--pretty=format:%s|%h',
+          '--pretty=format:%H|%s',
         ])
 
-        sideCommits
+        const sideCommits = sideCommitsRaw
           .split('\n')
           .filter(Boolean)
-          .forEach(s => {
-            const [m, h] = s.split('|')
-            allMessages.push({ message: m, hash: h })
+          .map(s => {
+            const [h, m] = s.split('|')
+            return { hash: h, message: m }
           })
+
+        const lastReleaseIndex = sideCommits.findIndex(c =>
+          /^release(\(.*\))?:/i.test(c.message),
+        )
+
+        if (lastReleaseIndex !== -1) {
+          const validSideCommits = sideCommits.slice(0, lastReleaseIndex)
+          allMessages.push(...validSideCommits)
+        } else {
+          allMessages.push(...sideCommits)
+        }
 
         allMessages.push({ message: subject, hash })
       } else {
@@ -248,56 +260,66 @@ export async function getPackageCommits(
   since?: string,
 ) {
   const args = ['log', '--first-parent', '--pretty=format:%H|%s']
+
   if (since) args.push(`${since}..HEAD`)
+
   args.push('--', relPath)
 
-  const { stdout } = await runSafe('git', args, { cwd })
-  if (!stdout.trim()) return []
+  try {
+    const { stdout } = await runSafe('git', args, { cwd })
+    if (!stdout || !stdout.trim()) return []
 
-  const mainLineCommits = stdout.split('\n').filter(Boolean)
-  const allRelevantCommits: { message: string; hash: string }[] = []
+    const mainLineCommits = stdout.split('\n').filter(Boolean)
+    const allRelevantCommits: { message: string; hash: string }[] = []
 
-  for (const line of mainLineCommits) {
-    const [hash, subject] = line.split('|')
+    for (const line of mainLineCommits) {
+      const [hash, subject] = line.split('|')
 
-    const { stdout: parents } = await runSafe(
-      'git',
-      ['show', '-s', '--format=%P', hash],
-      { cwd },
-    )
-    const parentHashes = parents.trim().split(/\s+/)
-
-    if (parentHashes.length > 1) {
-      /**
-       * @en If it's a merge, dive into the side branch (parent1..parent2).
-       * @en CRITICAL: We MUST still filter by '-- relPath' to avoid cross-package contamination.
-       *
-       * @zh 如果是合并提交，深入侧边分支 (parent1..parent2)。
-       * @zh 关键：必须依然保留 '-- relPath' 过滤，防止跨包变更污染。
-       */
-      const { stdout: sideCommits } = await runSafe(
+      const { stdout: parents } = await runSafe(
         'git',
-        [
-          'log',
-          `${parentHashes[0]}..${parentHashes[1]}`,
-          '--pretty=format:%H|%s',
-          '--',
-          relPath,
-        ],
+        ['show', '-s', '--format=%P', hash],
         { cwd },
       )
+      const parentHashes = parents.trim().split(/\s+/)
 
-      sideCommits
-        .split('\n')
-        .filter(Boolean)
-        .forEach(s => {
-          const [h, m] = s.split('|')
-          allRelevantCommits.push({ hash: h, message: m })
-        })
+      if (parentHashes.length > 1) {
+        const { stdout: sideCommitsRaw } = await runSafe(
+          'git',
+          [
+            'log',
+            `${parentHashes[0]}..${parentHashes[1]}`,
+            '--pretty=format:%H|%s',
+            '--',
+            relPath,
+          ],
+          { cwd },
+        )
+
+        const sideCommits = sideCommitsRaw
+          .split('\n')
+          .filter(Boolean)
+          .map(s => {
+            const [h, m] = s.split('|')
+            return { hash: h, message: m }
+          })
+
+        const lastReleaseIndex = sideCommits.findIndex(c =>
+          /^release(\(.*\))?:/i.test(c.message),
+        )
+
+        if (lastReleaseIndex !== -1) {
+          const validSideCommits = sideCommits.slice(0, lastReleaseIndex)
+          allRelevantCommits.push(...validSideCommits)
+        } else {
+          allRelevantCommits.push(...sideCommits)
+        }
+      }
+
+      allRelevantCommits.push({ hash, message: subject })
     }
 
-    allRelevantCommits.push({ hash, message: subject })
+    return allRelevantCommits
+  } catch {
+    return []
   }
-
-  return allRelevantCommits
 }
