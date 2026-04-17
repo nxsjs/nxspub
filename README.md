@@ -6,7 +6,7 @@
 <hr/>
 
   <div style="display: flex; justify-content: center; gap: 8px;">
-    <a href="https://nxsjs.com"><img alt="Made by NxsJs" src="https://img.shields.io/badge/MADE%20BY%20NxsJs-CCEE00.svg?style=for-the-badge&labelColor=000000"></a>
+    <a href="https://nxsjs.com"><img alt="Made by NxsJs" src="https://img.shields.io/badge/MADE%20BY%20NxsJs-CCEE00.svg?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgNCkiPjxwYXRoIGQ9Ik02IDI2VjZjMC0yLjIgMS44LTQgNC00aDQuNWw3IDEwVjZjMC0yLjIgMS44LTQgNC00SDMwdjIwYzAgMi4yLTEuOCA0LTQgNGgtNC41bC03LTEwdjZjMCAyLjItMS44IDQtNCA0SDZ6IiBmaWxsPSIjMDAwIi8+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yLCAyKSI+PHBhdGggZD0iTTYgMjZWNmMwLTIuMiAxLjgtNCA0LTRoNC41bDcgMTBWNmMwLTIuMiAxLjgtNCA0LTRIMzB2MjBjMCAyLjItMS44IDQtNCA0aC00LjVsLTctMTB2NmMwIDIuMi0xLjggNC00IDRINnoiIGZpbGw9IiNDQ0ZGMDAiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiLz48L2c+PC9zdmc+&style=for-the-badge&labelColor=000000"></a>
     <a href="https://nxsjs.com"><img src="https://img.shields.io/npm/v/nxspub?style=for-the-badge&color=000000&labelColor=FF4400" alt="npm version"></a>
     <a href="https://nxsjs.com"><img src="https://img.shields.io/npm/l/nxspub?style=for-the-badge&color=000000&labelColor=00AAFF" alt="license"></a>
   </div>
