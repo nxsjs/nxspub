@@ -26,7 +26,7 @@ nyxsola
 
 <div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" height="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
 
-nyxsola, nyxsola
+nyxsola
 
 ## [0.2.3](https://github.com/nxsjs/nxspub/compare/v0.2.2...v0.2.3) (2026-04-14)
 

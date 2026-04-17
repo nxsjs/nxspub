@@ -3,6 +3,7 @@ import path from 'node:path'
 import * as semver from 'semver-es'
 import type { BrancheType } from '../config'
 import { formatDate } from './date'
+import { getContributors } from './git'
 
 /**
  * @en Archiving strategy: Archive when a Major change occurs or when the Changelog file exceeds 1MB.
@@ -80,4 +81,48 @@ export function cleanupExistingEntry(content: string, version: string): string {
     .filter(s => s && !s.startsWith(`${version}]`))
     .map(s => `## [${s}`)
     .join('')
+}
+
+export async function applyContributorsToChangelog(
+  newEntry: string,
+  repoUrl: string,
+  sinceHash?: string,
+  pkgPath?: string,
+) {
+  const { all: allContributors, new: newContributors } = await getContributors(
+    sinceHash,
+    repoUrl,
+    pkgPath,
+  )
+
+  if (newContributors.length > 0) {
+    newEntry += `### New Contributors\n\n`
+    newEntry +=
+      newContributors
+        .map(c =>
+          c.firstPR
+            ? `* **[@${c.name}](${c.url})** made their first contribution in [#${c.firstPR?.num}](${c.firstPR?.url})`
+            : `* **[@${c.name}](${c.url})** made their first contribution`,
+        )
+        .join('\n') + '\n\n'
+  }
+
+  if (allContributors.length > 0) {
+    newEntry += `### Contributors\n\n`
+    const avatars = allContributors
+      .map(
+        c =>
+          `<a href="${c.url}"><img src="${c.avatar}" width="32" title="${c.name}"></a>&nbsp;&nbsp;`,
+      )
+      .join(' ')
+
+    const names = allContributors.map(c => c.name)
+    const summary =
+      names.length > 3
+        ? `${names.slice(0, 3).join(', ')}, and ${names.length - 3} other contributors`
+        : names.join(', ')
+
+    newEntry += `<div>${avatars}</div>\n\n${summary}\n\n`
+  }
+  return newEntry
 }

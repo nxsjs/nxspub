@@ -3,6 +3,7 @@ import path from 'node:path'
 import * as semver from 'semver-es'
 import type { BrancheType, NxspubConfig, WorkspaceMode } from '../config'
 import {
+  applyContributorsToChangelog,
   archiveChangelogIfNeeded,
   cleanupExistingEntry,
 } from '../utils/changelog'
@@ -124,6 +125,7 @@ export async function versionWorkspace(
         task,
         config,
         repoUrl,
+        lastRelease?.hash,
         lastRelease?.version,
         archivedFooter,
       )
@@ -146,6 +148,7 @@ export async function versionWorkspace(
       cwd,
       rootNewEntries,
       repoUrl,
+      lastRelease?.hash,
       lastRelease?.version,
       globalNextVersion,
     )
@@ -233,6 +236,7 @@ async function updatePackageChangelog(
   task: PackageTask,
   config: NxspubConfig,
   repoUrl: string,
+  lastHash: string | undefined,
   lastVer: string | undefined,
   archivedFooter?: string,
 ) {
@@ -287,6 +291,13 @@ async function updatePackageChangelog(
 
   const cleanedExisting = cleanupExistingEntry(existing, task.nextVersion!)
 
+  localEntry = await applyContributorsToChangelog(
+    localEntry,
+    repoUrl,
+    lastHash,
+    task.relativeDir,
+  )
+
   await fs.writeFile(
     task.changelogPath,
     (localEntry + cleanedExisting).trim() + '\n',
@@ -309,6 +320,7 @@ async function updateRootChangelog(
   cwd: string,
   entries: string[],
   repoUrl: string,
+  lastHash: string | undefined,
   lastVer: string | undefined,
   nextVer: string,
 ) {
@@ -316,14 +328,16 @@ async function updateRootChangelog(
   const date = formatDate()
   const compareUrl = getCompareUrl(repoUrl, lastVer || '0.0.0', nextVer)
 
-  const header = `## [${nextVer}](${compareUrl}) (${date})\n\n`
+  let rootEntry =
+    `## [${nextVer}](${compareUrl}) (${date})\n\n` +
+    entries.join('\n---\n') +
+    '\n\n'
+
+  rootEntry = await applyContributorsToChangelog(rootEntry, repoUrl, lastHash)
 
   const existing = await fs.readFile(rootPath, 'utf-8').catch(() => '')
   const cleanedExisting = cleanupExistingEntry(existing, nextVer)
-  await fs.writeFile(
-    rootPath,
-    header + entries.join('\n---\n') + '\n\n' + cleanedExisting,
-  )
+  await fs.writeFile(rootPath, rootEntry + cleanedExisting)
 }
 
 function updateInternalDeps(raw: any, tasks: Map<string, PackageTask>) {

@@ -352,12 +352,18 @@ interface Contributor {
   firstPR?: { num: string; url: string }
 }
 
-export async function getContributors(sinceHash?: string, repoUrl?: string) {
+export async function getContributors(
+  sinceHash?: string,
+  repoUrl?: string,
+  pkgPath?: string,
+) {
   const currentContributors: Contributor[] = []
   const allContributorsMap = new Map<string, Contributor>()
   const historyEmailSet = new Set<string>()
 
   const authorFirstPr = new Map<string, { pr: string; hash: string }>()
+
+  const pathFilter = pkgPath ? ['--', pkgPath] : []
 
   if (sinceHash) {
     try {
@@ -365,6 +371,7 @@ export async function getContributors(sinceHash?: string, repoUrl?: string) {
         'log',
         sinceHash,
         '--pretty=format:%ae',
+        ...pathFilter,
       ])
       historyStdout.split('\n').forEach(e => {
         const clean = e.trim().toLowerCase()
@@ -381,16 +388,15 @@ export async function getContributors(sinceHash?: string, repoUrl?: string) {
   } catch {
     repoHost = ''
   }
-  const isGitHub =
-    repoHost === 'github.com' || repoHost.endsWith('.github.com')
-  const isGitLab =
-    repoHost === 'gitlab.com' || repoHost.endsWith('.gitlab.com')
+  const isGitHub = repoHost === 'github.com' || repoHost.endsWith('.github.com')
+  const isGitLab = repoHost === 'gitlab.com' || repoHost.endsWith('.gitlab.com')
 
   try {
     const { stdout } = await execa('git', [
       'log',
       range,
       '--pretty=format:%H|%an|%ae|%s',
+      ...pathFilter,
     ])
     const lines = stdout.split('\n').filter(Boolean)
 
