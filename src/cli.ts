@@ -51,6 +51,9 @@ cli
   .option('--tag [tag]', 'Override default tag')
   .option('--branch <branch>', 'Override default branch')
   .option('--skipBuild', 'Skip build', { default: false })
+  .option('--skipSync', 'Skip remote git synchronization check', {
+    default: false,
+  })
   .action(async options => {
     printBanner()
     await releaseCommand(options)

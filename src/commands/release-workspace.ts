@@ -18,14 +18,15 @@ export async function releaseWorkspace(
     access?: string
     tag?: string
     branch?: string
+    skipSync?: boolean
   },
   config: NxspubConfig,
 ) {
-  const { cwd, dry, branch } = options
+  const { cwd, dry, branch, skipSync } = options
 
   const currentBranch = branch || (await getCurrentBranch())
 
-  if (currentBranch && !dry) {
+  if (currentBranch && !dry && !skipSync) {
     await ensureGitSync(currentBranch, cwd)
   }
 

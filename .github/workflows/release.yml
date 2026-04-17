@@ -42,7 +42,7 @@ jobs:
       - name: Build and publish
         id: publish
         run: |
-          pnpm release --provenance --branch main
+          pnpm release --skipSync --provenance --branch main
 
       - name: Create GitHub release
         id: release_tag

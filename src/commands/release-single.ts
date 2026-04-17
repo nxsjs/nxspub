@@ -21,6 +21,7 @@ export async function releaseSingle(
     tag?: string
     branch?: string
     skipBuild?: boolean
+    skipSync?: boolean
   },
   config: NxspubConfig,
 ) {
@@ -33,6 +34,7 @@ export async function releaseSingle(
     tag,
     branch,
     skipBuild,
+    skipSync,
   } = options
   const pkgPath = path.resolve(cwd, 'package.json')
 
@@ -45,7 +47,7 @@ export async function releaseSingle(
     process.exit(1)
   }
 
-  if (currentBranch && !dry && !skipBuild) {
+  if (currentBranch && !dry && !skipBuild && !skipSync) {
     await ensureGitSync(currentBranch, cwd)
   }
 
@@ -58,9 +60,10 @@ export async function releaseSingle(
     process.exit(1)
   }
 
-  nxsLog.step(`Checking registry: ${pkg.name}`)
+  nxsLog.step(`Checking registry...`)
+  nxsLog.item(`Package: ${pkg.name}`)
+  nxsLog.item(`Version: ${pkg.version}`)
   const isExists = await checkVersionExists(pkg.name, pkg.version, registry)
-
   if (isExists) {
     nxsLog.warn(`Skip: ${pkg.name}@${pkg.version} is already published.`)
     return
@@ -68,6 +71,11 @@ export async function releaseSingle(
 
   if (!skipBuild) {
     nxsLog.step('Running build process...')
+    if (config.scripts?.releaseBuild) {
+      nxsLog.item(`Run: ${nxsLog.highlight(config.scripts.releaseBuild)}`)
+    } else {
+      nxsLog.item(`Build Script: pnpm run build`)
+    }
     if (!dry) {
       if (config.scripts?.releaseBuild) {
         nxsLog.item(`Run: ${nxsLog.highlight(config.scripts.releaseBuild)}`)
@@ -95,9 +103,9 @@ export async function releaseSingle(
     ...(dry ? ['--dry-run'] : []),
   ]
 
-  nxsLog.step(`Publishing ${nxsLog.highlight(pkg.name)}@${pkg.version}`)
+  nxsLog.step(`Publishing...`)
   nxsLog.item(
-    `Registry: ${registry || 'Default'} | Tag: ${releaseTag || 'latest'}`,
+    `Package: ${pkg.name}@${pkg.version} Registry: ${registry || 'Default'} | Tag: ${releaseTag || 'latest'}\n`,
   )
 
   try {
