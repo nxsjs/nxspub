@@ -10,6 +10,7 @@ import { formatDate } from '../utils/date'
 import {
   getBranchContract,
   getCompareUrl,
+  getContributors,
   getCurrentBranch,
   getLastReleaseCommit,
   getRawCommits,
@@ -156,6 +157,41 @@ export async function versionSingle(
   let newEntry = `## [${targetVersion}](${compareUrl}) (${date})\n\n`
   for (const [title, items] of Object.entries(groups)) {
     if (items.length > 0) newEntry += `### ${title}\n\n${items.join('\n')}\n\n`
+  }
+
+  const { all: allContributors, new: newContributors } = await getContributors(
+    lastRelease?.hash,
+    repoUrl,
+  )
+
+  if (newContributors.length > 0) {
+    newEntry += `### New Contributors\n`
+    newEntry +=
+      newContributors
+        .map(c =>
+          c.firstPR
+            ? `* **[@${c.name}](${c.url})** made their first contribution in [#${c.firstPR?.num}](${c.firstPR?.url})`
+            : `* **[@${c.name}](${c.url})** made their first contribution`,
+        )
+        .join('\n') + '\n\n'
+  }
+
+  if (allContributors.length > 0) {
+    newEntry += `### Contributors\n`
+    const avatars = allContributors
+      .map(
+        c =>
+          `<a href="${c.url}"><img src="${c.avatar}" width="32" height="32" title="${c.name}"></a>&nbsp;&nbsp;`,
+      )
+      .join(' ')
+
+    const names = allContributors.map(c => c.name)
+    const summary =
+      names.length > 3
+        ? `${names.slice(0, 3).join(', ')}, and ${names.length - 3} other contributors`
+        : names.join(', ')
+
+    newEntry += `${avatars}\n${summary}\n\n`
   }
 
   if (dry) {

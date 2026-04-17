@@ -1,4 +1,5 @@
 import { execa } from 'execa'
+import { createHash } from 'node:crypto'
 import type { BrancheType } from '../config'
 import { normalizeRegExp } from './regexp'
 
@@ -340,5 +341,125 @@ export async function getPackageCommits(
     return allRelevantCommits
   } catch {
     return []
+  }
+}
+
+interface Contributor {
+  name: string
+  email: string
+  avatar: string
+  url: string
+  firstPR?: { num: string; url: string }
+}
+
+export async function getContributors(sinceHash?: string, repoUrl?: string) {
+  const currentContributors: Contributor[] = []
+  const allContributorsMap = new Map<string, Contributor>()
+  const historyEmailSet = new Set<string>()
+
+  const authorFirstPr = new Map<string, { pr: string; hash: string }>()
+
+  if (sinceHash) {
+    try {
+      const { stdout: historyStdout } = await execa('git', [
+        'log',
+        sinceHash,
+        '--pretty=format:%ae',
+      ])
+      historyStdout.split('\n').forEach(e => {
+        const clean = e.trim().toLowerCase()
+        if (clean) historyEmailSet.add(clean)
+      })
+    } catch {}
+  }
+
+  const range = sinceHash ? `${sinceHash}..HEAD` : 'HEAD'
+  repoUrl = repoUrl || (await getRepoUrl())
+  const isGitHub = repoUrl.includes('github.com')
+  const isGitLab = repoUrl.includes('gitlab.com')
+
+  try {
+    const { stdout } = await execa('git', [
+      'log',
+      range,
+      '--pretty=format:%H|%an|%ae|%s',
+    ])
+    const lines = stdout.split('\n').filter(Boolean)
+
+    let lastFoundPR = ''
+
+    for (const line of lines) {
+      const [hash, name, email, subject] = line.split('|')
+      if (!email) continue
+
+      const cleanEmail = email.trim().toLowerCase()
+
+      const squashMatch = subject.match(/\(#(\d+)\)$/)
+
+      const mergeMatch = subject.match(/#(\d+)/)
+
+      if (squashMatch) {
+        authorFirstPr.set(cleanEmail, { pr: squashMatch[0], hash })
+      } else if (mergeMatch) {
+        lastFoundPR = mergeMatch[0]
+      } else if (lastFoundPR && !authorFirstPr.has(cleanEmail)) {
+        authorFirstPr.set(cleanEmail, { pr: lastFoundPR, hash })
+      }
+
+      if (cleanEmail.includes('bot') || allContributorsMap.has(cleanEmail))
+        continue
+
+      const md5 = createHash('md5').update(cleanEmail).digest('hex')
+      const initialsFallback = encodeURIComponent(
+        `https://www.gravatar.com/avatar/${md5}?d=identicon`,
+      )
+
+      let avatar = ''
+      if (isGitHub) {
+        avatar = `https://unavatar.io/github/${cleanEmail}?fallback=${initialsFallback}`
+      } else if (isGitLab) {
+        avatar = `https://unavatar.io/gitlab/${cleanEmail}?fallback=${initialsFallback}`
+      } else {
+        avatar = `https://unavatar.io/gravatar/${cleanEmail}?fallback=${initialsFallback}`
+      }
+
+      const contributor = {
+        name,
+        email: cleanEmail,
+        avatar,
+        url: `${new URL(repoUrl).origin}/${name}`,
+      }
+      allContributorsMap.set(cleanEmail, contributor)
+      currentContributors.push(contributor)
+    }
+
+    const newContributors = currentContributors.filter(
+      c => !historyEmailSet.has(c.email),
+    )
+
+    return {
+      all: currentContributors.map(c => ({ ...c })),
+      new: newContributors.map(c => {
+        const firstPR = authorFirstPr.get(c.email)
+        if (firstPR) {
+          let prNumber = firstPR.pr.replace('#', '')
+          let prLink = ''
+          if (isGitHub) {
+            prLink = `${repoUrl}/pull/${prNumber}`
+          } else if (isGitLab) {
+            prLink = `${repoUrl}/-/merge_requests/${prNumber}`
+          } else {
+            prLink = `${repoUrl}/commit/${firstPR.hash}`
+          }
+          return {
+            ...c,
+            firstPR: { num: prNumber, url: prLink },
+          }
+        }
+        return c
+      }),
+    }
+  } catch {
+    return { all: [], new: [] }
   }
 }
