@@ -17,25 +17,44 @@ export const runSafe = (bin: string, args: string[], opts = {}) =>
   execa(bin, args, { ...opts })
 
 /**
- * @en Get the remote origin repository URL and normalize it to HTTPS format.
- * @zh 获取远程仓库地址并将其规范化为 HTTPS 格式。
+ * @en Get the remote origin repository URL and normalize it for private/IP-based GitLab.
+ * @zh 获取远程仓库地址并规范化，适配包含 IP、端口及不同协议的私有 GitLab。
  */
 export async function getRepoUrl() {
   try {
     const { stdout } = await execa('git', ['remote', 'get-url', 'origin'])
-    let url = stdout.trim()
+    let rawUrl = stdout.trim()
 
-    if (url.startsWith('git@')) {
-      url = 'https://' + url.replace(/^git@/, '').replace(/:(?=[^/])/, '/')
+    let normalizedUrl: string
+
+    if (rawUrl.startsWith('git@')) {
+      const sshContent = rawUrl.replace(/^git@/, '')
+
+      const firstColonIndex = sshContent.indexOf(':')
+
+      if (firstColonIndex !== -1) {
+        const hostPart = sshContent.slice(0, firstColonIndex)
+        const pathPart = sshContent.slice(firstColonIndex + 1)
+
+        normalizedUrl = `https://${hostPart}/${pathPart}`
+      } else {
+        normalizedUrl = `https://${sshContent}`
+      }
+    } else {
+      normalizedUrl = rawUrl
     }
 
-    url = url.replace(/\.git$/, '')
+    const urlObj = new URL(
+      normalizedUrl.startsWith('http')
+        ? normalizedUrl
+        : `https://${normalizedUrl}`,
+    )
 
-    if (url.startsWith('https://') && url.includes('@')) {
-      url = 'https://' + url.split('@')[1]
-    }
+    const protocol = urlObj.protocol
+    const host = urlObj.host
+    const pathname = urlObj.pathname.replace(/\.git$/, '').replace(/\/$/, '')
 
-    return url
+    return `${protocol}//${host}${pathname}`
   } catch {
     return 'https://github.com/nxsjs/nxspub'
   }
