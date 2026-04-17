@@ -1,6 +1,6 @@
 import path from 'node:path'
 import type { NxspubConfig } from '../config'
-import { run } from '../utils/git'
+import { ensureGitSync, getCurrentBranch, run } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import {
   readJSON,
@@ -21,7 +21,14 @@ export async function releaseWorkspace(
   },
   config: NxspubConfig,
 ) {
-  const { cwd, dry } = options
+  const { cwd, dry, branch } = options
+
+  const currentBranch = branch || (await getCurrentBranch())
+
+  if (currentBranch && !dry) {
+    await ensureGitSync(currentBranch, cwd)
+  }
+
   nxsLog.step('Workspace Release: Initializing Pipeline')
 
   const allInfos = await scanWorkspacePackages(cwd)

@@ -1,6 +1,7 @@
 import { execa } from 'execa'
 import { createHash } from 'node:crypto'
 import type { BrancheType } from '../config'
+import { nxsLog } from './logger'
 import { normalizeRegExp } from './regexp'
 
 /**
@@ -475,5 +476,73 @@ export async function getContributors(
     }
   } catch {
     return { all: [], new: [] }
+  }
+}
+
+/**
+ * @en Ensures the local environment is safe for a release.
+ * @zh 确保本地环境处于安全的可发布状态（工作区干净且与远程同步）。
+ */
+export async function ensureGitSync(currentBranch: string, cwd: string) {
+  nxsLog.step('Pre-flight Safety Check')
+
+  const { stdout: isDirty } = await runSafe('git', ['status', '--porcelain'], {
+    cwd,
+  })
+  if (isDirty.trim()) {
+    nxsLog.error('Admission Denied: Working directory is not clean.')
+    nxsLog.item('Please commit or stash your changes before releasing.')
+    process.exit(1)
+  }
+
+  try {
+    nxsLog.item(`Fetching origin/${currentBranch}...`)
+    await run('git', ['fetch', 'origin', currentBranch], { cwd })
+
+    const { stdout: status } = await runSafe(
+      'git',
+      [
+        'rev-list',
+        '--left-right',
+        '--count',
+        `${currentBranch}...origin/${currentBranch}`,
+      ],
+      { cwd },
+    )
+
+    // 格式通常为 "0\t5"，这里我们只需要关注 "Behind" (远程比本地领先的数量)
+    const [ahead, behind] = status.trim().split('\t').map(Number)
+
+    if (behind > 0) {
+      nxsLog.warn(`Local branch is behind remote by ${behind} commit(s).`)
+      nxsLog.item('Attempting fast-forward pull...')
+
+      try {
+        await run('git', ['pull', '--ff-only', 'origin', currentBranch], {
+          cwd,
+        })
+        nxsLog.success('Successfully synchronized with remote.')
+      } catch {
+        nxsLog.error('Conflict Detected: Automatic pull failed.')
+        nxsLog.item(
+          'Please resolve merge conflicts manually before running nxspub.',
+        )
+        process.exit(1)
+      }
+    } else if (ahead > 0) {
+      nxsLog.error(`Local branch is ahead of remote by ${ahead} commit(s).`)
+      nxsLog.item(
+        'Admission Denied: Please push your local commits before releasing.',
+      )
+      nxsLog.item(
+        'This ensures all changes are tracked and verified by remote CI.',
+      )
+      process.exit(1)
+    } else {
+      nxsLog.item('Local branch is perfectly aligned with remote.')
+    }
+  } catch (e) {
+    nxsLog.error(JSON.stringify(e))
+    process.exit(1)
   }
 }

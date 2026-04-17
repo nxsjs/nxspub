@@ -9,6 +9,7 @@ import {
 } from '../utils/changelog'
 import { formatDate } from '../utils/date'
 import {
+  ensureGitSync,
   getBranchContract,
   getCompareUrl,
   getCurrentBranch,
@@ -46,6 +47,10 @@ export async function versionWorkspace(
   if (!branchContract) {
     nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
     process.exit(1)
+  }
+
+  if (currentBranch && !dry) {
+    await ensureGitSync(currentBranch, cwd)
   }
 
   nxsLog.step(`Workspace Release: ${mode.toUpperCase()} MODE`)

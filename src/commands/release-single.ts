@@ -1,7 +1,12 @@
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { NxspubConfig } from '../config'
-import { getBranchContract, getCurrentBranch, run } from '../utils/git'
+import {
+  ensureGitSync,
+  getBranchContract,
+  getCurrentBranch,
+  run,
+} from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { checkVersionExists } from '../utils/npm'
 import { readJSON } from '../utils/packages'
@@ -38,6 +43,10 @@ export async function releaseSingle(
   if (!branchContract) {
     nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
     process.exit(1)
+  }
+
+  if (currentBranch && !dry && !skipBuild) {
+    await ensureGitSync(currentBranch, cwd)
   }
 
   const isPreContract = branchContract.startsWith('pre')
