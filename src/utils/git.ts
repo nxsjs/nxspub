@@ -375,8 +375,16 @@ export async function getContributors(sinceHash?: string, repoUrl?: string) {
 
   const range = sinceHash ? `${sinceHash}..HEAD` : 'HEAD'
   repoUrl = repoUrl || (await getRepoUrl())
-  const isGitHub = repoUrl.includes('github.com')
-  const isGitLab = repoUrl.includes('gitlab.com')
+  let repoHost = ''
+  try {
+    repoHost = new URL(repoUrl).hostname.toLowerCase()
+  } catch {
+    repoHost = ''
+  }
+  const isGitHub =
+    repoHost === 'github.com' || repoHost.endsWith('.github.com')
+  const isGitLab =
+    repoHost === 'gitlab.com' || repoHost.endsWith('.gitlab.com')
 
   try {
     const { stdout } = await execa('git', [
