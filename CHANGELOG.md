@@ -1,3 +1,20 @@
+## [0.4.0](https://github.com/nxsjs/nxspub/compare/v0.3.1...v0.4.0) (2026-04-17)
+
+### Features
+
+* **git:** encapsulate pre-release safety checks into ensureGitSync ([40c81ea](https://github.com/nxsjs/nxspub/commit/40c81ea))
+* **changelog:** add workspace-level contributor recognition ([cd24301](https://github.com/nxsjs/nxspub/commit/cd24301))
+
+### Bug Fixes
+
+* Potential fix for code scanning alert no. 5: Incomplete URL substring sanitization (#9) ([685337f](https://github.com/nxsjs/nxspub/commit/685337f))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.3.1](https://github.com/nxsjs/nxspub/compare/v0.3.0...v0.3.1) (2026-04-17)
 
 ### Bug Fixes
