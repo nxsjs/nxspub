@@ -332,20 +332,35 @@ function updateInternalDeps(raw: any, tasks: Map<string, PackageTask>) {
     'devDependencies',
     'peerDependencies',
     'optionalDependencies',
+    'resolutions', // Yarn
+    'overrides', // NPM
   ]
-  fields.forEach(field => {
-    const deps = raw[field]
+
+  const update = (deps: Record<string, string>) => {
     if (!deps) return
-    for (const depName in deps) {
+    for (const depKey in deps) {
+      const depName =
+        depKey.includes('/') && !depKey.startsWith('@')
+          ? depKey.split('/').pop()!
+          : depKey
+
       const depTask = tasks.get(depName)
       if (!depTask?.nextVersion) continue
-      const currentRange = deps[depName]
+
+      const currentRange = deps[depKey]
       if (['workspace:*', 'workspace:~', 'workspace:^'].includes(currentRange))
         continue
+
       const prefix = currentRange.match(/^([^0-9]+)/)?.[1] || ''
-      deps[depName] = `${prefix}${depTask.nextVersion}`
+      deps[depKey] = `${prefix}${depTask.nextVersion}`
     }
-  })
+  }
+
+  fields.forEach(field => update(raw[field]))
+
+  if (raw.pnpm?.overrides) {
+    update(raw.pnpm.overrides)
+  }
 }
 
 async function commitAndTagWorkspace(

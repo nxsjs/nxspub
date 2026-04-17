@@ -227,6 +227,9 @@ export async function scanWorkspacePackages(
           ...raw.devDependencies,
           ...raw.peerDependencies,
           ...raw.optionalDependencies,
+          ...raw.resolutions,
+          ...raw.overrides,
+          ...raw.pnpm?.overrides,
         }),
       })
     } catch {}
