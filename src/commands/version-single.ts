@@ -165,7 +165,7 @@ export async function versionSingle(
   )
 
   if (newContributors.length > 0) {
-    newEntry += `### New Contributors\n`
+    newEntry += `### New Contributors\n\n`
     newEntry +=
       newContributors
         .map(c =>
@@ -177,11 +177,11 @@ export async function versionSingle(
   }
 
   if (allContributors.length > 0) {
-    newEntry += `### Contributors\n`
+    newEntry += `### Contributors\n\n`
     const avatars = allContributors
       .map(
         c =>
-          `<a href="${c.url}"><img src="${c.avatar}" width="32" height="32" title="${c.name}"></a>&nbsp;&nbsp;`,
+          `<a href="${c.url}"><img src="${c.avatar}" width="32" title="${c.name}"></a>&nbsp;&nbsp;`,
       )
       .join(' ')
 
@@ -191,7 +191,7 @@ export async function versionSingle(
         ? `${names.slice(0, 3).join(', ')}, and ${names.length - 3} other contributors`
         : names.join(', ')
 
-    newEntry += `${avatars}\n${summary}\n\n`
+    newEntry += `<div>${avatars}</div>\n\n${summary}\n\n`
   }
 
   if (dry) {
