@@ -68,11 +68,26 @@ export async function versionSingle(
     return
   }
 
-  const bumpType = determineBumpType(commits, config)
+  let bumpType = determineBumpType(commits, config)
 
   if (!bumpType) {
-    nxsLog.success('No version-triggering commits found.')
-    return
+    const preInfo = semver.prerelease(currentPkgVersion)
+
+    if (preInfo) {
+      if (branchContract && branchContract.startsWith('pre')) {
+        nxsLog.success(
+          'No incremental changes found in pre-release branch. Skipping.',
+        )
+        return
+      }
+      nxsLog.item(
+        `No new commits, but promoting pre-release [${currentPkgVersion}] to stable.`,
+      )
+      bumpType = 'patch'
+    } else {
+      nxsLog.success('No version-triggering commits found.')
+      return
+    }
   }
 
   const semverOrder: Record<string, number> = {

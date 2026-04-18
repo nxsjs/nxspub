@@ -569,7 +569,6 @@ export async function getTagHashMap(cwd: string): Promise<Map<string, string>> {
  * @zh 获取按版本切分后的历史段（支持 Workspace 路径过滤）。
  */
 export async function getSegmentedHistory(cwd: string, relPath?: string) {
-  // 1. 获取该路径下的所有原始提交
   const args = ['log', '--first-parent', '--pretty=format:%H|%s']
   if (relPath) args.push('--', relPath)
 
@@ -589,14 +588,12 @@ export async function getSegmentedHistory(cwd: string, relPath?: string) {
   }[] = []
   let currentGroup: any[] = []
 
-  // 匹配 release: v1.0.0 或 1.0.0 这种特征
   const versionRegex = /(?:release|publish|version):?\s*v?(\d+\.\d+\.\d+)/i
 
   for (const commit of commits) {
     const tagName = tagMap.get(commit.hash)
     const msgMatch = commit.message.match(versionRegex)
 
-    // 如果碰到了 Tag（如 v1.0.0 或 pkg-a@1.0.0）或者是包含版本号的提交
     if ((tagName || msgMatch) && currentGroup.length > 0) {
       const title = tagName || (msgMatch ? `v${msgMatch[1]}` : 'Unknown')
       segments.push({ version: title, commits: [...currentGroup] })
