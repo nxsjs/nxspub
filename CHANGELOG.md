@@ -1,3 +1,28 @@
+## [0.5.0](https://github.com/nxsjs/nxspub/compare/0.4.1...0.5.0) (2026-04-18)
+
+### Features
+
+* **provider:** integrate version comparison and user profile linking ([1fac5b9](https://github.com/nxsjs/nxspub/commit/1fac5b9831219759710f0e1fe88615af7c61ed90))
+* **changelog:** enhance commit parsing for multiple PRs and issues ([fd89d02](https://github.com/nxsjs/nxspub/commit/fd89d02e0b61cb8d926bea61c4eedf1d103cc359))
+* **changelog:** support rendering commit body as blockquotes in entries ([a50aaea](https://github.com/nxsjs/nxspub/commit/a50aaea0e264b1071d92d5c803bb27dc05c11ba3))
+* **workspace:** identify pre-release promotion during package scan ([53724f7](https://github.com/nxsjs/nxspub/commit/53724f79a890a4a08d372231f262e392aea0143b))
+* **git:** add history segmentation and tag mapping for legacy projects ([deae434](https://github.com/nxsjs/nxspub/commit/deae434bd03a5f60e0421c052c1950dea6098f52))
+* **lint:** support functional callbacks for commit-msg validation ([43e7816](https://github.com/nxsjs/nxspub/commit/43e781694149ee3a7e2da1685b9c5f9a1d3ac191))
+
+### Bug Fixes
+
+* **version:** allow promoting pre-release to stable when no new commits found ([40fe7fa](https://github.com/nxsjs/nxspub/commit/40fe7fa40feac5ae05ba8cdaf916403a8b402783))
+
+### Refactors
+
+* **changelog:** integrate parseCommit and LinkProvider for package updates ([5b8acea](https://github.com/nxsjs/nxspub/commit/5b8acea18a6116c74cc4fd3196ec94a9aea556a9))
+
+### Contributors
+
+<div><a href="https://github.com/nxsjs/nxspub/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.4.1](https://github.com/nxsjs/nxspub/compare/v0.4.0...v0.4.1) (2026-04-17)
 
 ### Bug Fixes
