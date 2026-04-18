@@ -6,6 +6,7 @@ import {
   applyContributorsToChangelog,
   archiveChangelogIfNeeded,
   cleanupExistingEntry,
+  parseCommit,
 } from '../utils/changelog'
 import { formatDate } from '../utils/date'
 import {
@@ -257,7 +258,9 @@ async function updatePackageChangelog(
   if (task.commits.length === 0 && !task.isPassive) return null
 
   const date = formatDate()
+
   const links = createLinkProvider(repoUrl)
+
   const compareUrl = links.compare(lastVer, task.nextVersion!)
 
   const groups: Record<string, string[]> = {}
@@ -273,21 +276,44 @@ async function updatePackageChangelog(
   }
 
   task.commits.forEach(c => {
-    const match = c.message.match(/^(\w+)(?:\(([^)]+)\))?:/)
-    const type = match?.[1] || 'other'
-    const scope = match?.[2]
-    const label = config.changelog?.labels?.[type] || ''
+    const parsed = parseCommit(c.message, repoUrl)
+    if (!parsed) return
 
-    if (label) {
-      if (!groups[label]) groups[label] = []
+    const label = config.changelog?.labels?.[parsed.type]
+    if (!label) return
 
-      const rawMsg = c.message.replace(/^.*?:\s*/, '')
-      const formattedMsg = scope ? `**${scope}:** ${rawMsg}` : rawMsg
+    if (!groups[label]) groups[label] = []
 
-      groups[label].push(
-        `* ${formattedMsg} ([${c.hash.slice(0, 7)}](${links.commit(c.hash)}))`,
-      )
+    const scopeText = parsed.scope ? `**${parsed.scope}:** ` : ''
+    const breakingTag = parsed.isBreaking ? `**[BREAKING CHANGE]** ` : ''
+    const commitLink = `([${c.hash.slice(0, 7)}](${links.commit(c.hash)}))`
+    const prsText =
+      parsed.prLinks.length > 0 ? ` ${parsed.prLinks.join(' ')}` : ''
+    const closesSuffix =
+      parsed.linkedIssues.length > 0
+        ? ` (closes ${parsed.linkedIssues.join(', ')})`
+        : ''
+
+    let entry = `* ${scopeText}${breakingTag}${parsed.subject}${prsText} ${commitLink}${closesSuffix}`
+
+    if (parsed.bodyLines.length > 0) {
+      entry += `\n  > ${parsed.bodyLines
+        .map(line => {
+          line = line.trim()
+          if (line.startsWith('-')) {
+            return line.slice(1).trim()
+          }
+          return line
+        })
+        .join('\n  > \n  > ')}`
     }
+
+    if (parsed.breakingDetail) {
+      const separator = parsed.bodyLines.length > 0 ? '\n  > ' : ''
+      entry += `\n  > ${separator}**BREAKING CHANGE:** ${parsed.breakingDetail.replace(/\n/g, '\n  > ')}`
+    }
+
+    groups[label].push(entry)
   })
 
   let localEntry = `## [${task.nextVersion}](${compareUrl}) (${date})\n\n`
@@ -318,7 +344,7 @@ async function updatePackageChangelog(
   for (const [label, lines] of Object.entries(groups)) {
     rootLines.push(`- **${label}**`)
     lines.forEach(line => {
-      rootLines.push(`  ${line.replace(/^\* /, '-')}`)
+      rootLines.push(`  ${line.replace(/^\* /, '- ')}`)
     })
   }
 
