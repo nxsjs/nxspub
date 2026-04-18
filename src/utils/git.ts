@@ -546,3 +546,68 @@ export async function ensureGitSync(currentBranch: string, cwd: string) {
     process.exit(1)
   }
 }
+
+/**
+ * @en Get a mapping of commit hashes to their corresponding tag names.
+ * @zh 获取提交哈希到标签名称的映射表。
+ */
+export async function getTagHashMap(cwd: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  try {
+    const { stdout } = await runSafe('git', ['show-ref', '--tags'], { cwd })
+    stdout.split('\n').forEach(line => {
+      const [hash, ref] = line.split(' ')
+      if (ref) map.set(hash, ref.replace('refs/tags/', ''))
+    })
+  } catch {}
+  return map
+}
+
+/**
+ * @en Get the commit history segmented by release versions,
+ * with optional filtering for a specific package path.
+ * @zh 获取按版本切分后的历史段（支持 Workspace 路径过滤）。
+ */
+export async function getSegmentedHistory(cwd: string, relPath?: string) {
+  // 1. 获取该路径下的所有原始提交
+  const args = ['log', '--first-parent', '--pretty=format:%H|%s']
+  if (relPath) args.push('--', relPath)
+
+  const { stdout } = await runSafe('git', args, { cwd })
+  const commits = stdout
+    .split('\n')
+    .filter(Boolean)
+    .map(line => {
+      const [hash, ...msg] = line.split('|')
+      return { hash, message: msg.join('|') }
+    })
+
+  const tagMap = await getTagHashMap(cwd)
+  const segments: {
+    version: string
+    commits: { hash: string; message: string }[]
+  }[] = []
+  let currentGroup: any[] = []
+
+  // 匹配 release: v1.0.0 或 1.0.0 这种特征
+  const versionRegex = /(?:release|publish|version):?\s*v?(\d+\.\d+\.\d+)/i
+
+  for (const commit of commits) {
+    const tagName = tagMap.get(commit.hash)
+    const msgMatch = commit.message.match(versionRegex)
+
+    // 如果碰到了 Tag（如 v1.0.0 或 pkg-a@1.0.0）或者是包含版本号的提交
+    if ((tagName || msgMatch) && currentGroup.length > 0) {
+      const title = tagName || (msgMatch ? `v${msgMatch[1]}` : 'Unknown')
+      segments.push({ version: title, commits: [...currentGroup] })
+      currentGroup = []
+    }
+    currentGroup.push(commit)
+  }
+
+  if (currentGroup.length > 0) {
+    segments.push({ version: 'Initial Release', commits: currentGroup })
+  }
+
+  return segments
+}
