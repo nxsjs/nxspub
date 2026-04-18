@@ -1,3 +1,15 @@
+## [0.6.0](https://github.com/nxsjs/nxspub/compare/0.5.1...0.6.0) (2026-04-18)
+
+### Features
+
+* add npm and yarn package manager support ([0ebe721](https://github.com/nxsjs/nxspub/commit/0ebe7217f730265771a4e52a5edeb2f244022d07))
+
+### Contributors
+
+<div><a href="https://github.com/nxsjs/nxspub/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.5.1](https://github.com/nxsjs/nxspub/compare/0.5.0...0.5.1) (2026-04-18)
 
 ### Bug Fixes
