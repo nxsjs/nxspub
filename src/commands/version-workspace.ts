@@ -371,7 +371,7 @@ async function updateRootChangelog(
 
   let rootEntry =
     `## [${nextVer}](${compareUrl}) (${date})\n\n` +
-    entries.join('\n---\n') +
+    entries.join('\n\n') +
     '\n\n'
 
   rootEntry = await applyContributorsToChangelog(
