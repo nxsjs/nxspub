@@ -607,9 +607,20 @@ export async function getSegmentedHistory(cwd: string, relPath?: string) {
 export function createLinkProvider(repoUrl: string) {
   const base = repoUrl.replace(/\/$/, '')
 
-  const isGitLab = base.includes('gitlab.com')
-  const isBitbucket = base.includes('bitbucket.org')
-  const isGitee = base.includes('gitee.com')
+  const hostname = (() => {
+    try {
+      return new URL(base).hostname.toLowerCase()
+    } catch {
+      return ''
+    }
+  })()
+
+  const isHost = (host: string, domain: string) =>
+    host === domain || host.endsWith(`.${domain}`)
+
+  const isGitLab = isHost(hostname, 'gitlab.com')
+  const isBitbucket = isHost(hostname, 'bitbucket.org')
+  const isGitee = isHost(hostname, 'gitee.com')
 
   return {
     user: (username: string) => {
