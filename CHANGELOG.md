@@ -1,3 +1,15 @@
+## [0.6.1](https://github.com/nxsjs/nxspub/compare/0.6.0...0.6.1) (2026-04-18)
+
+### Bug Fixes
+
+* user profile links for hosted git providers ([a62720b](https://github.com/nxsjs/nxspub/commit/a62720b3b1f8cba1ed86223f0c05b24b07b4e762))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.6.0](https://github.com/nxsjs/nxspub/compare/0.5.1...0.6.0) (2026-04-18)
 
 ### Features
