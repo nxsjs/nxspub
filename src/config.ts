@@ -1,3 +1,5 @@
+import chalk from 'chalk'
+
 /**
  * @en Release type associated with a branch.
  * Defines how the version should be bumped when releasing from a specific branch.
@@ -107,6 +109,7 @@ export interface NxspubConfig {
    * @example { "main": "latest", "alpha/*": "preminor" }
    */
   branches?: Record<string, BrancheType>
+
   /**
    * @en Custom rules to determine the version bump based on commit messages.
    * @zh 基于提交信息确定版本提升规则的自定义配置。
@@ -119,6 +122,7 @@ export interface NxspubConfig {
     /** @en Rules for Patch bump @zh 触发 Patch 提升的规则 */
     patch?: (string | RegExp)[]
   }
+
   /**
    * @en Changelog generation settings.
    * @zh 变更日志（Changelog）生成设置。
@@ -130,6 +134,26 @@ export interface NxspubConfig {
      * @example { "feat": "🚀 Features", "fix": "🐛 Bug Fixes" }
      */
     labels?: Record<string, string>
+  }
+
+  /**
+   * @en Custom linting rules for Git hooks.
+   * @zh Git 钩子的自定义 lint 规则。
+   */
+  lint?: {
+    /**
+     * @en Regular expression to validate commit messages in the 'commit-msg' hook.
+     * @zh 用于 'commit-msg' 钩子验证提交信息的正则表达式。
+     */
+    'commit-msg'?: {
+      pattern: string | RegExp | ((msg: string) => boolean | Promise<boolean>)
+      message:
+        | string
+        | ((
+            isValid: boolean,
+            msg: string,
+          ) => void | string | Promise<void | string>)
+    }
   }
 
   /**
@@ -178,6 +202,27 @@ export const DEFAULT_CONFIG: NxspubConfig = {
       perf: 'Performance Improvements',
       refactor: 'Refactors',
       revert: 'Reverts',
+    },
+  },
+  lint: {
+    'commit-msg': {
+      pattern:
+        /^(revert: )?(feat|fix|docs|dx|style|refactor|perf|test|workflow|build|ci|chore|types|wip|release)(\([^)]+\))?(!)?: .{1,50}/,
+      message: (isValid: boolean) => {
+        if (isValid) return
+        console.error(
+          `\n  ${chalk.white(chalk.bgRed(' ERROR '))} ${chalk.red(
+            `Invalid commit message format.`,
+          )}\n\n` +
+            chalk.red(
+              `  Proper commit message format is required for automated changelog generation.\n` +
+                `  Examples:\n\n`,
+            ) +
+            `    ${chalk.green(`feat(core)!: add support for new plugin system`)}\n` +
+            `    ${chalk.green(`fix(nxsjs): resolve reactivity leak in dev mode`)}\n\n` +
+            chalk.red(`  Please follow the Conventional Commits standard.\n`),
+        )
+      },
     },
   },
 }
