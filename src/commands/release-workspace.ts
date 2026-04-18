@@ -2,6 +2,7 @@ import path from 'node:path'
 import type { NxspubConfig } from '../config'
 import { ensureGitSync, getCurrentBranch, run } from '../utils/git'
 import { nxsLog } from '../utils/logger'
+import { detectPackageManager } from '../utils/package-manager'
 import {
   readJSON,
   scanWorkspacePackages,
@@ -25,6 +26,7 @@ export async function releaseWorkspace(
   const { cwd, dry, branch, skipSync } = options
 
   const currentBranch = branch || (await getCurrentBranch(cwd))
+  const packageManager = await detectPackageManager(cwd)
 
   if (currentBranch && !dry && !skipSync) {
     await ensureGitSync(currentBranch, cwd)
@@ -54,7 +56,7 @@ export async function releaseWorkspace(
   if (config.scripts?.releaseBuild) {
     nxsLog.item(`Build Script: ${config.scripts.releaseBuild}`)
   } else {
-    nxsLog.item(`Build Script: pnpm run build`)
+    nxsLog.item(`Build Script: ${packageManager.name} run build`)
   }
   if (!dry) {
     if (config.scripts?.releaseBuild) {
@@ -62,7 +64,8 @@ export async function releaseWorkspace(
     } else {
       const rootPkg = await readJSON(path.join(cwd, 'package.json'))
       if (rootPkg.scripts?.build) {
-        await run('pnpm', ['run', 'build'], { cwd })
+        const command = packageManager.runScript('build')
+        await run(command.bin, command.args, { cwd })
       }
     }
   }

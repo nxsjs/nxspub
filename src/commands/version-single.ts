@@ -21,6 +21,7 @@ import {
   runSafe,
 } from '../utils/git'
 import { nxsLog } from '../utils/logger'
+import { detectPackageManager } from '../utils/package-manager'
 import { readJSON, writeJSON } from '../utils/packages'
 import { determineBumpType } from '../utils/versions'
 
@@ -54,6 +55,7 @@ export async function versionSingle(
   }
 
   const pkg = await readJSON(pkgPath)
+  const packageManager = await detectPackageManager(cwd)
   const currentPkgVersion = pkg.version
   const repoUrl = await getRepoUrl(cwd)
 
@@ -238,7 +240,8 @@ export async function versionSingle(
   await fs.writeFile(changelogPath, (newEntry + currentChangelog).trim() + '\n')
 
   nxsLog.step('Updating lockfile...')
-  await run('pnpm', ['install', '--prefer-offline'], { cwd })
+  const installCommand = packageManager.install()
+  await run(installCommand.bin, installCommand.args, { cwd })
 
   const { stdout: hasChanges } = await runSafe(
     'git',

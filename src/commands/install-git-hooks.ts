@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import type { NxspubConfig } from '../config'
 import { nxsLog } from '../utils/logger'
+import { detectPackageManager } from '../utils/package-manager'
 
 export async function installGitHooks(
   options: { cwd: string; dry?: boolean },
@@ -33,13 +34,14 @@ export async function installGitHooks(
   nxsLog.step('Installing Git Hooks...')
 
   if (!hooksToInstall['commit-msg']) {
+    const packageManager = await detectPackageManager(cwd)
     const isDevelopment = await fs
       .access(path.resolve(cwd, 'src/cli.ts'))
       .then(() => true)
       .catch(() => false)
 
     if (isDevelopment) {
-      hooksToInstall['commit-msg'] = 'pnpm run start lint --edit "$1"'
+      hooksToInstall['commit-msg'] = packageManager.devLintHook()
     } else {
       hooksToInstall['commit-msg'] = 'npx nxspub lint --edit "$1"'
     }

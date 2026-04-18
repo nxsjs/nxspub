@@ -27,6 +27,10 @@ describe('installGitHooks', () => {
   it('writes configured hooks and auto-injects commit-msg in development mode', async () => {
     await mkdir(path.join(tempDir, 'src'), { recursive: true })
     await writeFile(path.join(tempDir, 'src', 'cli.ts'), 'export {}')
+    await writeFile(
+      path.join(tempDir, 'package.json'),
+      JSON.stringify({ packageManager: 'pnpm@9.12.3' }),
+    )
 
     await installGitHooks(
       { cwd: tempDir },
@@ -48,6 +52,31 @@ describe('installGitHooks', () => {
 
     expect(preCommit).toContain('pnpm check')
     expect(commitMsg).toContain('pnpm run start lint --edit "$1"')
+  })
+
+  it('generates npm-compatible commit-msg hooks for npm projects', async () => {
+    await mkdir(path.join(tempDir, 'src'), { recursive: true })
+    await writeFile(path.join(tempDir, 'src', 'cli.ts'), 'export {}')
+    await writeFile(
+      path.join(tempDir, 'package.json'),
+      JSON.stringify({ packageManager: 'npm@10.0.0' }),
+    )
+
+    await installGitHooks(
+      { cwd: tempDir },
+      {
+        'git-hooks': {
+          'pre-commit': 'npm run check',
+        },
+      },
+    )
+
+    const commitMsg = await readFile(
+      path.join(tempDir, '.git', 'hooks', 'commit-msg'),
+      'utf8',
+    )
+
+    expect(commitMsg).toContain('npm run start -- lint --edit "$1"')
   })
 
   it('does not write files during dry runs', async () => {

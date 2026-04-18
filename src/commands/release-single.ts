@@ -9,6 +9,7 @@ import {
 } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { checkVersionExists } from '../utils/npm'
+import { detectPackageManager } from '../utils/package-manager'
 import { readJSON } from '../utils/packages'
 
 export async function releaseSingle(
@@ -39,6 +40,7 @@ export async function releaseSingle(
   const pkgPath = path.resolve(cwd, 'package.json')
 
   const pkg = await readJSON(pkgPath)
+  const packageManager = await detectPackageManager(cwd)
   const currentBranch = branch || (await getCurrentBranch(cwd))
   const branchContract = getBranchContract(currentBranch!, config.branches)
 
@@ -74,15 +76,16 @@ export async function releaseSingle(
     if (config.scripts?.releaseBuild) {
       nxsLog.item(`Run: ${nxsLog.highlight(config.scripts.releaseBuild)}`)
     } else {
-      nxsLog.item(`Build Script: pnpm run build`)
+      nxsLog.item(`Build Script: ${packageManager.name} run build`)
     }
     if (!dry) {
       if (config.scripts?.releaseBuild) {
         nxsLog.item(`Run: ${nxsLog.highlight(config.scripts.releaseBuild)}`)
         await run(config.scripts.releaseBuild, [], { cwd, shell: true })
       } else if (pkg.scripts?.build) {
-        nxsLog.item(`Run: pnpm run build`)
-        await run('pnpm', ['run', 'build'], { cwd })
+        const command = packageManager.runScript('build')
+        nxsLog.item(`Run: ${command.bin} ${command.args.join(' ')}`)
+        await run(command.bin, command.args, { cwd })
       }
     }
   } else {
@@ -93,7 +96,6 @@ export async function releaseSingle(
     tag || (typeof preTags[0] === 'string' ? preTags[0] : undefined)
 
   const publishArgs = [
-    'publish',
     '--no-git-checks',
     '--access',
     access,
@@ -109,7 +111,8 @@ export async function releaseSingle(
   )
 
   try {
-    await run('pnpm', publishArgs, { cwd })
+    const command = packageManager.publish(publishArgs)
+    await run(command.bin, command.args, { cwd })
     if (!dry) {
       nxsLog.success(`Released ${pkg.name}@${pkg.version}`)
     }
