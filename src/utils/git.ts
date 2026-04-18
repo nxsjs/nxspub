@@ -18,13 +18,45 @@ export const run = (bin: string, args: string[], opts = {}) =>
 export const runSafe = (bin: string, args: string[], opts = {}) =>
   execa(bin, args, { ...opts })
 
+export function splitGitLogRecord(line: string) {
+  const firstPipeIndex = line.indexOf('|')
+  if (firstPipeIndex === -1) {
+    return { hash: line.trim(), message: '' }
+  }
+
+  return {
+    hash: line.slice(0, firstPipeIndex).trim(),
+    message: line.slice(firstPipeIndex + 1).trim(),
+  }
+}
+
+function splitContributorRecord(line: string) {
+  const firstPipeIndex = line.indexOf('|')
+  const secondPipeIndex =
+    firstPipeIndex === -1 ? -1 : line.indexOf('|', firstPipeIndex + 1)
+  const thirdPipeIndex =
+    secondPipeIndex === -1 ? -1 : line.indexOf('|', secondPipeIndex + 1)
+
+  if (firstPipeIndex === -1 || secondPipeIndex === -1 || thirdPipeIndex === -1)
+    return null
+
+  return {
+    hash: line.slice(0, firstPipeIndex).trim(),
+    name: line.slice(firstPipeIndex + 1, secondPipeIndex).trim(),
+    email: line.slice(secondPipeIndex + 1, thirdPipeIndex).trim(),
+    subject: line.slice(thirdPipeIndex + 1).trim(),
+  }
+}
+
 /**
  * @en Get the remote origin repository URL and normalize it for private/IP-based GitLab.
  * @zh 获取远程仓库地址并规范化，适配包含 IP、端口及不同协议的私有 GitLab。
  */
-export async function getRepoUrl() {
+export async function getRepoUrl(cwd: string = process.cwd()) {
   try {
-    const { stdout } = await execa('git', ['remote', 'get-url', 'origin'])
+    const { stdout } = await execa('git', ['remote', 'get-url', 'origin'], {
+      cwd,
+    })
     let rawUrl = stdout.trim()
 
     let normalizedUrl: string
@@ -69,46 +101,41 @@ export async function getRepoUrl() {
  * @zh 获取增量提交记录（具备“侧链穿透”能力）。
  * 该逻辑能识别合并节点并提取侧链上的提交，确保不会丢失合并分支内部的语义信息。
  */
-export async function getRawCommits(from?: string) {
+export async function getRawCommits(cwd: string, from?: string) {
   const args = ['log', '--first-parent', '--pretty=format:%H|%B\x1e']
 
   if (from) args.push(`${from}..HEAD`)
 
   try {
-    const { stdout } = await execa('git', args)
+    const { stdout } = await execa('git', args, { cwd })
     const mainLineCommits = stdout.split('\x1e').filter(Boolean)
 
     let allMessages: { message: string; hash: string }[] = []
 
     for (const line of mainLineCommits) {
-      const [part1 = '', part2 = ''] = line.split('|')
-      const hash = part1.trim()
-      const subject = part2.trim()
-      const { stdout: parents } = await execa('git', [
-        'show',
-        '--summary',
-        '--format=%P',
-        '-s',
-        hash,
-      ])
+      const { hash, message: subject } = splitGitLogRecord(line)
+      const { stdout: parents } = await execa(
+        'git',
+        ['show', '--summary', '--format=%P', '-s', hash],
+        { cwd },
+      )
       const parentHashes = parents.trim().split(/\s+/)
 
       if (parentHashes.length > 1) {
-        const { stdout: sideCommitsRaw } = await execa('git', [
-          'log',
-          `${parentHashes[0]}..${parentHashes[1]}`,
-          '--pretty=format:%H|%B\x1e',
-        ])
+        const { stdout: sideCommitsRaw } = await execa(
+          'git',
+          [
+            'log',
+            `${parentHashes[0]}..${parentHashes[1]}`,
+            '--pretty=format:%H|%B\x1e',
+          ],
+          { cwd },
+        )
 
         const sideCommits = sideCommitsRaw
           .split('\x1e')
           .filter(Boolean)
-          .map(s => {
-            const [part1 = '', part2 = ''] = s.split('|')
-            const hash = part1.trim()
-            const subject = part2.trim()
-            return { hash, message: subject }
-          })
+          .map(splitGitLogRecord)
 
         const lastReleaseIndex = sideCommits.findIndex(c =>
           /^release(\(.*\))?:/i.test(c.message),
@@ -138,17 +165,21 @@ export async function getRawCommits(from?: string) {
  * @en Find the most recent release commit on the current branch's mainline.
  * @zh 在当前分支的主干线上查找最近一次发布的提交记录。
  */
-export async function getLastReleaseCommit() {
+export async function getLastReleaseCommit(cwd: string) {
   try {
-    const { stdout } = await execa('git', [
-      'log',
-      '--first-parent',
-      '--grep=^release\(.*\)\?:',
-      '-n',
-      '1',
-      '--pretty=format:%H|%B',
-      '--extended-regexp',
-    ])
+    const { stdout } = await execa(
+      'git',
+      [
+        'log',
+        '--first-parent',
+        '--grep=^release\(.*\)\?:',
+        '-n',
+        '1',
+        '--pretty=format:%H|%B',
+        '--extended-regexp',
+      ],
+      { cwd },
+    )
     if (!stdout) return null
 
     const firstPipeIndex = stdout.indexOf('|')
@@ -190,7 +221,9 @@ export async function getLastReleaseCommit() {
  * @en Get the current branch name.
  * @zh 获取当前分支名称。
  */
-export async function getCurrentBranch(): Promise<string | undefined> {
+export async function getCurrentBranch(
+  cwd: string = process.cwd(),
+): Promise<string | undefined> {
   const env = process.env
 
   if (env.GITHUB_REF_TYPE === 'branch') {
@@ -208,7 +241,11 @@ export async function getCurrentBranch(): Promise<string | undefined> {
   }
 
   try {
-    const { stdout } = await execa('git', ['rev-parse', '--abbrev-ref', 'HEAD'])
+    const { stdout } = await execa(
+      'git',
+      ['rev-parse', '--abbrev-ref', 'HEAD'],
+      { cwd },
+    )
     const result = stdout.trim()
     if (result && result !== 'HEAD') return result
   } catch {}
@@ -286,9 +323,7 @@ export async function getPackageCommits(
     const allRelevantCommits: { message: string; hash: string }[] = []
 
     for (const line of mainLineCommits) {
-      const [part1 = '', part2 = ''] = line.split('|')
-      const hash = part1.trim()
-      const subject = part2.trim()
+      const { hash, message: subject } = splitGitLogRecord(line)
 
       const { stdout: parents } = await runSafe(
         'git',
@@ -313,12 +348,7 @@ export async function getPackageCommits(
         const sideCommits = sideCommitsRaw
           .split('\x1e')
           .filter(Boolean)
-          .map(s => {
-            const [part1 = '', part2 = ''] = s.split('|')
-            const hash = part1.trim()
-            const subject = part2.trim()
-            return { hash, message: subject }
-          })
+          .map(splitGitLogRecord)
 
         const lastReleaseIndex = sideCommits.findIndex(c =>
           /^release(\(.*\))?:/i.test(c.message),
@@ -350,6 +380,7 @@ interface Contributor {
 }
 
 export async function getContributors(
+  cwd: string,
   sinceHash?: string,
   repoUrl?: string,
   pkgPath?: string,
@@ -364,12 +395,11 @@ export async function getContributors(
 
   if (sinceHash) {
     try {
-      const { stdout: historyStdout } = await execa('git', [
-        'log',
-        sinceHash,
-        '--pretty=format:%ae',
-        ...pathFilter,
-      ])
+      const { stdout: historyStdout } = await execa(
+        'git',
+        ['log', sinceHash, '--pretty=format:%ae', ...pathFilter],
+        { cwd },
+      )
       historyStdout.split('\n').forEach(e => {
         const clean = e.trim().toLowerCase()
         if (clean) historyEmailSet.add(clean)
@@ -378,7 +408,7 @@ export async function getContributors(
   }
 
   const range = sinceHash ? `${sinceHash}..HEAD` : 'HEAD'
-  repoUrl = repoUrl || (await getRepoUrl())
+  repoUrl = repoUrl || (await getRepoUrl(cwd))
   const links = createLinkProvider(repoUrl)
   let repoHost = ''
   try {
@@ -390,18 +420,19 @@ export async function getContributors(
   const isGitLab = repoHost === 'gitlab.com' || repoHost.endsWith('.gitlab.com')
 
   try {
-    const { stdout } = await execa('git', [
-      'log',
-      range,
-      '--pretty=format:%H|%an|%ae|%s',
-      ...pathFilter,
-    ])
+    const { stdout } = await execa(
+      'git',
+      ['log', range, '--pretty=format:%H|%an|%ae|%s', ...pathFilter],
+      { cwd },
+    )
     const lines = stdout.split('\n').filter(Boolean)
 
     let lastFoundPR = ''
 
     for (const line of lines) {
-      const [hash, name, email, subject] = line.split('|')
+      const record = splitContributorRecord(line)
+      if (!record) continue
+      const { hash, name, email, subject } = record
       if (!email) continue
 
       const cleanEmail = email.trim().toLowerCase()
@@ -564,13 +595,7 @@ export async function getSegmentedHistory(cwd: string, relPath?: string) {
   if (relPath) args.push('--', relPath)
 
   const { stdout } = await runSafe('git', args, { cwd })
-  const commits = stdout
-    .split('\n')
-    .filter(Boolean)
-    .map(line => {
-      const [hash, ...msg] = line.split('|')
-      return { hash, message: msg.join('|') }
-    })
+  const commits = stdout.split('\n').filter(Boolean).map(splitGitLogRecord)
 
   const tagMap = await getTagHashMap(cwd)
   const segments: {

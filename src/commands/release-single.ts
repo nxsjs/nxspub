@@ -39,7 +39,7 @@ export async function releaseSingle(
   const pkgPath = path.resolve(cwd, 'package.json')
 
   const pkg = await readJSON(pkgPath)
-  const currentBranch = branch || (await getCurrentBranch())
+  const currentBranch = branch || (await getCurrentBranch(cwd))
   const branchContract = getBranchContract(currentBranch!, config.branches)
 
   if (!branchContract) {

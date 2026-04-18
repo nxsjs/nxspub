@@ -43,7 +43,7 @@ export async function versionWorkspace(
   const { cwd, dry } = options
   const mode = config.workspace?.mode || 'locked'
 
-  const currentBranch = await getCurrentBranch()
+  const currentBranch = await getCurrentBranch(cwd)
   const branchContract = getBranchContract(currentBranch!, config.branches)
   if (!branchContract) {
     nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
@@ -56,9 +56,9 @@ export async function versionWorkspace(
 
   nxsLog.step(`Workspace Release: ${mode.toUpperCase()} MODE`)
 
-  const lastRelease = await getLastReleaseCommit()
+  const lastRelease = await getLastReleaseCommit(cwd)
   const allInfos = await scanWorkspacePackages(cwd)
-  const repoUrl = await getRepoUrl()
+  const repoUrl = await getRepoUrl(cwd)
 
   const tasks = new Map<string, PackageTask>()
   for (const info of allInfos) {
@@ -139,6 +139,7 @@ export async function versionWorkspace(
       const result = await updatePackageChangelog(
         task,
         config,
+        cwd,
         repoUrl,
         lastRelease?.hash,
         lastRelease?.version,
@@ -250,6 +251,7 @@ function inc(
 async function updatePackageChangelog(
   task: PackageTask,
   config: NxspubConfig,
+  cwd: string,
   repoUrl: string,
   lastHash: string | undefined,
   lastVer: string | undefined,
@@ -330,6 +332,7 @@ async function updatePackageChangelog(
 
   localEntry = await applyContributorsToChangelog(
     localEntry,
+    cwd,
     repoUrl,
     lastHash,
     task.relativeDir,
@@ -371,8 +374,12 @@ async function updateRootChangelog(
     entries.join('\n---\n') +
     '\n\n'
 
-  rootEntry = await applyContributorsToChangelog(rootEntry, repoUrl, lastHash)
-
+  rootEntry = await applyContributorsToChangelog(
+    rootEntry,
+    cwd,
+    repoUrl,
+    lastHash,
+  )
   const existing = await fs.readFile(rootPath, 'utf-8').catch(() => '')
   const cleanedExisting = cleanupExistingEntry(existing, nextVer)
   await fs.writeFile(rootPath, rootEntry + cleanedExisting)

@@ -85,11 +85,13 @@ export function cleanupExistingEntry(content: string, version: string): string {
 
 export async function applyContributorsToChangelog(
   newEntry: string,
+  cwd: string,
   repoUrl: string,
   sinceHash?: string,
   pkgPath?: string,
 ) {
   const { all: allContributors, new: newContributors } = await getContributors(
+    cwd,
     sinceHash,
     repoUrl,
     pkgPath,
@@ -199,7 +201,9 @@ export function parseCommit(
 
   // Transform remaining generic #ID in subject to issue links
   // 将主题中剩余的普通 #ID 转换为 Issue 链接
-  subject = subject.replace(/#(\d+)/g, `[#$1](${links.issue('$1')})`)
+  subject = subject.replace(/#(\d+)/g, (_, id: string) => {
+    return `[#${id}](${links.issue(id)})`
+  })
 
   // Extract linked issues from the entire message (supports multiple IDs: closes #12 #45)
   // 从整个信息中提取关联 Issue（支持一行多个：closes #12 #45）

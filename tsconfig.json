@@ -19,5 +19,7 @@
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,
     "types": ["vitest/globals"]
-  }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "*.ts"],
+  "exclude": ["dist", "node_modules"]
 }

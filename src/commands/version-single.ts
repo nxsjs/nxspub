@@ -32,7 +32,7 @@ export async function versionSingle(
   const pkgPath = path.resolve(cwd, 'package.json')
   const changelogPath = path.resolve(cwd, 'CHANGELOG.md')
 
-  const currentBranch = await getCurrentBranch()
+  const currentBranch = await getCurrentBranch(cwd)
   const branchContract = getBranchContract(currentBranch!, config.branches)
   if (!branchContract) {
     nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
@@ -55,14 +55,14 @@ export async function versionSingle(
 
   const pkg = await readJSON(pkgPath)
   const currentPkgVersion = pkg.version
-  const repoUrl = await getRepoUrl()
+  const repoUrl = await getRepoUrl(cwd)
 
   nxsLog.step(`Branch Contract`)
   nxsLog.item(`${currentBranch}: ${branchContract}`)
 
   nxsLog.step('Synchronizing version state')
-  const lastRelease = await getLastReleaseCommit()
-  const commits = await getRawCommits(lastRelease?.hash)
+  const lastRelease = await getLastReleaseCommit(cwd)
+  const commits = await getRawCommits(cwd, lastRelease?.hash)
 
   if (commits.length === 0) {
     nxsLog.success('No incremental commits found since last release.')
@@ -200,6 +200,7 @@ export async function versionSingle(
 
   newEntry = await applyContributorsToChangelog(
     newEntry,
+    cwd,
     repoUrl,
     lastRelease?.hash,
   )

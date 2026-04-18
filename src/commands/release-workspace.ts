@@ -24,7 +24,7 @@ export async function releaseWorkspace(
 ) {
   const { cwd, dry, branch, skipSync } = options
 
-  const currentBranch = branch || (await getCurrentBranch())
+  const currentBranch = branch || (await getCurrentBranch(cwd))
 
   if (currentBranch && !dry && !skipSync) {
     await ensureGitSync(currentBranch, cwd)
