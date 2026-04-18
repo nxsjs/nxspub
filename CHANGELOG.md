@@ -1,3 +1,17 @@
+## [0.5.1](https://github.com/nxsjs/nxspub/compare/0.5.0...0.5.1) (2026-04-18)
+
+### Bug Fixes
+
+* cwd-aware git lookups and commit parsing ([5c1b5ff](https://github.com/nxsjs/nxspub/commit/5c1b5ff102e2d66833f27e4021d2479fdadb5e87))
+* Potential fix for code scanning alert no. 8: Incomplete URL substring sanitization ([#10](https://github.com/nxsjs/nxspub/pull/10)) ([43f3f82](https://github.com/nxsjs/nxspub/commit/43f3f82d7e5d3760e37a3a9deaf498899e3dead4))
+  > Co-authored-by: Copilot Autofix powered by AI <62310815+github-advanced-security[bot]@users.noreply.github.com>
+
+### Contributors
+
+<div><a href="https://github.com/nxsjs/nxspub/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.5.0](https://github.com/nxsjs/nxspub/compare/0.4.1...0.5.0) (2026-04-18)
 
 ### Features
