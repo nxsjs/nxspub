@@ -82,19 +82,20 @@ export function getCompareUrl(repoUrl: string, from: string = '', to: string) {
  * 该逻辑能识别合并节点并提取侧链上的提交，确保不会丢失合并分支内部的语义信息。
  */
 export async function getRawCommits(from?: string) {
-  const args = ['log', '--first-parent', '--pretty=format:%H|%s']
+  const args = ['log', '--first-parent', '--pretty=format:%H|%B\x1e']
 
   if (from) args.push(`${from}..HEAD`)
 
   try {
     const { stdout } = await execa('git', args)
-    const mainLineCommits = stdout.split('\n').filter(Boolean)
+    const mainLineCommits = stdout.split('\x1e').filter(Boolean)
 
     let allMessages: { message: string; hash: string }[] = []
 
     for (const line of mainLineCommits) {
-      const [hash, subject] = line.split('|')
-
+      const [part1 = '', part2 = ''] = line.split('|')
+      const hash = part1.trim()
+      const subject = part2.trim()
       const { stdout: parents } = await execa('git', [
         'show',
         '--summary',
@@ -108,15 +109,17 @@ export async function getRawCommits(from?: string) {
         const { stdout: sideCommitsRaw } = await execa('git', [
           'log',
           `${parentHashes[0]}..${parentHashes[1]}`,
-          '--pretty=format:%H|%s',
+          '--pretty=format:%H|%B\x1e',
         ])
 
         const sideCommits = sideCommitsRaw
-          .split('\n')
+          .split('\x1e')
           .filter(Boolean)
           .map(s => {
-            const [h, m] = s.split('|')
-            return { hash: h, message: m }
+            const [part1 = '', part2 = ''] = s.split('|')
+            const hash = part1.trim()
+            const subject = part2.trim()
+            return { hash, message: subject }
           })
 
         const lastReleaseIndex = sideCommits.findIndex(c =>
@@ -137,7 +140,8 @@ export async function getRawCommits(from?: string) {
     }
 
     return allMessages
-  } catch {
+  } catch (e) {
+    nxsLog.error(JSON.stringify(e))
     return []
   }
 }
@@ -280,7 +284,7 @@ export async function getPackageCommits(
   relPath: string,
   since?: string,
 ) {
-  const args = ['log', '--first-parent', '--pretty=format:%H|%s']
+  const args = ['log', '--first-parent', '--pretty=format:%H|%B\x1e']
 
   if (since) args.push(`${since}..HEAD`)
 
@@ -290,11 +294,13 @@ export async function getPackageCommits(
     const { stdout } = await runSafe('git', args, { cwd })
     if (!stdout || !stdout.trim()) return []
 
-    const mainLineCommits = stdout.split('\n').filter(Boolean)
+    const mainLineCommits = stdout.split('\x1e').filter(Boolean)
     const allRelevantCommits: { message: string; hash: string }[] = []
 
     for (const line of mainLineCommits) {
-      const [hash, subject] = line.split('|')
+      const [part1 = '', part2 = ''] = line.split('|')
+      const hash = part1.trim()
+      const subject = part2.trim()
 
       const { stdout: parents } = await runSafe(
         'git',
@@ -309,7 +315,7 @@ export async function getPackageCommits(
           [
             'log',
             `${parentHashes[0]}..${parentHashes[1]}`,
-            '--pretty=format:%H|%s',
+            '--pretty=format:%H|%B\x1e',
             '--',
             relPath,
           ],
@@ -317,11 +323,13 @@ export async function getPackageCommits(
         )
 
         const sideCommits = sideCommitsRaw
-          .split('\n')
+          .split('\x1e')
           .filter(Boolean)
           .map(s => {
-            const [h, m] = s.split('|')
-            return { hash: h, message: m }
+            const [part1 = '', part2 = ''] = s.split('|')
+            const hash = part1.trim()
+            const subject = part2.trim()
+            return { hash, message: subject }
           })
 
         const lastReleaseIndex = sideCommits.findIndex(c =>

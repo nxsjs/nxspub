@@ -23,12 +23,17 @@ export function determineBumpType(
 ): BrancheType | null {
   let type: BrancheType | null = null
   for (const { message } of commits) {
-    if (config.versioning?.major?.some(re => new RegExp(re).test(message)))
+    const lines = message
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+    const header = lines[0]
+    if (config.versioning?.major?.some(re => new RegExp(re).test(header)))
       return 'major'
-    if (config.versioning?.minor?.some(re => new RegExp(re).test(message)))
+    if (config.versioning?.minor?.some(re => new RegExp(re).test(header)))
       type = 'minor'
     if (
-      config.versioning?.patch?.some(re => new RegExp(re).test(message)) &&
+      config.versioning?.patch?.some(re => new RegExp(re).test(header)) &&
       !type
     )
       type = 'patch'
