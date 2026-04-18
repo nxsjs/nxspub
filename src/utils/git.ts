@@ -632,11 +632,18 @@ export async function getSegmentedHistory(cwd: string, relPath?: string) {
 export function createLinkProvider(repoUrl: string) {
   const base = repoUrl.replace(/\/$/, '')
 
-  const hostname = (() => {
+  const { hostname, siteBase } = (() => {
     try {
-      return new URL(base).hostname.toLowerCase()
+      const url = new URL(base)
+      return {
+        hostname: url.hostname.toLowerCase(),
+        siteBase: `${url.protocol}//${url.host}`,
+      }
     } catch {
-      return ''
+      return {
+        hostname: '',
+        siteBase: '',
+      }
     }
   })()
 
@@ -650,7 +657,7 @@ export function createLinkProvider(repoUrl: string) {
   return {
     user: (username: string) => {
       const cleanName = username.replace(/^@/, '')
-      return `${base}/${cleanName}`
+      return siteBase ? `${siteBase}/${cleanName}` : `${base}/${cleanName}`
     },
 
     compare: (from: string = '', to: string) => {

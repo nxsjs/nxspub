@@ -45,12 +45,14 @@ describe('core utilities', () => {
 
   it('builds provider links for github and gitlab style remotes', () => {
     const github = createLinkProvider('https://github.com/acme/repo')
+    expect(github.user('nyxsola')).toBe('https://github.com/nyxsola')
     expect(github.compare('v1.0.0', 'v1.1.0')).toBe(
       'https://github.com/acme/repo/compare/v1.0.0...v1.1.0',
     )
     expect(github.pr('12')).toBe('https://github.com/acme/repo/pull/12')
 
     const gitlab = createLinkProvider('https://gitlab.com/acme/repo')
+    expect(gitlab.user('@nyxsola')).toBe('https://gitlab.com/nyxsola')
     expect(gitlab.compare('v1.0.0', 'v1.1.0')).toBe(
       'https://gitlab.com/acme/repo/compare/v1.0.0..v1.1.0',
     )
