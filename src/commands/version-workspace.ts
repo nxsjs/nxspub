@@ -66,7 +66,16 @@ export async function versionWorkspace(
       info.relativeDir,
       lastRelease?.hash,
     )
-    const bumpType = determineBumpType(commits, config)
+    let bumpType = determineBumpType(commits, config)
+
+    const isPreBranch = branchContract && branchContract.startsWith('pre')
+
+    if (!bumpType && !isPreBranch && semver.prerelease(info.version)) {
+      bumpType = 'patch'
+      nxsLog.item(
+        `[${info.name}] No new commits, promoting pre-release to stable.`,
+      )
+    }
 
     tasks.set(info.name, {
       ...info,
