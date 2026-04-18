@@ -1,3 +1,17 @@
+## [0.6.2](https://github.com/nxsjs/nxspub/compare/0.6.1...0.6.2) (2026-04-18)
+
+### Bug Fixes
+
+* remove separators from workspace root changelog ([33de16f](https://github.com/nxsjs/nxspub/commit/33de16ffe8c72f245a954c61fde888afc42c49cb))
+* adjust changelog blockquote spacing for body and breaking notes ([dec9e9a](https://github.com/nxsjs/nxspub/commit/dec9e9a2df1966713572ef0ccbf14f82a05e9e31))
+* format workspace changelog package headings with version suffix ([1d861bc](https://github.com/nxsjs/nxspub/commit/1d861bc8e3ea38b5e352d7ae63397a8227a6b1e4))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.6.1](https://github.com/nxsjs/nxspub/compare/0.6.0...0.6.1) (2026-04-18)
 
 ### Bug Fixes
