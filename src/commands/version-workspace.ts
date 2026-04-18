@@ -307,12 +307,12 @@ async function updatePackageChangelog(
           }
           return line
         })
-        .join('\n  > \n  > ')}`
+        .join('\n  \n  > ')}`
     }
 
     if (parsed.breakingDetail) {
-      const separator = parsed.bodyLines.length > 0 ? '\n  > ' : ''
-      entry += `\n  > ${separator}**BREAKING CHANGE:** ${parsed.breakingDetail.replace(/\n/g, '\n  > ')}`
+      const separator = parsed.bodyLines.length > 0 ? '\n  ' : ''
+      entry += `\n${separator}  > **BREAKING CHANGE:** ${parsed.breakingDetail.replace(/\n/g, '\n  > ')}`
     }
 
     groups[label].push(entry)

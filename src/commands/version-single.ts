@@ -180,13 +180,13 @@ export async function versionSingle(
           }
           return line
         })
-        .join('\n  > \n  > ')}`
+        .join('\n  \n  > ')}`
     }
 
     if (breakingDetail) {
-      const separator = bodyLines.length > 0 ? '\n  > ' : ''
+      const separator = bodyLines.length > 0 ? '\n  ' : ''
       const detail = breakingDetail.replace(/\n/g, '\n  > ')
-      entry += `\n  > ${separator}**BREAKING CHANGE:** ${detail}`
+      entry += `\n${separator}  > **BREAKING CHANGE:** ${detail}`
     }
 
     if (!groups[label]) {
