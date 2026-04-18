@@ -63,18 +63,6 @@ export async function getRepoUrl() {
 }
 
 /**
- * @en Generate comparison URL based on host type.
- * @zh 根据托管平台类型生成对比链接。
- */
-export function getCompareUrl(repoUrl: string, from: string = '', to: string) {
-  const isGitLab = repoUrl.includes('gitlab')
-  const connector = isGitLab ? '..' : '...'
-  return from
-    ? `${repoUrl}/compare/v${from}${connector}v${to}`
-    : `${repoUrl}/compare/v${to}`
-}
-
-/**
  * @en Get incremental commit records with "Side-chain Penetration".
  * This logic identifies Merge Commits and extracts commits from the merged branch
  * to ensure no semantic information (feat/fix) is lost.
@@ -391,6 +379,7 @@ export async function getContributors(
 
   const range = sinceHash ? `${sinceHash}..HEAD` : 'HEAD'
   repoUrl = repoUrl || (await getRepoUrl())
+  const links = createLinkProvider(repoUrl)
   let repoHost = ''
   try {
     repoHost = new URL(repoUrl).hostname.toLowerCase()
@@ -450,8 +439,9 @@ export async function getContributors(
         name,
         email: cleanEmail,
         avatar,
-        url: `${new URL(repoUrl).origin}/${name}`,
+        url: links.user(name),
       }
+
       allContributorsMap.set(cleanEmail, contributor)
       currentContributors.push(contributor)
     }
@@ -466,14 +456,7 @@ export async function getContributors(
         const firstPR = authorFirstPr.get(c.email)
         if (firstPR) {
           let prNumber = firstPR.pr.replace('#', '')
-          let prLink = ''
-          if (isGitHub) {
-            prLink = `${repoUrl}/pull/${prNumber}`
-          } else if (isGitLab) {
-            prLink = `${repoUrl}/-/merge_requests/${prNumber}`
-          } else {
-            prLink = `${repoUrl}/commit/${firstPR.hash}`
-          }
+          let prLink = links.pr(prNumber)
           return {
             ...c,
             firstPR: { num: prNumber, url: prLink },
@@ -615,4 +598,56 @@ export async function getSegmentedHistory(cwd: string, relPath?: string) {
   }
 
   return segments
+}
+
+/**
+ * @en Generates standardized links for commits, pull requests, and issues across different platforms.
+ * @zh 为不同平台（GitHub, GitLab, Gitee, Bitbucket）生成统一的提交、PR 和 Issue 链接。
+ */
+export function createLinkProvider(repoUrl: string) {
+  const base = repoUrl.replace(/\/$/, '')
+
+  const isGitLab = base.includes('gitlab.com')
+  const isBitbucket = base.includes('bitbucket.org')
+  const isGitee = base.includes('gitee.com')
+
+  return {
+    user: (username: string) => {
+      const cleanName = username.replace(/^@/, '')
+      return `${base}/${cleanName}`
+    },
+
+    compare: (from: string = '', to: string) => {
+      if (!from) {
+        if (isGitLab) return `${base}/-/tags/${to}`
+        if (isBitbucket) return `${base}/src/${to}`
+        return `${base}/tree/${to}`
+      }
+
+      if (isBitbucket) {
+        return `${base}/branches/compare/${from}%0D${to}#diff`
+      }
+
+      const connector = isGitLab ? '..' : '...'
+
+      return `${base}/compare/${from}${connector}${to}`
+    },
+
+    commit: (hash: string) => {
+      const segment = isBitbucket ? 'commits' : 'commit'
+      return `${base}/${segment}/${hash}`
+    },
+
+    pr: (id: string) => {
+      if (isGitLab) return `${base}/merge_requests/${id}`
+      if (isBitbucket) return `${base}/pull-requests/${id}`
+      if (isGitee) return `${base}/pull/${id}`
+
+      return `${base}/pull/${id}`
+    },
+
+    issue: (id: string) => {
+      return `${base}/issues/${id}`
+    },
+  }
 }

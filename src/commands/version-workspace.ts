@@ -9,9 +9,9 @@ import {
 } from '../utils/changelog'
 import { formatDate } from '../utils/date'
 import {
+  createLinkProvider,
   ensureGitSync,
   getBranchContract,
-  getCompareUrl,
   getCurrentBranch,
   getLastReleaseCommit,
   getPackageCommits,
@@ -257,11 +257,8 @@ async function updatePackageChangelog(
   if (task.commits.length === 0 && !task.isPassive) return null
 
   const date = formatDate()
-  const compareUrl = getCompareUrl(
-    repoUrl,
-    lastVer || task.version,
-    task.nextVersion!,
-  )
+  const links = createLinkProvider(repoUrl)
+  const compareUrl = links.compare(lastVer, task.nextVersion!)
 
   const groups: Record<string, string[]> = {}
 
@@ -288,7 +285,7 @@ async function updatePackageChangelog(
       const formattedMsg = scope ? `**${scope}:** ${rawMsg}` : rawMsg
 
       groups[label].push(
-        `* ${formattedMsg} ([${c.hash.slice(0, 7)}](${repoUrl}/commit/${c.hash}))`,
+        `* ${formattedMsg} ([${c.hash.slice(0, 7)}](${links.commit(c.hash)}))`,
       )
     }
   })
@@ -340,7 +337,8 @@ async function updateRootChangelog(
 ) {
   const rootPath = path.join(cwd, 'CHANGELOG.md')
   const date = formatDate()
-  const compareUrl = getCompareUrl(repoUrl, lastVer || '0.0.0', nextVer)
+  const links = createLinkProvider(repoUrl)
+  const compareUrl = links.compare(lastVer, nextVer)
 
   let rootEntry =
     `## [${nextVer}](${compareUrl}) (${date})\n\n` +

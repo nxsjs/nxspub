@@ -3,7 +3,7 @@ import path from 'node:path'
 import * as semver from 'semver-es'
 import type { BrancheType } from '../config'
 import { formatDate } from './date'
-import { getContributors } from './git'
+import { createLinkProvider, getContributors } from './git'
 
 /**
  * @en Archiving strategy: Archive when a Major change occurs or when the Changelog file exceeds 1MB.
@@ -188,17 +188,18 @@ export function parseCommit(
   // 提取并剥离所有 PR 引用（支持多个，例如 "feat: add (#1) (#3)"）
   const prLinks: string[] = []
   const PR_EXTRACT_REGEX = /\s\(#(\d+)\)/g
+  const links = createLinkProvider(repoUrl)
 
   subject = subject
     .replace(PR_EXTRACT_REGEX, (_, prNumber) => {
-      prLinks.push(`([#${prNumber}](${repoUrl}/pull/${prNumber}))`)
+      prLinks.push(`([#${prNumber}](${links.pr(prNumber)}))`)
       return ''
     })
     .trim()
 
   // Transform remaining generic #ID in subject to issue links
   // 将主题中剩余的普通 #ID 转换为 Issue 链接
-  subject = subject.replace(/#(\d+)/g, `[#$1](${repoUrl}/issues/$1)`)
+  subject = subject.replace(/#(\d+)/g, `[#$1](${links.issue('$1')})`)
 
   // Extract linked issues from the entire message (supports multiple IDs: closes #12 #45)
   // 从整个信息中提取关联 Issue（支持一行多个：closes #12 #45）
@@ -213,7 +214,7 @@ export function parseCommit(
     if (ids) {
       ids.forEach(idStr => {
         const id = idStr.replace(/\D/g, '')
-        linkedIssues.add(`[#${id}](${repoUrl}/issues/${id})`)
+        linkedIssues.add(`[#${id}](${links.issue(id)})`)
       })
     }
   }

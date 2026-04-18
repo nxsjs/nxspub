@@ -10,9 +10,9 @@ import {
 } from '../utils/changelog'
 import { formatDate } from '../utils/date'
 import {
+  createLinkProvider,
   ensureGitSync,
   getBranchContract,
-  getCompareUrl,
   getCurrentBranch,
   getLastReleaseCommit,
   getRawCommits,
@@ -134,7 +134,8 @@ export async function versionSingle(
   nxsLog.item(`Target Version: ${nxsLog.highlight(targetVersion)}`)
 
   const date = formatDate()
-  const compareUrl = getCompareUrl(repoUrl, lastRelease?.version, targetVersion)
+  const links = createLinkProvider(repoUrl)
+  const compareUrl = links.compare(lastRelease?.version, targetVersion)
   const groups: Record<string, string[]> = {}
   Object.values(config.changelog?.labels || {}).forEach(label => {
     groups[label] = []
@@ -158,7 +159,7 @@ export async function versionSingle(
     const label = config.changelog?.labels?.[type]
     if (!label) return
 
-    const commitLink = `[${hash.slice(0, 7)}](${repoUrl}/commit/${hash})`
+    const commitLink = `[${hash.slice(0, 7)}](${links.commit(hash)})`
     const scopeText = scope ? `**${scope}:** ` : ''
     const breakingTag = isBreaking ? `**[BREAKING CHANGE]** ` : ''
 
