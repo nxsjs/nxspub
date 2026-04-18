@@ -351,7 +351,7 @@ async function updatePackageChangelog(
     })
   }
 
-  const rootEntry = `### ${task.name} ${task.nextVersion}\n${rootLines.join('\n')}`
+  const rootEntry = `### ${task.name}@${task.nextVersion}\n${rootLines.join('\n')}`
 
   return { entry: rootEntry }
 }
