@@ -139,39 +139,73 @@ export async function versionSingle(
     groups[label] = []
   })
 
+  const PR_REGEX = /\s\(#(\d+)\)$/
+  const ISSUE_REGEX =
+    /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi
+
   commits.forEach(({ message, hash }) => {
-    const headerMatch = message.match(/^(\w+)(?:\(([^)]+)\))?(!)?:/)
-    const type = headerMatch ? headerMatch[1] : ''
-    const scope = headerMatch ? headerMatch[2] : ''
-    const hasExclamation = !!headerMatch?.[3]
+    const lines = message
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+    if (lines.length === 0) return
 
-    const breakingMatch = message.match(/BREAKING CHANGE:\s?([\s\S]+)/)
+    const header = lines[0]
+    const headerMatch = header.match(/^(\w+)(?:\(([^)]+)\))?(!)?:/)
+    if (!headerMatch) return
+
+    const [fullMatch, type, scope, exclamation] = headerMatch
+    const label = config.changelog?.labels?.[type]
+    if (!label) return
+
+    let subject = header.replace(fullMatch, '').trim()
+    let prLink = ''
+    const prMatch = subject.match(PR_REGEX)
+    if (prMatch) {
+      prLink = `[#${prMatch[1]}](${repoUrl}/pull/${prMatch[1]})`
+      subject = subject.replace(prMatch[0], '').trim()
+    }
+
+    subject = subject.replace(/#(\d+)/g, `[#$1](${repoUrl}/issues/$1)`)
+
+    const linkedIssues = new Set<string>()
+    let m
+    while ((m = ISSUE_REGEX.exec(message)) !== null) {
+      linkedIssues.add(`[#${m[1]}](${repoUrl}/issues/${m[1]})`)
+    }
+
+    const breakingMatch = message.match(/BREAKING CHANGE:\s?([\s\S]+)/i)
     const breakingDetail = breakingMatch ? breakingMatch[1].trim() : null
-    const isBreaking = hasExclamation || !!breakingDetail
+    const isBreaking = !!exclamation || !!breakingDetail
 
-    let subject = headerMatch
-      ? message.replace(headerMatch[0], '').trim()
-      : message
+    const bodyLines = lines.slice(1).filter(line => {
+      return (
+        !/BREAKING CHANGE:/i.test(line) &&
+        !/^(?:closes|fixes|resolves)\s+#\d+$/i.test(line)
+      )
+    })
+
+    const commitLink = `[${hash.slice(0, 7)}](${repoUrl}/commit/${hash})`
+    const scopeText = scope ? `**${scope}:** ` : ''
+    const breakingTag = isBreaking ? `**[BREAKING CHANGE]** ` : ''
+    const closesSuffix =
+      linkedIssues.size > 0
+        ? ` (closes ${Array.from(linkedIssues).join(', ')})`
+        : ''
+
+    let entry = `* ${scopeText}${breakingTag}${subject}${prLink ? ` ${prLink}` : ''} (${commitLink})${closesSuffix}`
+
+    if (bodyLines.length > 0) {
+      entry += `\n  > ${bodyLines.join('\n  > ')}`
+    }
 
     if (breakingDetail) {
-      subject = subject.split(/BREAKING CHANGE:/)[0].trim()
+      const detail = breakingDetail.replace(/\n/g, '\n  > ')
+      entry += `\n  > \n  > **BREAKING CHANGE:** ${detail}`
     }
 
-    const label = config.changelog?.labels?.[type]
-
-    if (label) {
-      const commitLink = `([${hash.slice(0, 7)}](${repoUrl}/commit/${hash.slice(0, 7)}))`
-      const scopeText = scope ? `**${scope}:** ` : ''
-      const breakingTag = isBreaking ? `**[BREAKING CHANGE]** ` : ''
-
-      let entry = `* ${scopeText}${breakingTag}${subject} ${commitLink}`
-
-      if (breakingDetail) {
-        entry += `\n  > ${breakingDetail.replace(/\n/g, '\n  > ')}`
-      }
-
-      groups[label].push(entry)
-    }
+    if (!groups[label]) groups[label] = []
+    groups[label].push(entry)
   })
 
   let newEntry = `## [${targetVersion}](${compareUrl}) (${date})\n\n`
