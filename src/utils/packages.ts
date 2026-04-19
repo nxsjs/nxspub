@@ -14,6 +14,10 @@ import { cliLogger } from './logger'
  * @param filepath
  * @en Target file path
  * @zh 目标文件路径
+ *
+ * @returns
+ * @en Parsed JSON object.
+ * @zh 解析后的 JSON 对象。
  */
 export async function readJSON(filepath: string) {
   const content = await fs.readFile(filepath, 'utf-8')
@@ -31,6 +35,10 @@ export async function readJSON(filepath: string) {
  * @param data
  * @en The data object to be written.
  * @zh 需要写入的数据对象
+ *
+ * @returns
+ * @en Resolves when file write is completed.
+ * @zh 文件写入完成后返回。
  */
 export async function writeJSON<T>(filepath: string, data: T) {
   let fileIndent = '  '
@@ -99,6 +107,10 @@ export type ProjectMeta = PackageMeta | PnpmWorkspaceMeta
  * @param cwd
  * @en Current working directory
  * @zh 当前工作目录
+ *
+ * @returns
+ * @en Package metadata loaded from package.json.
+ * @zh 从 package.json 加载的包元数据。
  */
 export async function loadPackageJSON(
   relative: string,
@@ -125,6 +137,10 @@ export async function loadPackageJSON(
  * @param pkg
  * @en The PackageMeta object to save
  * @zh 要保存的元数据对象
+ *
+ * @returns
+ * @en Resolves when package file is saved.
+ * @zh 包文件保存完成后返回。
  */
 export async function savePackageJSON(pkg: PackageMeta) {
   return await writeJSON(pkg.filepath, pkg.raw)
@@ -172,6 +188,18 @@ export interface PackageTask extends PackageInfo {
   nextVersion?: string
 }
 
+/**
+ * @en Scan workspace package manifests and collect package metadata.
+ * @zh 扫描工作区包清单并收集包元数据。
+ *
+ * @param cwd
+ * @en Workspace root directory.
+ * @zh 工作区根目录。
+ *
+ * @returns
+ * @en List of discovered workspace packages.
+ * @zh 发现的工作区包列表。
+ */
 export async function scanWorkspacePackages(
   cwd: string,
 ): Promise<PackageInfo[]> {
@@ -280,6 +308,18 @@ export async function scanWorkspacePackages(
   return results
 }
 
+/**
+ * @en Topologically sort packages based on dependency graph.
+ * @zh 基于依赖图对包进行拓扑排序。
+ *
+ * @param tasks
+ * @en Package task map keyed by package name.
+ * @zh 以包名为键的任务映射。
+ *
+ * @returns
+ * @en Sorted package names in dependency-safe order.
+ * @zh 依赖安全顺序的包名列表。
+ */
 export function topologicalSort<T extends { dependencies: string[] }>(
   tasks: Map<string, T>,
 ): string[] {

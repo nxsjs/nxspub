@@ -5,12 +5,22 @@ import { readJSON } from './packages'
 
 export type PackageManagerName = 'pnpm' | 'npm' | 'yarn'
 
+/**
+ * @en Normalized package manager capabilities used by nxspub.
+ * @zh nxspub 使用的标准化包管理器能力定义。
+ */
 export interface PackageManagerInfo {
+  /** @en Package manager name. @zh 包管理器名称。 */
   name: PackageManagerName
+  /** @en Optional package manager version. @zh 可选的包管理器版本。 */
   version?: string
+  /** @en Build a run-script command descriptor. @zh 构造运行脚本命令描述。 */
   runScript(bin: string, args?: string[]): { bin: string; args: string[] }
+  /** @en Build an install command descriptor. @zh 构造安装命令描述。 */
   install(): { bin: string; args: string[] }
+  /** @en Build a publish command descriptor. @zh 构造发布命令描述。 */
   publish(args: string[]): { bin: string; args: string[] }
+  /** @en Build default commit-msg hook command in development. @zh 构造开发环境默认 commit-msg hook 命令。 */
   devLintHook(): string
 }
 
@@ -76,6 +86,18 @@ function createPackageManagerInfo(
   }
 }
 
+/**
+ * @en Detect the active package manager by package.json metadata and lockfiles.
+ * @zh 通过 package.json 元数据与锁文件检测当前使用的包管理器。
+ *
+ * @param cwd
+ * @en Project root directory.
+ * @zh 项目根目录。
+ *
+ * @returns
+ * @en Detected package manager capabilities.
+ * @zh 检测到的包管理器能力对象。
+ */
 export async function detectPackageManager(
   cwd: string,
 ): Promise<PackageManagerInfo> {

@@ -14,6 +14,22 @@ import { checkVersionExists } from '../utils/npm'
 import { detectPackageManager } from '../utils/package-manager'
 import { readJSON } from '../utils/packages'
 
+/**
+ * @en Publish a single package to registry with branch policy and safety checks.
+ * @zh 在分支策略与安全检查通过后发布单个包到注册表。
+ *
+ * @param options
+ * @en Release command options.
+ * @zh 发布命令参数。
+ *
+ * @param config
+ * @en Resolved nxspub configuration.
+ * @zh 已解析的 nxspub 配置。
+ *
+ * @returns
+ * @en Resolves when publish flow is completed.
+ * @zh 发布流程完成后返回。
+ */
 export async function releaseSingle(
   options: ReleaseOptions,
   config: NxspubConfig,

@@ -38,6 +38,22 @@ import {
   getMaxBumpType,
 } from '../utils/versions'
 
+/**
+ * @en Compute and apply versions/changelogs for all workspace packages.
+ * @zh 为工作区全部包计算并应用版本与变更日志。
+ *
+ * @param options
+ * @en Version command options.
+ * @zh 版本命令参数。
+ *
+ * @param config
+ * @en Resolved nxspub configuration.
+ * @zh 已解析的 nxspub 配置。
+ *
+ * @returns
+ * @en Resolves when workspace versioning is completed.
+ * @zh 工作区版本处理完成后返回。
+ */
 export async function versionWorkspace(
   options: VersionOptions,
   config: NxspubConfig,

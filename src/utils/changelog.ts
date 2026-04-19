@@ -8,6 +8,26 @@ import { createLinkProvider, getContributors } from './git'
 /**
  * @en Archiving strategy: Archive when a Major change occurs or when the Changelog file exceeds 1MB.
  * @zh 归档策略：当发生 Major 变更或 Changelog 文件超过 1MB 时进行归档。
+ *
+ * @param changelogPath
+ * @en Absolute path to CHANGELOG.md.
+ * @zh CHANGELOG.md 的绝对路径。
+ *
+ * @param currentVersion
+ * @en Current package version.
+ * @zh 当前包版本。
+ *
+ * @param bumpType
+ * @en Computed semantic bump type.
+ * @zh 计算出的语义化升级类型。
+ *
+ * @param isPrereleasePolicy
+ * @en Whether current branch policy is prerelease.
+ * @zh 当前分支策略是否为预发布策略。
+ *
+ * @returns
+ * @en Archived footer content when archived, otherwise undefined.
+ * @zh 发生归档时返回新的归档尾部内容，否则返回 undefined。
  */
 export async function archiveChangelogIfNeeded(
   changelogPath: string,
@@ -68,6 +88,18 @@ export async function archiveChangelogIfNeeded(
 /**
  * @en Removes existing version entry from changelog content to prevent duplication.
  * @zh 从 Changelog 内容中移除已存在的版本条目，防止重复堆叠。
+ *
+ * @param content
+ * @en Existing changelog content.
+ * @zh 现有 changelog 内容。
+ *
+ * @param version
+ * @en Target version to remove before inserting a regenerated entry.
+ * @zh 插入新条目前需要移除的目标版本号。
+ *
+ * @returns
+ * @en Cleaned changelog content.
+ * @zh 清理后的 changelog 内容。
  */
 export function cleanupExistingEntry(content: string, version: string): string {
   const versionHeader = `## [${version}]`
@@ -84,6 +116,34 @@ export function cleanupExistingEntry(content: string, version: string): string {
     .join('')
 }
 
+/**
+ * @en Append contributor sections to generated changelog entry.
+ * @zh 为生成的 changelog 条目追加贡献者信息区块。
+ *
+ * @param newEntry
+ * @en Generated changelog entry content.
+ * @zh 生成后的 changelog 条目内容。
+ *
+ * @param cwd
+ * @en Project root directory.
+ * @zh 项目根目录。
+ *
+ * @param repoUrl
+ * @en Repository URL used for profile and PR links.
+ * @zh 用于用户与 PR 链接的仓库地址。
+ *
+ * @param sinceHash
+ * @en Optional starting commit hash.
+ * @zh 可选的起始提交哈希。
+ *
+ * @param pkgPath
+ * @en Optional package path filter for workspace mode.
+ * @zh 工作区模式下可选的包路径过滤。
+ *
+ * @returns
+ * @en Changelog entry with contributor sections.
+ * @zh 追加贡献者区块后的 changelog 条目。
+ */
 export async function applyContributorsToChangelog(
   newEntry: string,
   cwd: string,

@@ -6,6 +6,22 @@ import { cliLogger } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
 import type { GitHooksOptions } from './types'
 
+/**
+ * @en Install executable git hook files from nxspub configuration.
+ * @zh 根据 nxspub 配置安装可执行的 Git Hook 文件。
+ *
+ * @param options
+ * @en Git hooks command options.
+ * @zh Git Hooks 命令参数。
+ *
+ * @param config
+ * @en Resolved nxspub configuration.
+ * @zh 已解析的 nxspub 配置。
+ *
+ * @returns
+ * @en Resolves when all hook files are processed.
+ * @zh 所有 Hook 文件处理完成后返回。
+ */
 export async function installGitHooks(
   options: GitHooksOptions,
   config: NxspubConfig,

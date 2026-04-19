@@ -7,6 +7,22 @@ import { cliLogger } from '../utils/logger'
 import { normalizeRegExp } from '../utils/regexp'
 import { determineBumpType } from '../utils/versions'
 
+/**
+ * @en Validate a commit message file against configured lint and branch policy rules.
+ * @zh 根据配置的提交规范与分支策略规则校验提交信息文件。
+ *
+ * @param options
+ * @en Command options containing working directory and commit message file path.
+ * @zh 命令参数，包含工作目录与提交信息文件路径。
+ *
+ * @param config
+ * @en Resolved nxspub configuration.
+ * @zh 已解析的 nxspub 配置。
+ *
+ * @returns
+ * @en Resolves when validation passes; throws on validation failure.
+ * @zh 校验通过时返回；校验失败时抛出错误。
+ */
 export async function lintCommitMsg(
   options: { cwd: string; edit: string },
   config: NxspubConfig,

@@ -12,6 +12,22 @@ import {
 } from '../utils/packages'
 import { releaseSingle } from './release-single'
 
+/**
+ * @en Release all publishable packages in a workspace following dependency order.
+ * @zh 按依赖顺序发布工作区内所有可发布包。
+ *
+ * @param options
+ * @en Release command options for workspace mode.
+ * @zh 工作区发布命令参数。
+ *
+ * @param config
+ * @en Resolved nxspub configuration.
+ * @zh 已解析的 nxspub 配置。
+ *
+ * @returns
+ * @en Resolves when workspace release completes.
+ * @zh 工作区发布完成后返回。
+ */
 export async function releaseWorkspace(
   options: ReleaseOptions,
   config: NxspubConfig,

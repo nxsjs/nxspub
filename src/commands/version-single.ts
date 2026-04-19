@@ -27,6 +27,22 @@ import { readJSON, writeJSON } from '../utils/packages'
 import { determineBumpType } from '../utils/versions'
 import type { VersionOptions } from './types'
 
+/**
+ * @en Compute and apply the next version/changelog for a single package project.
+ * @zh 为单包项目计算并应用下一个版本与变更日志。
+ *
+ * @param options
+ * @en Version command options.
+ * @zh 版本命令参数。
+ *
+ * @param config
+ * @en Resolved nxspub configuration.
+ * @zh 已解析的 nxspub 配置。
+ *
+ * @returns
+ * @en Resolves when versioning steps are completed.
+ * @zh 版本处理完成后返回。
+ */
 export async function versionSingle(
   options: VersionOptions,
   config: NxspubConfig,

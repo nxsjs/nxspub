@@ -8,6 +8,22 @@ import { normalizeRegExp } from './regexp'
 /**
  * @en Execute a command and inherit stdio (suitable for interactive commands).
  * @zh 执行命令并继承标准输入输出（适用于交互式命令）。
+ *
+ * @param bin
+ * @en Executable binary name.
+ * @zh 可执行命令名。
+ *
+ * @param args
+ * @en Command arguments.
+ * @zh 命令参数数组。
+ *
+ * @param opts
+ * @en Additional execa options.
+ * @zh 额外 execa 参数。
+ *
+ * @returns
+ * @en Execa promise object.
+ * @zh Execa Promise 对象。
  */
 export const run = (bin: string, args: string[], opts = {}) =>
   execa(bin, args, { stdio: 'inherit', ...opts })
@@ -15,10 +31,38 @@ export const run = (bin: string, args: string[], opts = {}) =>
 /**
  * @en Execute a command and capture output (suitable for background logic).
  * @zh 执行命令并捕获输出（适用于后台逻辑计算）。
+ *
+ * @param bin
+ * @en Executable binary name.
+ * @zh 可执行命令名。
+ *
+ * @param args
+ * @en Command arguments.
+ * @zh 命令参数数组。
+ *
+ * @param opts
+ * @en Additional execa options.
+ * @zh 额外 execa 参数。
+ *
+ * @returns
+ * @en Execa promise object.
+ * @zh Execa Promise 对象。
  */
 export const runSafe = (bin: string, args: string[], opts = {}) =>
   execa(bin, args, { ...opts })
 
+/**
+ * @en Parse one git log record line split by the first pipe symbol.
+ * @zh 按第一个竖线分隔并解析单条 Git 日志记录。
+ *
+ * @param line
+ * @en Raw git log line in `<hash>|<message>` format.
+ * @zh `<hash>|<message>` 格式的原始日志行。
+ *
+ * @returns
+ * @en Parsed commit hash and message.
+ * @zh 解析后的提交哈希与消息。
+ */
 export function parseGitLogRecord(line: string) {
   const firstPipeIndex = line.indexOf('|')
   if (firstPipeIndex === -1) {
@@ -378,14 +422,47 @@ export async function getPackageCommits(
   }
 }
 
+/**
+ * @en Contributor profile metadata used in changelog rendering.
+ * @zh 用于 Changelog 渲染的贡献者资料元数据。
+ */
 interface Contributor {
+  /** @en Contributor display name. @zh 贡献者显示名。 */
   name: string
+  /** @en Contributor email (normalized lowercase). @zh 贡献者邮箱（小写规范化）。 */
   email: string
+  /** @en Contributor avatar URL. @zh 贡献者头像地址。 */
   avatar: string
+  /** @en Contributor profile URL. @zh 贡献者主页地址。 */
   url: string
+  /** @en First contribution PR info if available. @zh 若可用则记录首次贡献 PR 信息。 */
   firstPR?: { num: string; url: string }
 }
 
+/**
+ * @en Collect contributor info and first contribution metadata since a commit.
+ * @zh 收集自指定提交以来的贡献者信息与首次贡献元数据。
+ *
+ * @param cwd
+ * @en Project root directory.
+ * @zh 项目根目录。
+ *
+ * @param sinceHash
+ * @en Optional starting commit hash.
+ * @zh 可选的起始提交哈希。
+ *
+ * @param repoUrl
+ * @en Optional repository URL for generating profile/PR links.
+ * @zh 可选仓库地址，用于生成用户与 PR 链接。
+ *
+ * @param pkgPath
+ * @en Optional package path filter for workspace mode.
+ * @zh 可选的包路径过滤（工作区模式使用）。
+ *
+ * @returns
+ * @en Contributor lists grouped by all and newly-added contributors.
+ * @zh 按全部与新增贡献者分组的贡献者列表。
+ */
 export async function getContributors(
   cwd: string,
   sinceHash?: string,
