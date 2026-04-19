@@ -61,9 +61,9 @@ export async function versionSingle(
     return
   }
 
-  const pkg = await readJSON(pkgPath)
+  const packageJson = await readJSON(pkgPath)
   const packageManager = await detectPackageManager(cwd)
-  const currentPkgVersion = pkg.version
+  const currentPackageVersion = packageJson.version
   const repoUrl = await getRepoUrl(cwd)
 
   cliLogger.step(`Branch Policy`)
@@ -81,7 +81,7 @@ export async function versionSingle(
   let bumpType = determineBumpType(commits, config)
 
   if (!bumpType) {
-    const preInfo = semver.prerelease(currentPkgVersion)
+    const preInfo = semver.prerelease(currentPackageVersion)
 
     if (preInfo) {
       if (branchReleasePolicy && branchReleasePolicy.startsWith('pre')) {
@@ -91,7 +91,7 @@ export async function versionSingle(
         return
       }
       cliLogger.item(
-        `No new commits, but promoting pre-release [${currentPkgVersion}] to stable.`,
+        `No new commits, but promoting pre-release [${currentPackageVersion}] to stable.`,
       )
       bumpType = 'patch'
     } else {
@@ -125,21 +125,27 @@ export async function versionSingle(
 
   let targetVersion: string
   const isPrereleasePolicy = branchReleasePolicy.startsWith('pre')
-  const preid = currentBranch!
+  const prereleaseIdentifier = currentBranch!
   if (isPrereleasePolicy) {
-    const isCurrentlyPre = !!semver.prerelease(currentPkgVersion)
+    const isCurrentlyPre = !!semver.prerelease(currentPackageVersion)
     const action = isCurrentlyPre
       ? 'prerelease'
       : (branchReleasePolicy as semver.ReleaseType)
-    targetVersion = semver.inc(currentPkgVersion, action, preid)!
+    targetVersion = semver.inc(
+      currentPackageVersion,
+      action,
+      prereleaseIdentifier,
+    )!
   } else {
     targetVersion = semver.inc(
-      currentPkgVersion,
+      currentPackageVersion,
       bumpType as semver.ReleaseType,
     )!
   }
 
-  cliLogger.item(`Current Version: ${cliLogger.highlight(currentPkgVersion)}`)
+  cliLogger.item(
+    `Current Version: ${cliLogger.highlight(currentPackageVersion)}`,
+  )
   cliLogger.item(`Target Version: ${cliLogger.highlight(targetVersion)}`)
 
   const date = formatDate()
@@ -228,7 +234,7 @@ export async function versionSingle(
     currentChangelog = await fs.readFile(changelogPath, 'utf-8')
     const footerChangelog = await archiveChangelogIfNeeded(
       changelogPath,
-      currentPkgVersion,
+      currentPackageVersion,
       bumpType,
       isPrereleasePolicy,
     )
@@ -239,10 +245,10 @@ export async function versionSingle(
 
   currentChangelog = cleanupExistingEntry(currentChangelog, targetVersion)
 
-  pkg.version = targetVersion
+  packageJson.version = targetVersion
   cliLogger.item(`Updating ${pkgPath}...`)
 
-  await writeJSON(pkgPath, pkg)
+  await writeJSON(pkgPath, packageJson)
   cliLogger.item(`Updating ${changelogPath}...`)
   await fs.writeFile(changelogPath, (newEntry + currentChangelog).trim() + '\n')
 

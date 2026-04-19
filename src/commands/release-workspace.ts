@@ -27,14 +27,17 @@ export async function releaseWorkspace(
 
   cliLogger.step('Workspace Release: Initializing Pipeline')
 
-  const allInfos = await scanWorkspacePackages(cwd)
+  const workspacePackages = await scanWorkspacePackages(cwd)
   const tasks = new Map<string, PackageInfo>()
-  allInfos.forEach(info => tasks.set(info.name, info))
+  workspacePackages.forEach(info => tasks.set(info.name, info))
 
   const sortedNames = topologicalSort(tasks)
   const publicPackages = sortedNames
     .map(name => tasks.get(name))
-    .filter((pkg): pkg is PackageInfo => !!pkg && !pkg.private)
+    .filter(
+      (packageInfo): packageInfo is PackageInfo =>
+        !!packageInfo && !packageInfo.private,
+    )
 
   if (publicPackages.length === 0) {
     cliLogger.success('No public packages found in workspace.')
@@ -55,19 +58,19 @@ export async function releaseWorkspace(
     if (config.scripts?.releaseBuild) {
       await run(config.scripts.releaseBuild, [], { cwd, shell: true })
     } else {
-      const rootPkg = await readJSON(path.join(cwd, 'package.json'))
-      if (rootPkg.scripts?.build) {
+      const rootPackageJson = await readJSON(path.join(cwd, 'package.json'))
+      if (rootPackageJson.scripts?.build) {
         const command = packageManager.runScript('build')
         await run(command.bin, command.args, { cwd })
       }
     }
   }
 
-  for (const pkg of publicPackages) {
+  for (const packageInfo of publicPackages) {
     await releaseSingle(
       {
         ...options,
-        cwd: pkg.dir,
+        cwd: packageInfo.dir,
         skipBuild: true,
       },
       config,

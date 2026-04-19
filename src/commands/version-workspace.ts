@@ -64,11 +64,11 @@ export async function versionWorkspace(
   cliLogger.step(`Workspace Release: ${mode.toUpperCase()} MODE`)
 
   const lastRelease = await getLastReleaseCommit(cwd)
-  const allInfos = await scanWorkspacePackages(cwd)
+  const workspacePackages = await scanWorkspacePackages(cwd)
   const repoUrl = await getRepoUrl(cwd)
 
   const tasks = new Map<string, PackageTask>()
-  for (const info of allInfos) {
+  for (const info of workspacePackages) {
     const commits = await getPackageCommits(
       cwd,
       info.relativeDir,
@@ -76,9 +76,13 @@ export async function versionWorkspace(
     )
     let bumpType = determineBumpType(commits, config)
 
-    const isPreBranch = branchReleasePolicy.startsWith('pre')
+    const isPrereleaseBranchPolicy = branchReleasePolicy.startsWith('pre')
 
-    if (!bumpType && !isPreBranch && semver.prerelease(info.version)) {
+    if (
+      !bumpType &&
+      !isPrereleaseBranchPolicy &&
+      semver.prerelease(info.version)
+    ) {
       bumpType = 'patch'
       cliLogger.item(
         `[${info.name}] No new commits, promoting pre-release to stable.`,
@@ -124,9 +128,9 @@ export async function versionWorkspace(
   cliLogger.step('Updating workspace files...')
 
   if (globalNextVersion) {
-    const pkg = await loadPackageJSON('package.json', cwd)
-    pkg.raw.version = globalNextVersion
-    await savePackageJSON(pkg)
+    const rootPackageJson = await loadPackageJSON('package.json', cwd)
+    rootPackageJson.raw.version = globalNextVersion
+    await savePackageJSON(rootPackageJson)
     cliLogger.success(`Updated root package.json to ${globalNextVersion}`)
   }
 
@@ -215,7 +219,7 @@ function calculateVersions(
   branch: string,
   mode: WorkspaceMode,
 ): string {
-  const preid = branch.replace(/\//g, '-')
+  const prereleaseIdentifier = branch.replace(/\//g, '-')
 
   const allBumps = Array.from(tasks.values()).map(t => t.bumpType)
   const highestBump = getMaxBumpType(allBumps)
@@ -223,7 +227,12 @@ function calculateVersions(
     .map(t => t.version)
     .sort(semver.rcompare)[0]
 
-  const globalNext = inc(maxCurrentVer, highestBump, releasePolicy, preid)
+  const globalNext = bumpVersionByPolicy(
+    maxCurrentVer,
+    highestBump,
+    releasePolicy,
+    prereleaseIdentifier,
+  )
 
   if (mode === 'locked') {
     for (const t of tasks.values()) t.nextVersion = globalNext
@@ -231,25 +240,30 @@ function calculateVersions(
   } else {
     for (const t of tasks.values()) {
       if (t.bumpType) {
-        t.nextVersion = inc(t.version, t.bumpType, releasePolicy, preid)
+        t.nextVersion = bumpVersionByPolicy(
+          t.version,
+          t.bumpType,
+          releasePolicy,
+          prereleaseIdentifier,
+        )
       }
     }
     return globalNext
   }
 }
 
-function inc(
+function bumpVersionByPolicy(
   version: string,
   bumpType: BranchType,
   releasePolicy: BranchType,
-  preid: string,
+  prereleaseIdentifier: string,
 ) {
   if (releasePolicy.startsWith('pre')) {
     const isPre = !!semver.prerelease(version)
     return semver.inc(
       version,
       isPre ? 'prerelease' : (releasePolicy as semver.ReleaseType),
-      preid,
+      prereleaseIdentifier,
     )!
   }
   return semver.inc(version, bumpType as semver.ReleaseType)!

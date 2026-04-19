@@ -31,7 +31,7 @@ export async function releaseSingle(
   } = options
   const pkgPath = path.resolve(cwd, 'package.json')
 
-  const pkg = await readJSON(pkgPath)
+  const packageJson = await readJSON(pkgPath)
   const packageManager = await detectPackageManager(cwd)
   const currentBranch = branch || (await getCurrentBranch(cwd))
   const branchReleasePolicy = resolveBranchPolicy(
@@ -51,24 +51,26 @@ export async function releaseSingle(
   }
 
   const isPrereleasePolicy = branchReleasePolicy.startsWith('pre')
-  const preTags = semver.prerelease(pkg.version) || []
+  const preTags = semver.prerelease(packageJson.version) || []
   if (isPrereleasePolicy && preTags.length < 2) {
     cliLogger.error(
-      `Release Denied: Version "${pkg.version}" is not a valid prerelease for policy "${branchReleasePolicy}".`,
+      `Release Denied: Version "${packageJson.version}" is not a valid prerelease for policy "${branchReleasePolicy}".`,
     )
     abort(1)
   }
 
   cliLogger.step(`Checking registry...`)
-  cliLogger.item(`Package: ${pkg.name}`)
-  cliLogger.item(`Version: ${pkg.version}`)
+  cliLogger.item(`Package: ${packageJson.name}`)
+  cliLogger.item(`Version: ${packageJson.version}`)
   const versionAlreadyPublished = await checkVersionExists(
-    pkg.name,
-    pkg.version,
+    packageJson.name,
+    packageJson.version,
     registry,
   )
   if (versionAlreadyPublished) {
-    cliLogger.warn(`Skip: ${pkg.name}@${pkg.version} is already published.`)
+    cliLogger.warn(
+      `Skip: ${packageJson.name}@${packageJson.version} is already published.`,
+    )
     return
   }
 
@@ -85,7 +87,7 @@ export async function releaseSingle(
           `Run: ${cliLogger.highlight(config.scripts.releaseBuild)}`,
         )
         await run(config.scripts.releaseBuild, [], { cwd, shell: true })
-      } else if (pkg.scripts?.build) {
+      } else if (packageJson.scripts?.build) {
         const command = packageManager.runScript('build')
         cliLogger.item(`Run: ${command.bin} ${command.args.join(' ')}`)
         await run(command.bin, command.args, { cwd })
@@ -110,17 +112,17 @@ export async function releaseSingle(
 
   cliLogger.step(`Publishing...`)
   cliLogger.item(
-    `Package: ${pkg.name}@${pkg.version} Registry: ${registry || 'Default'} | Tag: ${releaseTag || 'latest'}\n`,
+    `Package: ${packageJson.name}@${packageJson.version} Registry: ${registry || 'Default'} | Tag: ${releaseTag || 'latest'}\n`,
   )
 
   try {
     const command = packageManager.publish(publishArgs)
     await run(command.bin, command.args, { cwd })
     if (!dry) {
-      cliLogger.success(`Released ${pkg.name}@${pkg.version}`)
+      cliLogger.success(`Released ${packageJson.name}@${packageJson.version}`)
     }
   } catch {
-    cliLogger.error(`NPM Publish failed for ${pkg.name}`)
+    cliLogger.error(`NPM Publish failed for ${packageJson.name}`)
     abort(1)
   }
 }

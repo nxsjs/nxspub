@@ -111,7 +111,7 @@ export async function getRawCommits(cwd: string, from?: string) {
     const { stdout } = await execa('git', args, { cwd })
     const mainLineCommits = stdout.split('\x1e').filter(Boolean)
 
-    let allMessages: { message: string; hash: string }[] = []
+    let allCommits: { message: string; hash: string }[] = []
 
     for (const line of mainLineCommits) {
       const { hash, message: subject } = parseGitLogRecord(line)
@@ -144,18 +144,18 @@ export async function getRawCommits(cwd: string, from?: string) {
 
         if (lastReleaseIndex !== -1) {
           const validSideCommits = sideCommits.slice(0, lastReleaseIndex)
-          allMessages.push(...validSideCommits)
+          allCommits.push(...validSideCommits)
         } else {
-          allMessages.push(...sideCommits)
+          allCommits.push(...sideCommits)
         }
 
-        allMessages.push({ message: subject, hash })
+        allCommits.push({ message: subject, hash })
       } else {
-        allMessages.push({ message: subject, hash })
+        allCommits.push({ message: subject, hash })
       }
     }
 
-    return allMessages
+    return allCommits
   } catch (e) {
     cliLogger.error(JSON.stringify(e))
     return []
@@ -185,9 +185,9 @@ export async function getLastReleaseCommit(cwd: string) {
 
     const firstPipeIndex = stdout.indexOf('|')
     const hash = stdout.slice(0, firstPipeIndex)
-    const msg = stdout.slice(firstPipeIndex + 1)
+    const releaseCommitMessage = stdout.slice(firstPipeIndex + 1)
 
-    const mainVersionMatch = msg.match(/v(\d+\.\d+\.\d+)/)
+    const mainVersionMatch = releaseCommitMessage.match(/v(\d+\.\d+\.\d+)/)
     const version = mainVersionMatch ? mainVersionMatch[1] : 'unknown'
 
     const workspacePackages: {
@@ -200,7 +200,7 @@ export async function getLastReleaseCommit(cwd: string) {
       /^- (@?[^\s@/]+(?:\/[^\s@/]+)?)@([\d.]+[\w.-]*)(?:\s*(\(private\)))?/gm
 
     let match
-    while ((match = packageLineRegex.exec(msg)) !== null) {
+    while ((match = packageLineRegex.exec(releaseCommitMessage)) !== null) {
       workspacePackages.push({
         name: match[1],
         version: match[2],
