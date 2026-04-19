@@ -63,7 +63,7 @@ describe('release workspace', () => {
     })
   })
 
-  it('fails fast when branch policy and workspace package versions mismatch', async () => {
+  it('skips packages that do not match branch policy instead of failing the whole release', async () => {
     const releaseSingle = vi.fn().mockResolvedValue(undefined)
 
     vi.doMock('../src/utils/git', () => ({
@@ -110,10 +110,7 @@ describe('release workspace', () => {
         { cwd: '/repo', dry: true },
         { branches: { main: 'latest' } },
       ),
-    ).rejects.toMatchObject({
-      name: 'NxspubError',
-      exitCode: 1,
-    })
+    ).resolves.toBeUndefined()
 
     expect(releaseSingle).not.toHaveBeenCalled()
   })

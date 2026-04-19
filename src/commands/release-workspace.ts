@@ -57,6 +57,7 @@ export async function releaseWorkspace(
       `Admission Denied: Branch "${currentBranch}" not configured.`,
     )
     abort(1)
+    return
   }
 
   cliLogger.step('Workspace Release: Initializing Pipeline')
@@ -79,26 +80,37 @@ export async function releaseWorkspace(
   }
 
   const isPrereleasePolicy = branchReleasePolicy.startsWith('pre')
-  const invalidPackage = publicPackages.find(pkg => {
+  const eligiblePackages: PackageInfo[] = []
+  const skippedPackages: PackageInfo[] = []
+
+  for (const pkg of publicPackages) {
     const preTags = semver.prerelease(pkg.version) || []
-    if (isPrereleasePolicy) {
-      return preTags.length < 2
+    const isPrereleaseVersion = preTags.length > 0
+    const canReleaseOnBranch = isPrereleasePolicy
+      ? isPrereleaseVersion
+      : !isPrereleaseVersion
+
+    if (canReleaseOnBranch) {
+      eligiblePackages.push(pkg)
+    } else {
+      skippedPackages.push(pkg)
     }
-    return preTags.length > 0
-  })
-  if (invalidPackage) {
-    const hint = isPrereleasePolicy
-      ? `expects prerelease versions`
-      : `does not allow prerelease versions`
-    cliLogger.error(
-      `Release Denied: Branch policy "${branchReleasePolicy}" ${hint}, but found ${invalidPackage.name}@${invalidPackage.version}.`,
-    )
-    abort(1)
   }
 
   cliLogger.item(
     `Release Queue (${publicPackages.length}): ${publicPackages.map(p => p.name).join(', ')}`,
   )
+  if (skippedPackages.length > 0) {
+    cliLogger.warn(
+      `Skipped ${skippedPackages.length} package(s) due to branch policy "${branchReleasePolicy}": ${skippedPackages.map(p => `${p.name}@${p.version}`).join(', ')}`,
+    )
+  }
+  if (eligiblePackages.length === 0) {
+    cliLogger.success(
+      `No packages match branch policy "${branchReleasePolicy}" for release.`,
+    )
+    return
+  }
 
   cliLogger.step('Building all workspace packages...')
   if (config.scripts?.releaseBuild) {
@@ -118,7 +130,7 @@ export async function releaseWorkspace(
     }
   }
 
-  for (const packageInfo of publicPackages) {
+  for (const packageInfo of eligiblePackages) {
     await releaseSingle(
       {
         ...options,
