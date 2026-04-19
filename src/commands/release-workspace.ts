@@ -2,7 +2,7 @@ import path from 'node:path'
 import type { NxspubConfig } from '../config'
 import type { ReleaseOptions } from './types'
 import { ensureGitSync, getCurrentBranch, run } from '../utils/git'
-import { nxsLog } from '../utils/logger'
+import { cliLogger } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
 import {
   type PackageInfo,
@@ -25,7 +25,7 @@ export async function releaseWorkspace(
     await ensureGitSync(currentBranch, cwd)
   }
 
-  nxsLog.step('Workspace Release: Initializing Pipeline')
+  cliLogger.step('Workspace Release: Initializing Pipeline')
 
   const allInfos = await scanWorkspacePackages(cwd)
   const tasks = new Map<string, PackageInfo>()
@@ -37,19 +37,19 @@ export async function releaseWorkspace(
     .filter((pkg): pkg is PackageInfo => !!pkg && !pkg.private)
 
   if (publicPackages.length === 0) {
-    nxsLog.success('No public packages found in workspace.')
+    cliLogger.success('No public packages found in workspace.')
     return
   }
 
-  nxsLog.item(
+  cliLogger.item(
     `Release Queue (${publicPackages.length}): ${publicPackages.map(p => p.name).join(', ')}`,
   )
 
-  nxsLog.step('Building all workspace packages...')
+  cliLogger.step('Building all workspace packages...')
   if (config.scripts?.releaseBuild) {
-    nxsLog.item(`Build Script: ${config.scripts.releaseBuild}`)
+    cliLogger.item(`Build Script: ${config.scripts.releaseBuild}`)
   } else {
-    nxsLog.item(`Build Script: ${packageManager.name} run build`)
+    cliLogger.item(`Build Script: ${packageManager.name} run build`)
   }
   if (!dry) {
     if (config.scripts?.releaseBuild) {
@@ -74,5 +74,5 @@ export async function releaseWorkspace(
     )
   }
 
-  nxsLog.success('Workspace release completed successfully.')
+  cliLogger.success('Workspace release completed successfully.')
 }

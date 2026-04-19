@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import type { NxspubConfig } from '../config'
 import { abort, toErrorMessage } from '../utils/errors'
-import { nxsLog } from '../utils/logger'
+import { cliLogger } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
 import type { GitHooksOptions } from './types'
 
@@ -18,7 +18,7 @@ export async function installGitHooks(
     .then(() => true)
     .catch(() => false)
   if (!hasGit) {
-    nxsLog.error('Git directory not found. Please run "git init" first.')
+    cliLogger.error('Git directory not found. Please run "git init" first.')
     abort(1)
   }
 
@@ -29,11 +29,11 @@ export async function installGitHooks(
   const hooksToInstall = config['git-hooks'] || {}
 
   if (Object.keys(hooksToInstall).length === 0) {
-    nxsLog.warn('No hooks defined in config. Skipping installation.')
+    cliLogger.warn('No hooks defined in config. Skipping installation.')
     return
   }
 
-  nxsLog.step('Installing Git Hooks...')
+  cliLogger.step('Installing Git Hooks...')
 
   if (!hooksToInstall['commit-msg']) {
     const packageManager = await detectPackageManager(cwd)
@@ -56,7 +56,7 @@ export async function installGitHooks(
 
     const fileContent = `#!/bin/sh\n# nxspub auto-generated\n\n${content}\n`
 
-    nxsLog.item(`Installing ${nxsLog.highlight(name)}...`)
+    cliLogger.item(`Installing ${cliLogger.highlight(name)}...`)
 
     if (!dry) {
       try {
@@ -66,12 +66,12 @@ export async function installGitHooks(
         })
         await fs.chmod(hookPath, 0o755)
       } catch (err) {
-        nxsLog.error(`Failed to install ${name}: ${toErrorMessage(err)}`)
+        cliLogger.error(`Failed to install ${name}: ${toErrorMessage(err)}`)
       }
     } else {
-      nxsLog.dim(`[Dry Run] Content for ${name}:\n${fileContent}`)
+      cliLogger.dim(`[Dry Run] Content for ${name}:\n${fileContent}`)
     }
   }
 
-  nxsLog.success('All Git Hooks installed successfully.')
+  cliLogger.success('All Git Hooks installed successfully.')
 }

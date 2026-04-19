@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
-import type { BrancheType, NxspubConfig, WorkspaceMode } from '../config'
+import type { BranchType, NxspubConfig, WorkspaceMode } from '../config'
 import { abort } from '../utils/errors'
 import {
   applyContributorsToChangelog,
@@ -13,7 +13,7 @@ import { formatDate } from '../utils/date'
 import {
   createLinkProvider,
   ensureGitSync,
-  getBranchContract,
+  resolveBranchType,
   getCurrentBranch,
   getLastReleaseCommit,
   getPackageCommits,
@@ -21,7 +21,7 @@ import {
   run,
   runSafe,
 } from '../utils/git'
-import { nxsLog } from '../utils/logger'
+import { cliLogger } from '../utils/logger'
 import {
   loadPackageJSON,
   readJSON,
@@ -46,9 +46,11 @@ export async function versionWorkspace(
   const mode = config.workspace?.mode || 'locked'
 
   const currentBranch = await getCurrentBranch(cwd)
-  const branchContract = getBranchContract(currentBranch!, config.branches)
-  if (!branchContract) {
-    nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
+  const branchReleaseType = resolveBranchType(currentBranch!, config.branches)
+  if (!branchReleaseType) {
+    cliLogger.error(
+      `Admission Denied: Branch "${currentBranch}" not configured.`,
+    )
     abort(1)
   }
 
@@ -56,7 +58,7 @@ export async function versionWorkspace(
     await ensureGitSync(currentBranch, cwd)
   }
 
-  nxsLog.step(`Workspace Release: ${mode.toUpperCase()} MODE`)
+  cliLogger.step(`Workspace Release: ${mode.toUpperCase()} MODE`)
 
   const lastRelease = await getLastReleaseCommit(cwd)
   const allInfos = await scanWorkspacePackages(cwd)
@@ -71,11 +73,11 @@ export async function versionWorkspace(
     )
     let bumpType = determineBumpType(commits, config)
 
-    const isPreBranch = branchContract && branchContract.startsWith('pre')
+    const isPreBranch = branchReleaseType && branchReleaseType.startsWith('pre')
 
     if (!bumpType && !isPreBranch && semver.prerelease(info.version)) {
       bumpType = 'patch'
-      nxsLog.item(
+      cliLogger.item(
         `[${info.name}] No new commits, promoting pre-release to stable.`,
       )
     }
@@ -94,35 +96,35 @@ export async function versionWorkspace(
     t => t.bumpType || t.isPassive,
   )
   if (changedTasks.length === 0) {
-    nxsLog.success('No incremental changes detected in any packages.')
+    cliLogger.success('No incremental changes detected in any packages.')
     return
   }
 
   const globalNextVersion = calculateVersions(
     tasks,
-    branchContract,
+    branchReleaseType,
     currentBranch!,
     mode,
   )
 
   if (dry) {
-    nxsLog.warn('DRY RUN: Version changes preview:')
-    nxsLog.item(`Root Package: -> ${globalNextVersion}`)
+    cliLogger.warn('DRY RUN: Version changes preview:')
+    cliLogger.item(`Root Package: -> ${globalNextVersion}`)
     changedTasks.forEach(t => {
-      nxsLog.item(
+      cliLogger.item(
         `${t.name}: ${t.version} → ${t.nextVersion} ${t.private ? '[PRIVATE]' : ''}`,
       )
     })
     return
   }
 
-  nxsLog.step('Updating workspace files...')
+  cliLogger.step('Updating workspace files...')
 
   if (globalNextVersion) {
     const pkg = await loadPackageJSON('package.json', cwd)
     pkg.raw.version = globalNextVersion
     await savePackageJSON(pkg)
-    nxsLog.success(`Updated root package.json to ${globalNextVersion}`)
+    cliLogger.success(`Updated root package.json to ${globalNextVersion}`)
   }
 
   const rootNewEntries: string[] = []
@@ -135,7 +137,7 @@ export async function versionWorkspace(
         task.changelogPath,
         task.version,
         task.bumpType || 'patch',
-        branchContract.startsWith('pre'),
+        branchReleaseType.startsWith('pre'),
       )
 
       const result = await updatePackageChangelog(
@@ -157,7 +159,7 @@ export async function versionWorkspace(
     await writeJSON(task.pkgPath, rawPkg)
 
     if (task.bumpType || task.isPassive) {
-      nxsLog.success(`Updated ${task.name} to ${task.nextVersion}`)
+      cliLogger.success(`Updated ${task.name} to ${task.nextVersion}`)
     }
   }
 
@@ -206,7 +208,7 @@ function propagateWorkspaceChanges(
 
 function calculateVersions(
   tasks: Map<string, PackageTask>,
-  contract: BrancheType,
+  contract: BranchType,
   branch: string,
   mode: WorkspaceMode,
 ): string {
@@ -233,12 +235,7 @@ function calculateVersions(
   }
 }
 
-function inc(
-  v: string,
-  bump: BrancheType,
-  contract: BrancheType,
-  preid: string,
-) {
+function inc(v: string, bump: BranchType, contract: BranchType, preid: string) {
   if (contract.startsWith('pre')) {
     const isPre = !!semver.prerelease(v)
     return semver.inc(
@@ -468,7 +465,7 @@ async function commitAndTagWorkspace(
   await run('git', ['push', 'origin', '--tags'], { cwd })
   await run('git', ['push', 'origin'], { cwd })
 
-  nxsLog.success(
+  cliLogger.success(
     `Released ${taggable.length} public packages [Global: v${globalNextVersion}]`,
   )
 }

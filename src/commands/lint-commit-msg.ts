@@ -2,8 +2,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import type { NxspubConfig } from '../config'
 import { abort } from '../utils/errors'
-import { getBranchContract, getCurrentBranch } from '../utils/git'
-import { nxsLog } from '../utils/logger'
+import { resolveBranchType, getCurrentBranch } from '../utils/git'
+import { cliLogger } from '../utils/logger'
 import { normalizeRegExp } from '../utils/regexp'
 import { determineBumpType } from '../utils/versions'
 
@@ -15,12 +15,12 @@ export async function lintCommitMsg(
 
   const msgPath = path.isAbsolute(edit) ? edit : path.resolve(cwd, edit)
 
-  const isExists = await fs
+  const fileExists = await fs
     .access(msgPath)
     .then(() => true)
     .catch(() => false)
-  if (!isExists) {
-    nxsLog.error(`Could not find commit message file at: ${msgPath}`)
+  if (!fileExists) {
+    cliLogger.error(`Could not find commit message file at: ${msgPath}`)
     abort(1)
   }
 
@@ -40,26 +40,26 @@ export async function lintCommitMsg(
     if (typeof rule.message === 'function') {
       const result = await rule.message(isValid, msg)
       if (!isValid && typeof result === 'string') {
-        nxsLog.error(result)
+        cliLogger.error(result)
         abort(1)
       } else if (!isValid) {
         abort(1)
       }
     } else {
       if (!isValid) {
-        nxsLog.error(rule.message)
+        cliLogger.error(rule.message)
         abort(1)
       }
     }
   }
 
   const currentBranch = await getCurrentBranch(cwd)
-  const branchContract =
+  const branchReleaseType =
     currentBranch && config.branches
-      ? getBranchContract(currentBranch, config.branches)
+      ? resolveBranchType(currentBranch, config.branches)
       : null
 
-  if (branchContract && branchContract !== 'latest') {
+  if (branchReleaseType && branchReleaseType !== 'latest') {
     const bumpType = determineBumpType([{ message: msg }], config)
     if (bumpType) {
       const semverOrder: Record<string, number> = {
@@ -72,17 +72,17 @@ export async function lintCommitMsg(
         latest: 4,
       }
 
-      const contractLevel = semverOrder[branchContract] || 0
+      const contractLevel = semverOrder[branchReleaseType] || 0
       const bumpLevel = semverOrder[bumpType] || 0
 
       if (bumpLevel > contractLevel) {
-        nxsLog.error(
-          `[Contract Violation] Branch "${currentBranch}" (Contract: ${branchContract}) prohibits ${bumpType.toUpperCase()} commits.`,
+        cliLogger.error(
+          `[Contract Violation] Branch "${currentBranch}" (Contract: ${branchReleaseType}) prohibits ${bumpType.toUpperCase()} commits.`,
         )
         abort(1)
       }
     }
   }
 
-  nxsLog.success('Commit message style passed.')
+  cliLogger.success('Commit message style passed.')
 }

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
-import type { BrancheType } from '../config'
+import type { BranchType } from '../config'
 import { formatDate } from './date'
 import { createLinkProvider, getContributors } from './git'
 
@@ -12,7 +12,7 @@ import { createLinkProvider, getContributors } from './git'
 export async function archiveChangelogIfNeeded(
   changelogPath: string,
   currentVersion: string,
-  bumpType: BrancheType,
+  bumpType: BranchType,
   isPreContract: boolean,
 ): Promise<string | undefined> {
   const PREVIOUS_HEADER = '## Previous Changelogs'

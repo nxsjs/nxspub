@@ -2,8 +2,8 @@ import { DEFAULT_CONFIG } from '../src/config'
 import { defineConfig } from '../src/index'
 import {
   createLinkProvider,
-  getBranchContract,
-  splitGitLogRecord,
+  parseGitLogRecord,
+  resolveBranchType,
 } from '../src/utils/git'
 import { normalizeRegExp } from '../src/utils/regexp'
 import { formatDate } from '../src/utils/date'
@@ -29,15 +29,15 @@ describe('core utilities', () => {
   })
 
   it('matches branch contracts from string patterns', () => {
-    expect(getBranchContract('main', DEFAULT_CONFIG.branches)).toBe('latest')
+    expect(resolveBranchType('main', DEFAULT_CONFIG.branches)).toBe('latest')
     expect(
-      getBranchContract('feature/demo', { 'feature/.*': 'preminor' }),
+      resolveBranchType('feature/demo', { 'feature/.*': 'preminor' }),
     ).toBe('preminor')
-    expect(getBranchContract('unknown', DEFAULT_CONFIG.branches)).toBeNull()
+    expect(resolveBranchType('unknown', DEFAULT_CONFIG.branches)).toBeNull()
   })
 
   it('parses git log records by the first pipe only', () => {
-    expect(splitGitLogRecord('abc123|feat: support a | b syntax')).toEqual({
+    expect(parseGitLogRecord('abc123|feat: support a | b syntax')).toEqual({
       hash: 'abc123',
       message: 'feat: support a | b syntax',
     })

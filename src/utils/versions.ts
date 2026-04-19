@@ -1,4 +1,4 @@
-import type { BrancheType, NxspubConfig } from '../config'
+import type { BranchType, NxspubConfig } from '../config'
 import type { PackageTask } from './packages'
 
 /**
@@ -14,14 +14,14 @@ import type { PackageTask } from './packages'
  * @zh 包含版本匹配正则模式的 Nxspub 配置。
  *
  * @returns
- * @en The determined BrancheType (major, minor, patch) or null if no match
+ * @en The determined BranchType (major, minor, patch) or null if no match
  * @zh 确定的发布类型（大、小、补丁），无匹配则返回 null。
  */
 export function determineBumpType(
   commits: { message: string }[],
   config: NxspubConfig,
-): BrancheType | null {
-  let type: BrancheType | null = null
+): BranchType | null {
+  let type: BranchType | null = null
   for (const { message } of commits) {
     const lines = message
       .split('\n')
@@ -45,7 +45,7 @@ export function determineBumpType(
  * @en SemVer weight mapping. Higher value = Higher priority
  * @zh SemVer 权重映射。数值越高，优先级越高
  */
-export const BUMP_WEIGHTS: Record<BrancheType, number> = {
+export const BUMP_WEIGHTS: Record<BranchType, number> = {
   major: 3,
   premajor: 3,
   minor: 2,
@@ -60,9 +60,9 @@ export const BUMP_WEIGHTS: Record<BrancheType, number> = {
  * @zh 从一组类型中返回最高等级的升级类型
  */
 export function getMaxBumpType(
-  types: (BrancheType | null | undefined)[],
-): BrancheType {
-  const validTypes = types.filter((t): t is BrancheType => !!t)
+  types: (BranchType | null | undefined)[],
+): BranchType {
+  const validTypes = types.filter((t): t is BranchType => !!t)
   if (validTypes.length === 0) return 'patch'
 
   return [...validTypes].sort((a, b) => BUMP_WEIGHTS[b] - BUMP_WEIGHTS[a])[0]
@@ -75,7 +75,7 @@ export function getMaxBumpType(
 export function getHighestBumpType(
   task: PackageTask,
   tasks: Map<string, PackageTask>,
-): BrancheType {
+): BranchType {
   const depTypes = task.dependencies.map(dep => tasks.get(dep)?.bumpType)
   return getMaxBumpType(depTypes)
 }

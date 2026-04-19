@@ -5,7 +5,7 @@ import chalk from 'chalk'
  * Defines how the version should be bumped when releasing from a specific branch.
  * @zh 分支关联的发布类型。定义从特定分支发布时应如何提升版本号。
  */
-export type BrancheType =
+export type BranchType =
   | 'major' // Major release (1.0.0 -> 2.0.0)
   | 'minor' // Minor release (1.0.0 -> 1.1.0)
   | 'patch' // Patch release (1.0.0 -> 1.0.1)
@@ -108,7 +108,7 @@ export interface NxspubConfig {
    * @zh 分支模式与发布类型的映射关系。
    * @example { "main": "latest", "alpha/*": "preminor" }
    */
-  branches?: Record<string, BrancheType>
+  branches?: Record<string, BranchType>
 
   /**
    * @en Custom rules to determine the version bump based on commit messages.

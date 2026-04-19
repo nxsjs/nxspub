@@ -10,7 +10,7 @@ const bgBrand = chalk.bgHex(PRIMARY_HEX).black.bold
  * @en Main logging utility for nxspub.
  * @zh nxspub 的主要日志工具。
  */
-export const nxsLog = {
+export const cliLogger = {
   /**
    * @en Print a major step header with solid background.
    * @zh 打印带有实色背景的主步骤标题。
@@ -85,6 +85,11 @@ export const nxsLog = {
 }
 
 /**
+ * @deprecated Use cliLogger instead.
+ */
+export const nxsLog = cliLogger
+
+/**
  * @en Prints the Neubrutalism style CLI banner.
  * @zh 打印新粗犷主义风格的 CLI 横幅。
  */
@@ -102,14 +107,14 @@ export const printBanner = () => {
 
   console.log(chalk.black('▀'.repeat(name.length)))
 
-  nxsLog.item(`⚡Version: ${version}`)
-  nxsLog.item(
+  cliLogger.item(`⚡Version: ${version}`)
+  cliLogger.item(
     '⚡Website: ' +
       chalk.underline(
         `\u001b]8;;https://nxsjs.com\u0007${url}\u001b]8;;\u0007`,
       ),
   )
-  nxsLog.divider(name.length)
+  cliLogger.divider(name.length)
 
   console.log('')
 }

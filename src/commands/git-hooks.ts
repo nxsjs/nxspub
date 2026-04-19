@@ -1,6 +1,6 @@
 import { loadConfig } from '../utils/load-config'
 import { abort, toErrorMessage } from '../utils/errors'
-import { nxsLog } from '../utils/logger'
+import { cliLogger } from '../utils/logger'
 import { installGitHooks } from './install-git-hooks'
 import type { GitHooksOptions } from './types'
 
@@ -9,7 +9,7 @@ export async function gitHooksCommand(options: GitHooksOptions) {
     const config = await loadConfig(options.cwd)
     await installGitHooks(options, config)
   } catch (err) {
-    nxsLog.error(`Command failed: ${toErrorMessage(err)}`)
+    cliLogger.error(`Command failed: ${toErrorMessage(err)}`)
     abort(1)
   }
 }

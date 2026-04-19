@@ -1,4 +1,4 @@
-import { nxsLog } from './logger'
+import { cliLogger } from './logger'
 
 export class NxspubError extends Error {
   exitCode: number
@@ -28,11 +28,11 @@ export function toErrorMessage(error: unknown): string {
 export function handleCliError(error: unknown): never {
   if (error instanceof NxspubError) {
     if (!error.silent && error.message) {
-      nxsLog.error(error.message)
+      cliLogger.error(error.message)
     }
     process.exit(error.exitCode)
   }
 
-  nxsLog.error(toErrorMessage(error))
+  cliLogger.error(toErrorMessage(error))
   process.exit(1)
 }

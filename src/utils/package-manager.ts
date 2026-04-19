@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { nxsLog } from './logger'
+import { cliLogger } from './logger'
 import { readJSON } from './packages'
 
 export type PackageManagerName = 'pnpm' | 'npm' | 'yarn'
@@ -87,7 +87,7 @@ export async function detectPackageManager(
     }
   } catch (error) {
     if (process.env.NXSPUB_DEBUG) {
-      nxsLog.dim(
+      cliLogger.dim(
         `Failed to detect package manager from package.json: ${String(error)}`,
       )
     }

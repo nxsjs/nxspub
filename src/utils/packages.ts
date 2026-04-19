@@ -3,9 +3,9 @@ import fg from 'fast-glob'
 import yaml from 'js-yaml'
 import { promises as fs } from 'node:fs'
 import path, { resolve } from 'node:path'
-import type { BrancheType } from '../config'
+import type { BranchType } from '../config'
 import { abort } from './errors'
-import { nxsLog } from './logger'
+import { cliLogger } from './logger'
 
 /**
  * @en Read and parse a JSON file.
@@ -163,7 +163,7 @@ export interface PackageTask extends PackageInfo {
   /** @en Git commits since last release. @zh 自上次发布以来的 Git 提交。 */
   commits: { message: string; hash: string }[]
   /** @en Determined bump type. @zh 确定的升级类型。 */
-  bumpType: BrancheType | null
+  bumpType: BranchType | null
   /** @en Triggered by dependency change. @zh 是否由依赖变动被动触发。 */
   isPassive: boolean
   /** @en Reasons for passive trigger. @zh 依赖变动被动触发的原因。 */
@@ -208,7 +208,7 @@ export async function scanWorkspacePackages(
     }
   } catch (error) {
     if (process.env.NXSPUB_DEBUG) {
-      nxsLog.dim(`Failed to load pnpm-workspace.yaml: ${String(error)}`)
+      cliLogger.dim(`Failed to load pnpm-workspace.yaml: ${String(error)}`)
     }
     try {
       const rootPkg = await readJSON(path.join(cwd, 'package.json'))
@@ -224,7 +224,7 @@ export async function scanWorkspacePackages(
       }
     } catch (fallbackError) {
       if (process.env.NXSPUB_DEBUG) {
-        nxsLog.dim(
+        cliLogger.dim(
           `Failed to load workspaces from package.json: ${String(fallbackError)}`,
         )
       }
@@ -273,7 +273,7 @@ export async function scanWorkspacePackages(
       })
     } catch (error) {
       if (process.env.NXSPUB_DEBUG) {
-        nxsLog.dim(`Skipping invalid package file ${file}: ${String(error)}`)
+        cliLogger.dim(`Skipping invalid package file ${file}: ${String(error)}`)
       }
     }
   }
@@ -290,7 +290,7 @@ export function topologicalSort<T extends { dependencies: string[] }>(
 
   function visit(name: string) {
     if (visiting.has(name)) {
-      nxsLog.error(
+      cliLogger.error(
         `Circular dependency: ${Array.from(visiting).join(' -> ')} -> ${name}`,
       )
       abort(1)

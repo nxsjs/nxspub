@@ -1,5 +1,5 @@
 import { parseCommit } from '../src/utils/changelog'
-import { splitGitLogRecord } from '../src/utils/git'
+import { parseGitLogRecord } from '../src/utils/git'
 
 it('links issue references in commit subjects with the captured issue id', () => {
   const parsed = parseCommit(
@@ -13,7 +13,7 @@ it('links issue references in commit subjects with the captured issue id', () =>
 })
 
 it('keeps commit body content after pipe characters when parsing git log output', () => {
-  const record = splitGitLogRecord(
+  const record = parseGitLogRecord(
     'abc123|feat(core): support pipelines\n\nBREAKING CHANGE: allow a | b syntax',
   )
 

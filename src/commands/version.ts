@@ -1,7 +1,7 @@
 import { abort } from '../utils/errors'
 import { runSafe } from '../utils/git'
 import { loadConfig } from '../utils/load-config'
-import { nxsLog } from '../utils/logger'
+import { cliLogger } from '../utils/logger'
 import { versionSingle } from './version-single'
 import type { VersionOptions } from './types'
 import { versionWorkspace } from './version-workspace'
@@ -16,10 +16,10 @@ export async function versionCommand(options: VersionOptions) {
     { cwd },
   )
   if (dirtyFiles && !dry) {
-    nxsLog.error(
+    cliLogger.error(
       'Uncommitted changes detected. Please commit or stash them before releasing.',
     )
-    nxsLog.item('Files:\n' + dirtyFiles)
+    cliLogger.item('Files:\n' + dirtyFiles)
     abort(1)
   }
 

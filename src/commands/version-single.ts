@@ -13,7 +13,7 @@ import { formatDate } from '../utils/date'
 import {
   createLinkProvider,
   ensureGitSync,
-  getBranchContract,
+  resolveBranchType,
   getCurrentBranch,
   getLastReleaseCommit,
   getRawCommits,
@@ -21,7 +21,7 @@ import {
   run,
   runSafe,
 } from '../utils/git'
-import { nxsLog } from '../utils/logger'
+import { cliLogger } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
 import { readJSON, writeJSON } from '../utils/packages'
 import { determineBumpType } from '../utils/versions'
@@ -36,9 +36,11 @@ export async function versionSingle(
   const changelogPath = path.resolve(cwd, 'CHANGELOG.md')
 
   const currentBranch = await getCurrentBranch(cwd)
-  const branchContract = getBranchContract(currentBranch!, config.branches)
-  if (!branchContract) {
-    nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
+  const branchReleaseType = resolveBranchType(currentBranch!, config.branches)
+  if (!branchReleaseType) {
+    cliLogger.error(
+      `Admission Denied: Branch "${currentBranch}" not configured.`,
+    )
     abort(1)
   }
 
@@ -52,7 +54,7 @@ export async function versionSingle(
       .then(() => true)
       .catch(() => false))
   ) {
-    nxsLog.error('package.json not found.')
+    cliLogger.error('package.json not found.')
     return
   }
 
@@ -61,15 +63,15 @@ export async function versionSingle(
   const currentPkgVersion = pkg.version
   const repoUrl = await getRepoUrl(cwd)
 
-  nxsLog.step(`Branch Contract`)
-  nxsLog.item(`${currentBranch}: ${branchContract}`)
+  cliLogger.step(`Branch Contract`)
+  cliLogger.item(`${currentBranch}: ${branchReleaseType}`)
 
-  nxsLog.step('Synchronizing version state')
+  cliLogger.step('Synchronizing version state')
   const lastRelease = await getLastReleaseCommit(cwd)
   const commits = await getRawCommits(cwd, lastRelease?.hash)
 
   if (commits.length === 0) {
-    nxsLog.success('No incremental commits found since last release.')
+    cliLogger.success('No incremental commits found since last release.')
     return
   }
 
@@ -79,18 +81,18 @@ export async function versionSingle(
     const preInfo = semver.prerelease(currentPkgVersion)
 
     if (preInfo) {
-      if (branchContract && branchContract.startsWith('pre')) {
-        nxsLog.success(
+      if (branchReleaseType && branchReleaseType.startsWith('pre')) {
+        cliLogger.success(
           'No incremental changes found in pre-release branch. Skipping.',
         )
         return
       }
-      nxsLog.item(
+      cliLogger.item(
         `No new commits, but promoting pre-release [${currentPkgVersion}] to stable.`,
       )
       bumpType = 'patch'
     } else {
-      nxsLog.success('No version-triggering commits found.')
+      cliLogger.success('No version-triggering commits found.')
       return
     }
   }
@@ -104,28 +106,28 @@ export async function versionSingle(
     premajor: 3,
     latest: 4,
   }
-  const contractLevel = semverOrder[branchContract] || 0
+  const contractLevel = semverOrder[branchReleaseType] || 0
   const bumpLevel = semverOrder[bumpType] || 0
 
   if (
     contractLevel > 0 &&
     bumpLevel > contractLevel &&
-    branchContract !== 'latest'
+    branchReleaseType !== 'latest'
   ) {
-    nxsLog.error(
-      `[Contract Violation] Branch "${currentBranch}" (Contract: ${branchContract}) prohibits ${bumpType.toUpperCase()} changes.`,
+    cliLogger.error(
+      `[Contract Violation] Branch "${currentBranch}" (Contract: ${branchReleaseType}) prohibits ${bumpType.toUpperCase()} changes.`,
     )
     abort(1)
   }
 
   let targetVersion: string
-  const isPreContract = branchContract.startsWith('pre')
+  const isPreContract = branchReleaseType.startsWith('pre')
   const preid = currentBranch!
   if (isPreContract) {
     const isCurrentlyPre = !!semver.prerelease(currentPkgVersion)
     const action = isCurrentlyPre
       ? 'prerelease'
-      : (branchContract as semver.ReleaseType)
+      : (branchReleaseType as semver.ReleaseType)
     targetVersion = semver.inc(currentPkgVersion, action, preid)!
   } else {
     targetVersion = semver.inc(
@@ -134,8 +136,8 @@ export async function versionSingle(
     )!
   }
 
-  nxsLog.item(`Current Version: ${nxsLog.highlight(currentPkgVersion)}`)
-  nxsLog.item(`Target Version: ${nxsLog.highlight(targetVersion)}`)
+  cliLogger.item(`Current Version: ${cliLogger.highlight(currentPkgVersion)}`)
+  cliLogger.item(`Target Version: ${cliLogger.highlight(targetVersion)}`)
 
   const date = formatDate()
   const links = createLinkProvider(repoUrl)
@@ -210,13 +212,13 @@ export async function versionSingle(
   )
 
   if (dry) {
-    nxsLog.warn('DRY RUN: Changelog entry:')
-    nxsLog.log(newEntry)
+    cliLogger.warn('DRY RUN: Changelog entry:')
+    cliLogger.log(newEntry)
     return
   }
 
-  nxsLog.step('Updating Files')
-  nxsLog.item(changelogPath)
+  cliLogger.step('Updating Files')
+  cliLogger.item(changelogPath)
 
   let currentChangelog = ''
   try {
@@ -235,13 +237,13 @@ export async function versionSingle(
   currentChangelog = cleanupExistingEntry(currentChangelog, targetVersion)
 
   pkg.version = targetVersion
-  nxsLog.item(`Updating ${pkgPath}...`)
+  cliLogger.item(`Updating ${pkgPath}...`)
 
   await writeJSON(pkgPath, pkg)
-  nxsLog.item(`Updating ${changelogPath}...`)
+  cliLogger.item(`Updating ${changelogPath}...`)
   await fs.writeFile(changelogPath, (newEntry + currentChangelog).trim() + '\n')
 
-  nxsLog.step('Updating lockfile...')
+  cliLogger.step('Updating lockfile...')
   const installCommand = packageManager.install()
   await run(installCommand.bin, installCommand.args, { cwd })
 
@@ -251,25 +253,25 @@ export async function versionSingle(
     { cwd },
   )
   if (hasChanges) {
-    nxsLog.step('Committing changes...')
+    cliLogger.step('Committing changes...')
     await run('git', ['add', '-A'], { cwd })
     await run('git', ['commit', '-m', `release: v${targetVersion}`], { cwd })
 
-    nxsLog.step('Creating Git Tag...')
-    nxsLog.item(`v${targetVersion}`)
+    cliLogger.step('Creating Git Tag...')
+    cliLogger.item(`v${targetVersion}`)
 
     await run('git', ['tag', `v${targetVersion}`], { cwd })
 
-    nxsLog.step('Pushing to remote...')
+    cliLogger.step('Pushing to remote...')
 
     await run('git', ['push', 'origin', `refs/tags/v${targetVersion}`], { cwd })
 
     await run('git', ['push'], { cwd })
 
-    nxsLog.success(`Successfully released and pushed v${targetVersion}`)
+    cliLogger.success(`Successfully released and pushed v${targetVersion}`)
   } else {
-    nxsLog.dim('No changes detected, skipping git push.')
+    cliLogger.dim('No changes detected, skipping git push.')
   }
 
-  nxsLog.divider()
+  cliLogger.divider()
 }

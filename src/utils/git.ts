@@ -1,8 +1,8 @@
 import { execa } from 'execa'
 import { createHash } from 'node:crypto'
-import type { BrancheType } from '../config'
+import type { BranchType } from '../config'
 import { abort } from './errors'
-import { nxsLog } from './logger'
+import { cliLogger } from './logger'
 import { normalizeRegExp } from './regexp'
 
 /**
@@ -19,7 +19,7 @@ export const run = (bin: string, args: string[], opts = {}) =>
 export const runSafe = (bin: string, args: string[], opts = {}) =>
   execa(bin, args, { ...opts })
 
-export function splitGitLogRecord(line: string) {
+export function parseGitLogRecord(line: string) {
   const firstPipeIndex = line.indexOf('|')
   if (firstPipeIndex === -1) {
     return { hash: line.trim(), message: '' }
@@ -114,7 +114,7 @@ export async function getRawCommits(cwd: string, from?: string) {
     let allMessages: { message: string; hash: string }[] = []
 
     for (const line of mainLineCommits) {
-      const { hash, message: subject } = splitGitLogRecord(line)
+      const { hash, message: subject } = parseGitLogRecord(line)
       const { stdout: parents } = await execa(
         'git',
         ['show', '--summary', '--format=%P', '-s', hash],
@@ -136,7 +136,7 @@ export async function getRawCommits(cwd: string, from?: string) {
         const sideCommits = sideCommitsRaw
           .split('\x1e')
           .filter(Boolean)
-          .map(splitGitLogRecord)
+          .map(parseGitLogRecord)
 
         const lastReleaseIndex = sideCommits.findIndex(c =>
           /^release(\(.*\))?:/i.test(c.message),
@@ -157,7 +157,7 @@ export async function getRawCommits(cwd: string, from?: string) {
 
     return allMessages
   } catch (e) {
-    nxsLog.error(JSON.stringify(e))
+    cliLogger.error(JSON.stringify(e))
     return []
   }
 }
@@ -251,7 +251,9 @@ export async function getCurrentBranch(
     if (result && result !== 'HEAD') return result
   } catch (error) {
     if (process.env.NXSPUB_DEBUG) {
-      nxsLog.dim(`Failed to detect current branch from git: ${String(error)}`)
+      cliLogger.dim(
+        `Failed to detect current branch from git: ${String(error)}`,
+      )
     }
   }
 
@@ -276,13 +278,13 @@ export async function getCurrentBranch(
  *
  * @example
  * // If branches is { "main": "latest", "feat/*": "preminor" }
- * getBranchContract("main", branches) // returns "latest"
- * getBranchContract("feat/ui-button", branches) // returns "preminor"
+ * resolveBranchType("main", branches) // returns "latest"
+ * resolveBranchType("feat/ui-button", branches) // returns "preminor"
  */
-export function getBranchContract(
+export function resolveBranchType(
   branch: string,
-  branches?: Record<string, BrancheType>,
-): BrancheType | null {
+  branches?: Record<string, BranchType>,
+): BranchType | null {
   if (!branches) return null
   for (const [pattern, type] of Object.entries(branches))
     if (normalizeRegExp(pattern).test(branch)) return type
@@ -328,7 +330,7 @@ export async function getPackageCommits(
     const allRelevantCommits: { message: string; hash: string }[] = []
 
     for (const line of mainLineCommits) {
-      const { hash, message: subject } = splitGitLogRecord(line)
+      const { hash, message: subject } = parseGitLogRecord(line)
 
       const { stdout: parents } = await runSafe(
         'git',
@@ -353,7 +355,7 @@ export async function getPackageCommits(
         const sideCommits = sideCommitsRaw
           .split('\x1e')
           .filter(Boolean)
-          .map(splitGitLogRecord)
+          .map(parseGitLogRecord)
 
         const lastReleaseIndex = sideCommits.findIndex(c =>
           /^release(\(.*\))?:/i.test(c.message),
@@ -411,7 +413,7 @@ export async function getContributors(
       })
     } catch (error) {
       if (process.env.NXSPUB_DEBUG) {
-        nxsLog.dim(
+        cliLogger.dim(
           `Failed to load contributor history emails: ${String(error)}`,
         )
       }
@@ -517,19 +519,19 @@ export async function getContributors(
  * @zh 确保本地环境处于安全的可发布状态（工作区干净且与远程同步）。
  */
 export async function ensureGitSync(currentBranch: string, cwd: string) {
-  nxsLog.step('Pre-flight Safety Check')
+  cliLogger.step('Pre-flight Safety Check')
 
   const { stdout: isDirty } = await runSafe('git', ['status', '--porcelain'], {
     cwd,
   })
   if (isDirty.trim()) {
-    nxsLog.error('Admission Denied: Working directory is not clean.')
-    nxsLog.item('Please commit or stash your changes before releasing.')
+    cliLogger.error('Admission Denied: Working directory is not clean.')
+    cliLogger.item('Please commit or stash your changes before releasing.')
     abort(1)
   }
 
   try {
-    nxsLog.item(`Fetching origin/${currentBranch}...`)
+    cliLogger.item(`Fetching origin/${currentBranch}...`)
     await run('git', ['fetch', 'origin', currentBranch], { cwd })
 
     const { stdout: status } = await runSafe(
@@ -547,35 +549,35 @@ export async function ensureGitSync(currentBranch: string, cwd: string) {
     const [ahead, behind] = status.trim().split('\t').map(Number)
 
     if (behind > 0) {
-      nxsLog.warn(`Local branch is behind remote by ${behind} commit(s).`)
-      nxsLog.item('Attempting fast-forward pull...')
+      cliLogger.warn(`Local branch is behind remote by ${behind} commit(s).`)
+      cliLogger.item('Attempting fast-forward pull...')
 
       try {
         await run('git', ['pull', '--ff-only', 'origin', currentBranch], {
           cwd,
         })
-        nxsLog.success('Successfully synchronized with remote.')
+        cliLogger.success('Successfully synchronized with remote.')
       } catch {
-        nxsLog.error('Conflict Detected: Automatic pull failed.')
-        nxsLog.item(
+        cliLogger.error('Conflict Detected: Automatic pull failed.')
+        cliLogger.item(
           'Please resolve merge conflicts manually before running nxspub.',
         )
         abort(1)
       }
     } else if (ahead > 0) {
-      nxsLog.error(`Local branch is ahead of remote by ${ahead} commit(s).`)
-      nxsLog.item(
+      cliLogger.error(`Local branch is ahead of remote by ${ahead} commit(s).`)
+      cliLogger.item(
         'Admission Denied: Please push your local commits before releasing.',
       )
-      nxsLog.item(
+      cliLogger.item(
         'This ensures all changes are tracked and verified by remote CI.',
       )
       abort(1)
     } else {
-      nxsLog.item('Local branch is perfectly aligned with remote.')
+      cliLogger.item('Local branch is perfectly aligned with remote.')
     }
   } catch (e) {
-    nxsLog.error(JSON.stringify(e))
+    cliLogger.error(JSON.stringify(e))
     abort(1)
   }
 }
@@ -594,7 +596,7 @@ export async function getTagHashMap(cwd: string): Promise<Map<string, string>> {
     })
   } catch (error) {
     if (process.env.NXSPUB_DEBUG) {
-      nxsLog.dim(`Failed to load git tag hash map: ${String(error)}`)
+      cliLogger.dim(`Failed to load git tag hash map: ${String(error)}`)
     }
   }
   return map
@@ -610,7 +612,7 @@ export async function getSegmentedHistory(cwd: string, relPath?: string) {
   if (relPath) args.push('--', relPath)
 
   const { stdout } = await runSafe('git', args, { cwd })
-  const commits = stdout.split('\n').filter(Boolean).map(splitGitLogRecord)
+  const commits = stdout.split('\n').filter(Boolean).map(parseGitLogRecord)
 
   const tagMap = await getTagHashMap(cwd)
   const segments: {
@@ -709,3 +711,13 @@ export function createLinkProvider(repoUrl: string) {
     },
   }
 }
+
+/**
+ * @deprecated Use parseGitLogRecord instead.
+ */
+export const splitGitLogRecord = parseGitLogRecord
+
+/**
+ * @deprecated Use resolveBranchType instead.
+ */
+export const getBranchContract = resolveBranchType

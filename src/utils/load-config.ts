@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { NxspubConfig } from '../config'
 import { DEFAULT_CONFIG } from '../config'
-import { nxsLog } from './logger'
+import { cliLogger } from './logger'
 import { readJSON } from './packages'
 
 /**
@@ -48,7 +48,9 @@ export async function loadConfig(
         break
       } catch (error) {
         if (process.env.NXSPUB_DEBUG) {
-          nxsLog.dim(`Failed to load config file ${fullPath}: ${String(error)}`)
+          cliLogger.dim(
+            `Failed to load config file ${fullPath}: ${String(error)}`,
+          )
         }
         continue
       }
@@ -64,7 +66,7 @@ export async function loadConfig(
       }
     } catch (error) {
       if (process.env.NXSPUB_DEBUG) {
-        nxsLog.dim(`Failed to load package.json config: ${String(error)}`)
+        cliLogger.dim(`Failed to load package.json config: ${String(error)}`)
       }
     }
   }
