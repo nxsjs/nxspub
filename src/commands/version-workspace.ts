@@ -342,7 +342,13 @@ export async function versionWorkspace(
     })
   }
 
-  await commitAndTagWorkspace(cwd, tasks, mode, globalNextVersion)
+  await commitAndTagWorkspace(
+    cwd,
+    tasks,
+    mode,
+    globalNextVersion,
+    currentBranch!,
+  )
 }
 
 function propagateWorkspaceChanges(
@@ -631,6 +637,7 @@ async function commitAndTagWorkspace(
   tasks: Map<string, PackageTask>,
   mode: WorkspaceMode,
   globalNextVersion: string,
+  currentBranch: string,
 ) {
   const changed = Array.from(tasks.values()).filter(
     t => t.nextVersion && t.nextVersion !== t.version,
@@ -684,7 +691,7 @@ async function commitAndTagWorkspace(
       'push',
       '--atomic',
       'origin',
-      'HEAD',
+      `HEAD:${currentBranch}`,
       ...tagsToCreate.map(tag => `refs/tags/${tag}`),
     ],
     { cwd },

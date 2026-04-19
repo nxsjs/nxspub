@@ -448,7 +448,13 @@ export async function versionSingle(
     cliLogger.step('Pushing to remote...')
     await run(
       'git',
-      ['push', '--atomic', 'origin', 'HEAD', `refs/tags/${releaseTag}`],
+      [
+        'push',
+        '--atomic',
+        'origin',
+        `HEAD:${currentBranch}`,
+        `refs/tags/${releaseTag}`,
+      ],
       { cwd },
     )
 
