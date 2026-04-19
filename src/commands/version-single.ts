@@ -21,6 +21,8 @@ import {
   ensureGitSync,
   resolveBranchPolicy,
   getCurrentBranch,
+  hasLocalTag,
+  hasRemoteTag,
   getLastReleaseCommit,
   getRawCommits,
   getRepoUrl,
@@ -190,6 +192,22 @@ export async function versionSingle(
     `Current Version: ${cliLogger.highlight(currentPackageVersion)}`,
   )
   cliLogger.item(`Target Version: ${cliLogger.highlight(targetVersion)}`)
+
+  const releaseTag = `v${targetVersion}`
+  if (!dry) {
+    if (await hasLocalTag(cwd, releaseTag)) {
+      cliLogger.error(
+        `Tag "${releaseTag}" already exists locally. Stop to avoid ambiguous release state.`,
+      )
+      abort(1)
+    }
+    if (await hasRemoteTag(cwd, releaseTag)) {
+      cliLogger.error(
+        `Tag "${releaseTag}" already exists on origin. Stop to avoid duplicate release.`,
+      )
+      abort(1)
+    }
+  }
 
   const links = createLinkProvider(repoUrl)
   const groups: Record<string, string[]> = {}
@@ -395,6 +413,12 @@ export async function versionSingle(
   const installCommand = packageManager.install()
   await run(installCommand.bin, installCommand.args, { cwd })
 
+  if (branchReleasePolicy === 'latest' && currentBranch) {
+    await updateStableBranchState(cwd, currentBranch, {
+      rootVersion: targetVersion,
+    })
+  }
+
   const { stdout: hasChanges } = await runSafe(
     'git',
     ['status', '--porcelain'],
@@ -406,29 +430,17 @@ export async function versionSingle(
     await run('git', ['commit', '-m', `release: v${targetVersion}`], { cwd })
 
     cliLogger.step('Creating Git Tag...')
-    cliLogger.item(`v${targetVersion}`)
+    cliLogger.item(releaseTag)
 
-    await run('git', ['tag', `v${targetVersion}`], { cwd })
+    await run('git', ['tag', releaseTag], { cwd })
 
     cliLogger.step('Pushing to remote...')
 
-    await run('git', ['push', 'origin', `refs/tags/v${targetVersion}`], { cwd })
-
     await run('git', ['push'], { cwd })
-
-    if (branchReleasePolicy === 'latest' && currentBranch) {
-      await updateStableBranchState(cwd, currentBranch, {
-        rootVersion: targetVersion,
-      })
-    }
+    await run('git', ['push', 'origin', `refs/tags/${releaseTag}`], { cwd })
 
     cliLogger.success(`Successfully released and pushed v${targetVersion}`)
   } else {
-    if (branchReleasePolicy === 'latest' && currentBranch) {
-      await updateStableBranchState(cwd, currentBranch, {
-        rootVersion: targetVersion,
-      })
-    }
     cliLogger.dim('No changes detected, skipping git push.')
   }
 

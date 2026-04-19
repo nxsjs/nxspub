@@ -34,7 +34,7 @@ describe('release lock', () => {
     await writeFile(
       lockPath,
       JSON.stringify({
-        pid: 1234,
+        pid: 999999,
         createdAt: '2000-01-01T00:00:00.000Z',
       }),
       'utf-8',
@@ -67,5 +67,24 @@ describe('release lock', () => {
 
     releaseFirstTask?.()
     await expect(firstTask).resolves.toBe('first-done')
+  })
+
+  it('does not clear stale lock when owner pid is still alive', async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), 'nxspub-lock-'))
+    const lockPath = path.join(tempDir, '.nxspub', 'version.lock')
+    await mkdir(path.dirname(lockPath), { recursive: true })
+
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: process.pid,
+        createdAt: '2000-01-01T00:00:00.000Z',
+      }),
+      'utf-8',
+    )
+
+    await expect(withReleaseLock(tempDir, async () => 'ok')).rejects.toThrow(
+      /lock/,
+    )
   })
 })

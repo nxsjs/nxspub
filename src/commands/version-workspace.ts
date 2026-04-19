@@ -20,6 +20,7 @@ import {
   createLinkProvider,
   ensureGitSync,
   hasLocalTag,
+  hasRemoteTag,
   resolveBranchPolicy,
   getCurrentBranch,
   getLastReleaseCommit,
@@ -635,9 +636,6 @@ async function commitAndTagWorkspace(
     msg += `- ${t.name}@${t.nextVersion}${t.private ? ' (private)' : ''}\n`
   })
 
-  await run('git', ['add', '-A'], { cwd })
-  await run('git', ['commit', '-m', msg], { cwd })
-
   const taggable = changed.filter(t => !t.private)
   const tagsToCreate: string[] = []
 
@@ -657,14 +655,23 @@ async function commitAndTagWorkspace(
       )
       abort(1)
     }
+    if (await hasRemoteTag(cwd, tag)) {
+      cliLogger.error(
+        `Tag "${tag}" already exists on origin. Stop to avoid duplicate release.`,
+      )
+      abort(1)
+    }
   }
+
+  await run('git', ['add', '-A'], { cwd })
+  await run('git', ['commit', '-m', msg], { cwd })
 
   for (const tag of tagsToCreate) {
     await run('git', ['tag', tag], { cwd })
   }
 
-  await run('git', ['push', 'origin', '--tags'], { cwd })
   await run('git', ['push', 'origin'], { cwd })
+  await run('git', ['push', 'origin', '--tags'], { cwd })
 
   cliLogger.success(
     `Released ${taggable.length} public packages [Global: v${globalNextVersion}]`,

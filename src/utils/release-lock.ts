@@ -127,11 +127,37 @@ async function clearStaleLock(lockFilePath: string): Promise<boolean> {
     const createdAtMs = parsed.createdAt ? Date.parse(parsed.createdAt) : NaN
     if (Number.isNaN(createdAtMs)) return false
     if (Date.now() - createdAtMs <= LOCK_MAX_AGE_MS) return false
+    if (typeof parsed.pid === 'number' && isProcessAlive(parsed.pid))
+      return false
 
     await fs.unlink(lockFilePath)
     cliLogger.dim(`Removed stale release lock: ${lockFilePath}`)
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * @en Check whether a process id is still alive on current machine.
+ * @zh 检查指定进程号在当前机器上是否仍存活。
+ *
+ * @param pid
+ * @en Process id from lock metadata.
+ * @zh 来自锁元数据的进程号。
+ *
+ * @returns
+ * @en True when process appears alive.
+ * @zh 进程存活时返回 true。
+ */
+function isProcessAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException
+    if (err.code === 'ESRCH') return false
+    return true
   }
 }

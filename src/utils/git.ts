@@ -339,6 +339,34 @@ export async function hasLocalTag(
 }
 
 /**
+ * @en Check whether a remote git tag already exists on origin.
+ * @zh 检查远程 origin 上是否已存在指定 Git Tag。
+ *
+ * @param cwd
+ * @en Project root directory.
+ * @zh 项目根目录。
+ *
+ * @param tagName
+ * @en Full tag name to verify.
+ * @zh 需要校验的完整 Tag 名称。
+ *
+ * @returns
+ * @en True when tag exists on remote origin.
+ * @zh 远程 origin 存在该 Tag 时返回 true。
+ */
+export async function hasRemoteTag(
+  cwd: string,
+  tagName: string,
+): Promise<boolean> {
+  const { stdout } = await runSafe(
+    'git',
+    ['ls-remote', '--tags', 'origin', `refs/tags/${tagName}`],
+    { cwd },
+  )
+  return stdout.trim().length > 0
+}
+
+/**
  * @en Matches the current branch against configured patterns to determine the release type.
  * @zh 将当前分支与配置的模式进行匹配，以确定发布类型。
  *
