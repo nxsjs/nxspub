@@ -711,18 +711,3 @@ export function createLinkProvider(repoUrl: string) {
     },
   }
 }
-
-/**
- * @deprecated Use parseGitLogRecord instead.
- */
-export const splitGitLogRecord = parseGitLogRecord
-
-/**
- * @deprecated Use resolveBranchPolicy instead.
- */
-export const resolveBranchType = resolveBranchPolicy
-
-/**
- * @deprecated Use resolveBranchPolicy instead.
- */
-export const getBranchContract = resolveBranchPolicy

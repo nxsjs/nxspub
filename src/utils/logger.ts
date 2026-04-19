@@ -85,11 +85,6 @@ export const cliLogger = {
 }
 
 /**
- * @deprecated Use cliLogger instead.
- */
-export const nxsLog = cliLogger
-
-/**
  * @en Prints the Neubrutalism style CLI banner.
  * @zh 打印新粗犷主义风格的 CLI 横幅。
  */
