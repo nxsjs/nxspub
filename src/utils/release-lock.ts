@@ -3,6 +3,7 @@ import path from 'node:path'
 import { cliLogger } from './logger'
 
 const LOCK_MAX_AGE_MS = 30 * 60 * 1000
+const LOCK_FORCE_CLEAR_AGE_MS = 24 * 60 * 60 * 1000
 
 /**
  * @en Execute a task under repository-scoped release lock.
@@ -126,7 +127,13 @@ async function clearStaleLock(lockFilePath: string): Promise<boolean> {
     const parsed = JSON.parse(raw) as { createdAt?: string; pid?: number }
     const createdAtMs = parsed.createdAt ? Date.parse(parsed.createdAt) : NaN
     if (Number.isNaN(createdAtMs)) return false
-    if (Date.now() - createdAtMs <= LOCK_MAX_AGE_MS) return false
+    const lockAgeMs = Date.now() - createdAtMs
+    if (lockAgeMs <= LOCK_MAX_AGE_MS) return false
+    if (lockAgeMs > LOCK_FORCE_CLEAR_AGE_MS) {
+      await fs.unlink(lockFilePath)
+      cliLogger.warn(`Force-cleared old release lock (>24h): ${lockFilePath}.`)
+      return true
+    }
     if (typeof parsed.pid === 'number' && isProcessAlive(parsed.pid))
       return false
 

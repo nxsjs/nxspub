@@ -78,7 +78,7 @@ describe('release lock', () => {
       lockPath,
       JSON.stringify({
         pid: process.pid,
-        createdAt: '2000-01-01T00:00:00.000Z',
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
       }),
       'utf-8',
     )
@@ -86,5 +86,22 @@ describe('release lock', () => {
     await expect(withReleaseLock(tempDir, async () => 'ok')).rejects.toThrow(
       /lock/,
     )
+  })
+
+  it('force-clears very old lock even when pid appears alive', async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), 'nxspub-lock-'))
+    const lockPath = path.join(tempDir, '.nxspub', 'version.lock')
+    await mkdir(path.dirname(lockPath), { recursive: true })
+
+    await writeFile(
+      lockPath,
+      JSON.stringify({
+        pid: process.pid,
+        createdAt: '2000-01-01T00:00:00.000Z',
+      }),
+      'utf-8',
+    )
+
+    await expect(withReleaseLock(tempDir, async () => 'ok')).resolves.toBe('ok')
   })
 })
