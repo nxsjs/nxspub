@@ -249,7 +249,11 @@ export async function getCurrentBranch(
     )
     const result = stdout.trim()
     if (result && result !== 'HEAD') return result
-  } catch {}
+  } catch (error) {
+    if (process.env.NXSPUB_DEBUG) {
+      nxsLog.dim(`Failed to detect current branch from git: ${String(error)}`)
+    }
+  }
 
   return undefined
 }
@@ -405,7 +409,13 @@ export async function getContributors(
         const clean = e.trim().toLowerCase()
         if (clean) historyEmailSet.add(clean)
       })
-    } catch {}
+    } catch (error) {
+      if (process.env.NXSPUB_DEBUG) {
+        nxsLog.dim(
+          `Failed to load contributor history emails: ${String(error)}`,
+        )
+      }
+    }
   }
 
   const range = sinceHash ? `${sinceHash}..HEAD` : 'HEAD'
@@ -582,7 +592,11 @@ export async function getTagHashMap(cwd: string): Promise<Map<string, string>> {
       const [hash, ref] = line.split(' ')
       if (ref) map.set(hash, ref.replace('refs/tags/', ''))
     })
-  } catch {}
+  } catch (error) {
+    if (process.env.NXSPUB_DEBUG) {
+      nxsLog.dim(`Failed to load git tag hash map: ${String(error)}`)
+    }
+  }
   return map
 }
 
@@ -603,7 +617,7 @@ export async function getSegmentedHistory(cwd: string, relPath?: string) {
     version: string
     commits: { hash: string; message: string }[]
   }[] = []
-  let currentGroup: any[] = []
+  let currentGroup: { hash: string; message: string }[] = []
 
   const versionRegex = /(?:release|publish|version):?\s*v?(\d+\.\d+\.\d+)/i
 

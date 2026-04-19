@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import { nxsLog } from './logger'
 import { readJSON } from './packages'
 
 export type PackageManagerName = 'pnpm' | 'npm' | 'yarn'
@@ -84,7 +85,13 @@ export async function detectPackageManager(
     if (parsed) {
       return createPackageManagerInfo(parsed.name, parsed.version)
     }
-  } catch {}
+  } catch (error) {
+    if (process.env.NXSPUB_DEBUG) {
+      nxsLog.dim(
+        `Failed to detect package manager from package.json: ${String(error)}`,
+      )
+    }
+  }
 
   if (existsSync(path.join(cwd, 'pnpm-lock.yaml'))) {
     return createPackageManagerInfo('pnpm')

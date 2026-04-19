@@ -5,6 +5,7 @@ import { ensureGitSync, getCurrentBranch, run } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
 import {
+  type PackageInfo,
   readJSON,
   scanWorkspacePackages,
   topologicalSort,
@@ -27,13 +28,13 @@ export async function releaseWorkspace(
   nxsLog.step('Workspace Release: Initializing Pipeline')
 
   const allInfos = await scanWorkspacePackages(cwd)
-  const tasks = new Map<string, any>()
+  const tasks = new Map<string, PackageInfo>()
   allInfos.forEach(info => tasks.set(info.name, info))
 
   const sortedNames = topologicalSort(tasks)
   const publicPackages = sortedNames
     .map(name => tasks.get(name))
-    .filter(pkg => pkg && !pkg.private)
+    .filter((pkg): pkg is PackageInfo => !!pkg && !pkg.private)
 
   if (publicPackages.length === 0) {
     nxsLog.success('No public packages found in workspace.')

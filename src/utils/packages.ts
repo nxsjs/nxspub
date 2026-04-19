@@ -17,7 +17,7 @@ import { nxsLog } from './logger'
  */
 export async function readJSON(filepath: string) {
   const content = await fs.readFile(filepath, 'utf-8')
-  return JSON.parse(content)
+  return JSON.parse(content) as Record<string, any>
 }
 
 /**
@@ -32,7 +32,7 @@ export async function readJSON(filepath: string) {
  * @en The data object to be written.
  * @zh 需要写入的数据对象
  */
-export async function writeJSON(filepath: string, data: any) {
+export async function writeJSON<T>(filepath: string, data: T) {
   let fileIndent = '  '
   try {
     const actualContent = await fs.readFile(filepath, 'utf-8')
@@ -66,7 +66,7 @@ export interface PackageMeta {
   /** @en The relative path @zh 相对项目根目录的路径 */
   relative: string
   /** @en The raw JSON object @zh 原始 JSON 对象，用于直接修改内容 */
-  raw: Record<string, any>
+  raw: Record<string, unknown>
 }
 
 /**
@@ -79,7 +79,7 @@ export interface PnpmWorkspaceMeta {
   /** @en The absolute file path @zh 文件的绝对路径 */
   filepath: string
   /** @en The raw YAML content @zh 解析后的 YAML 内容 */
-  raw: Record<string, any>
+  raw: Record<string, unknown>
 }
 
 /**
@@ -175,6 +175,21 @@ export interface PackageTask extends PackageInfo {
 export async function scanWorkspacePackages(
   cwd: string,
 ): Promise<PackageInfo[]> {
+  type WorkspaceManifest = {
+    name?: string
+    version?: string
+    private?: boolean
+    dependencies?: Record<string, string>
+    devDependencies?: Record<string, string>
+    peerDependencies?: Record<string, string>
+    optionalDependencies?: Record<string, string>
+    resolutions?: Record<string, string>
+    overrides?: Record<string, string>
+    pnpm?: {
+      overrides?: Record<string, string>
+    }
+  }
+
   let patterns: string[] = ['packages/*']
 
   try {
@@ -182,15 +197,38 @@ export async function scanWorkspacePackages(
       path.join(cwd, 'pnpm-workspace.yaml'),
       'utf8',
     )
-    const yamlData = yaml.load(yamlContent) as any
-    if (yamlData?.packages) patterns = yamlData.packages
-  } catch {
+    const yamlData = yaml.load(yamlContent)
+    if (
+      typeof yamlData === 'object' &&
+      yamlData !== null &&
+      'packages' in yamlData &&
+      Array.isArray((yamlData as { packages?: unknown }).packages)
+    ) {
+      patterns = (yamlData as { packages: string[] }).packages
+    }
+  } catch (error) {
+    if (process.env.NXSPUB_DEBUG) {
+      nxsLog.dim(`Failed to load pnpm-workspace.yaml: ${String(error)}`)
+    }
     try {
       const rootPkg = await readJSON(path.join(cwd, 'package.json'))
-      if (Array.isArray(rootPkg.workspaces)) patterns = rootPkg.workspaces
-      else if (rootPkg.workspaces?.packages)
-        patterns = rootPkg.workspaces.packages
-    } catch {}
+      const workspaces = rootPkg.workspaces
+      if (Array.isArray(workspaces)) patterns = workspaces as string[]
+      else if (
+        typeof workspaces === 'object' &&
+        workspaces !== null &&
+        'packages' in workspaces &&
+        Array.isArray((workspaces as { packages?: unknown }).packages)
+      ) {
+        patterns = (workspaces as { packages: string[] }).packages
+      }
+    } catch (fallbackError) {
+      if (process.env.NXSPUB_DEBUG) {
+        nxsLog.dim(
+          `Failed to load workspaces from package.json: ${String(fallbackError)}`,
+        )
+      }
+    }
   }
 
   const globPatterns = patterns.map(p => {
@@ -209,13 +247,13 @@ export async function scanWorkspacePackages(
   const results: PackageInfo[] = []
   for (const file of files) {
     try {
-      const raw = await readJSON(file)
+      const raw = (await readJSON(file)) as WorkspaceManifest
 
       if (file === path.join(cwd, 'package.json')) continue
 
       const dir = path.dirname(file)
       results.push({
-        name: raw.name,
+        name: raw.name || path.basename(dir),
         version: raw.version || '0.0.0',
         private: !!raw.private,
         dir,
@@ -233,12 +271,18 @@ export async function scanWorkspacePackages(
           ...raw.pnpm?.overrides,
         }),
       })
-    } catch {}
+    } catch (error) {
+      if (process.env.NXSPUB_DEBUG) {
+        nxsLog.dim(`Skipping invalid package file ${file}: ${String(error)}`)
+      }
+    }
   }
   return results
 }
 
-export function topologicalSort(tasks: Map<string, PackageTask>): string[] {
+export function topologicalSort<T extends { dependencies: string[] }>(
+  tasks: Map<string, T>,
+): string[] {
   const nodes = Array.from(tasks.keys())
   const sorted: string[] = []
   const visited = new Set<string>()

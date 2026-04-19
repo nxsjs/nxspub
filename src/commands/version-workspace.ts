@@ -387,17 +387,21 @@ async function updateRootChangelog(
   await fs.writeFile(rootPath, rootEntry + cleanedExisting)
 }
 
-function updateInternalDeps(raw: any, tasks: Map<string, PackageTask>) {
-  const fields = [
-    'dependencies',
-    'devDependencies',
-    'peerDependencies',
-    'optionalDependencies',
-    'resolutions', // Yarn
-    'overrides', // NPM
-  ]
+function updateInternalDeps(raw: unknown, tasks: Map<string, PackageTask>) {
+  type PackageJsonLike = {
+    dependencies?: Record<string, string>
+    devDependencies?: Record<string, string>
+    peerDependencies?: Record<string, string>
+    optionalDependencies?: Record<string, string>
+    resolutions?: Record<string, string>
+    overrides?: Record<string, string>
+    pnpm?: {
+      overrides?: Record<string, string>
+    }
+  }
 
-  const update = (deps: Record<string, string>) => {
+  const pkg = raw as PackageJsonLike
+  const update = (deps?: Record<string, string>) => {
     if (!deps) return
     for (const depKey in deps) {
       const depName =
@@ -417,10 +421,15 @@ function updateInternalDeps(raw: any, tasks: Map<string, PackageTask>) {
     }
   }
 
-  fields.forEach(field => update(raw[field]))
+  update(pkg.dependencies)
+  update(pkg.devDependencies)
+  update(pkg.peerDependencies)
+  update(pkg.optionalDependencies)
+  update(pkg.resolutions)
+  update(pkg.overrides)
 
-  if (raw.pnpm?.overrides) {
-    update(raw.pnpm.overrides)
+  if (pkg.pnpm?.overrides) {
+    update(pkg.pnpm.overrides)
   }
 }
 
