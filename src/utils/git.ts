@@ -305,6 +305,40 @@ export async function getCurrentBranch(
 }
 
 /**
+ * @en Check whether a local git tag already exists.
+ * @zh 检查本地 Git Tag 是否已存在。
+ *
+ * @param cwd
+ * @en Project root directory.
+ * @zh 项目根目录。
+ *
+ * @param tagName
+ * @en Full tag name to verify.
+ * @zh 需要校验的完整 Tag 名称。
+ *
+ * @returns
+ * @en True when tag exists locally.
+ * @zh 本地存在该 Tag 时返回 true。
+ */
+export async function hasLocalTag(
+  cwd: string,
+  tagName: string,
+): Promise<boolean> {
+  try {
+    await runSafe(
+      'git',
+      ['rev-parse', '-q', '--verify', `refs/tags/${tagName}`],
+      {
+        cwd,
+      },
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * @en Matches the current branch against configured patterns to determine the release type.
  * @zh 将当前分支与配置的模式进行匹配，以确定发布类型。
  *

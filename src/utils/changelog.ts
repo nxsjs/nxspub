@@ -257,6 +257,21 @@ export interface ChangelogDraftRecord {
   draft: ChangelogDraft
 }
 
+/**
+ * @en Partition draft records by their relation to target stable version.
+ * @zh 按与目标稳定版本的关系对草稿记录进行分组。
+ */
+export interface DraftImportAnalysis {
+  /** @en Drafts whose core version equals the target version. @zh 核心版本与目标版本一致的草稿。 */
+  matching: ChangelogDraftRecord[]
+  /** @en Drafts whose core version is lower than target version. @zh 核心版本低于目标版本的草稿。 */
+  behind: ChangelogDraftRecord[]
+  /** @en Drafts whose core version is higher than target version. @zh 核心版本高于目标版本的草稿。 */
+  ahead: ChangelogDraftRecord[]
+  /** @en Drafts that cannot be compared semantically. @zh 无法进行语义化版本比较的草稿。 */
+  invalid: ChangelogDraftRecord[]
+}
+
 function getDraftDir(cwd: string, branch: string) {
   const safeBranch = branch.replace(/[^\w.-]+/g, '_')
   return path.join(cwd, '.nxspub', 'changelog-drafts', safeBranch)
@@ -346,14 +361,32 @@ export async function readChangelogDrafts(
         try {
           const raw = await fs.readFile(filePath, 'utf-8')
           const draft = JSON.parse(raw) as ChangelogDraft
+          const normalizedItems = Array.isArray(draft?.items)
+            ? draft.items.filter(
+                item =>
+                  item &&
+                  typeof item.label === 'string' &&
+                  item.label.length > 0 &&
+                  typeof item.hash === 'string' &&
+                  item.hash.length > 0 &&
+                  typeof item.content === 'string' &&
+                  item.content.length > 0,
+              )
+            : []
           if (
             draft &&
             draft.schemaVersion === 1 &&
             typeof draft.branch === 'string' &&
             typeof draft.version === 'string' &&
-            Array.isArray(draft.items)
+            normalizedItems.length > 0
           ) {
-            records.push({ filePath, draft })
+            records.push({
+              filePath,
+              draft: {
+                ...draft,
+                items: normalizedItems,
+              },
+            })
           }
         } catch {
           // ignore malformed draft files
@@ -387,9 +420,60 @@ export function filterDraftsForTargetVersion(
   drafts: ChangelogDraftRecord[],
   targetVersion: string,
 ): ChangelogDraftRecord[] {
-  return drafts.filter(
-    record => getCoreVersion(record.draft.version) === targetVersion,
-  )
+  return analyzeDraftsForTargetVersion(drafts, targetVersion).matching
+}
+
+/**
+ * @en Analyze draft records and classify them against target stable version.
+ * @zh 分析草稿记录并按目标稳定版本进行分类。
+ *
+ * @param drafts
+ * @en Candidate draft records.
+ * @zh 候选草稿记录。
+ *
+ * @param targetVersion
+ * @en Target stable version on current branch.
+ * @zh 当前分支的目标稳定版本。
+ *
+ * @returns
+ * @en Classified draft records for import/governance decisions.
+ * @zh 用于导入与治理决策的草稿分类结果。
+ */
+export function analyzeDraftsForTargetVersion(
+  drafts: ChangelogDraftRecord[],
+  targetVersion: string,
+): DraftImportAnalysis {
+  const matching: ChangelogDraftRecord[] = []
+  const behind: ChangelogDraftRecord[] = []
+  const ahead: ChangelogDraftRecord[] = []
+  const invalid: ChangelogDraftRecord[] = []
+
+  if (!semver.valid(targetVersion)) {
+    return { matching: [], behind: [], ahead: [], invalid: drafts }
+  }
+
+  for (const record of drafts) {
+    const coreVersion = getCoreVersion(record.draft.version)
+    if (!semver.valid(coreVersion)) {
+      invalid.push(record)
+      continue
+    }
+    if (coreVersion === targetVersion) {
+      matching.push(record)
+      continue
+    }
+    if (semver.lt(coreVersion, targetVersion)) {
+      behind.push(record)
+      continue
+    }
+    if (semver.gt(coreVersion, targetVersion)) {
+      ahead.push(record)
+      continue
+    }
+    invalid.push(record)
+  }
+
+  return { matching, behind, ahead, invalid }
 }
 
 /**

@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import path from 'node:path'
 import * as semver from 'semver-es'
 
@@ -28,17 +29,25 @@ function sanitizeBranch(branch: string): string {
   return branch.replace(/[^\w.-]+/g, '_')
 }
 
+function createBranchFileStem(branch: string): string {
+  const branchHash = createHash('sha1')
+    .update(branch)
+    .digest('hex')
+    .slice(0, 10)
+  return `${sanitizeBranch(branch)}.${branchHash}`
+}
+
 function getStateRootDir(cwd: string): string {
   return path.join(cwd, '.nxspub', 'release-state')
 }
 
 function getBranchStateFilePath(cwd: string, branch: string): string {
-  return path.join(getStateRootDir(cwd), `${sanitizeBranch(branch)}.json`)
+  return path.join(getStateRootDir(cwd), `${createBranchFileStem(branch)}.json`)
 }
 
 /**
- * @en Load persisted release state from `.nxspub/release-state.json`.
- * @zh 从 `.nxspub/release-state.json` 加载持久化发布状态。
+ * @en Load persisted release state from `.nxspub/release-state/*.json`.
+ * @zh 从 `.nxspub/release-state/*.json` 加载持久化发布状态。
  *
  * @param cwd
  * @en Project root directory.
@@ -78,8 +87,8 @@ export async function loadReleaseState(cwd: string): Promise<ReleaseState> {
 }
 
 /**
- * @en Save release state into `.nxspub/release-state.json`.
- * @zh 将发布状态写入 `.nxspub/release-state.json`。
+ * @en Save release state into `.nxspub/release-state/*.json`.
+ * @zh 将发布状态写入 `.nxspub/release-state/*.json`。
  *
  * @param cwd
  * @en Project root directory.

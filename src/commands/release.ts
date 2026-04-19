@@ -1,4 +1,5 @@
 import { loadConfig } from '../utils/load-config'
+import { withReleaseLock } from '../utils/release-lock'
 import { releaseSingle } from './release-single'
 import { releaseWorkspace } from './release-workspace'
 import type { ReleaseOptions } from './types'
@@ -16,12 +17,20 @@ import type { ReleaseOptions } from './types'
  * @zh 发布命令完成后返回。
  */
 export async function releaseCommand(options: ReleaseOptions) {
-  const { cwd } = options
+  const { cwd, dry } = options
   const config = await loadConfig(cwd)
 
-  if (config.workspace) {
-    await releaseWorkspace(options, config)
+  const runReleaseFlow = async () => {
+    if (config.workspace) {
+      await releaseWorkspace(options, config)
+    } else {
+      await releaseSingle(options, config)
+    }
+  }
+
+  if (dry) {
+    await runReleaseFlow()
   } else {
-    await releaseSingle(options, config)
+    await withReleaseLock(cwd, runReleaseFlow)
   }
 }

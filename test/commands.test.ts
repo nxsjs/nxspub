@@ -30,6 +30,10 @@ describe('command dispatch', () => {
     const releaseSingle = vi.fn().mockResolvedValue(undefined)
 
     vi.doMock('../src/utils/load-config', () => ({ loadConfig }))
+    vi.doMock('../src/utils/release-lock', () => ({
+      withReleaseLock: async (_cwd: string, task: () => Promise<unknown>) =>
+        task(),
+    }))
     vi.doMock('../src/commands/release-workspace', () => ({ releaseWorkspace }))
     vi.doMock('../src/commands/release-single', () => ({ releaseSingle }))
 
@@ -49,6 +53,10 @@ describe('command dispatch', () => {
     const versionWorkspace = vi.fn()
     vi.doMock('../src/utils/load-config', () => ({ loadConfig }))
     vi.doMock('../src/utils/git', () => ({ runSafe }))
+    vi.doMock('../src/utils/release-lock', () => ({
+      withReleaseLock: async (_cwd: string, task: () => Promise<unknown>) =>
+        task(),
+    }))
     vi.doMock('../src/commands/version-single', () => ({ versionSingle }))
     vi.doMock('../src/commands/version-workspace', () => ({ versionWorkspace }))
 

@@ -1,9 +1,11 @@
 import { cac } from 'cac'
 import pkg from '../package.json'
+import { draftDoctorCommand } from './commands/draft-doctor'
 import { gitHooksCommand } from './commands/git-hooks'
 import { lintCommand } from './commands/lint'
 import { releaseCommand } from './commands/release'
 import type {
+  CwdOptions,
   GitHooksOptions,
   LintOptions,
   ReleaseOptions,
@@ -24,6 +26,19 @@ function withCliErrorHandling<T>(runner: (options: T) => Promise<void>) {
     }
   }
 }
+
+cli
+  .command('draft-doctor', 'Diagnose changelog draft health')
+  .option('--cwd <cwd>', 'Specify the working directory', {
+    default: process.cwd(),
+  })
+  .option('--target <version>', 'Target stable version (x.y.z)')
+  .action(
+    withCliErrorHandling(async options => {
+      const typedOptions = options as CwdOptions & { target?: string }
+      await draftDoctorCommand(typedOptions)
+    }),
+  )
 
 cli
   .command('git-hooks', 'Install git hooks')

@@ -4,12 +4,12 @@ import * as semver from 'semver-es'
 import type { BranchType, NxspubConfig, WorkspaceMode } from '../config'
 import { abort } from '../utils/errors'
 import {
+  analyzeDraftsForTargetVersion,
   applyContributorsToChangelog,
   archiveChangelogIfNeeded,
   canWriteChangelogOnBranch,
   cleanupExistingEntry,
   extractShortCommitHashes,
-  filterDraftsForTargetVersion,
   parseCommit,
   readChangelogDrafts,
   removeChangelogDraft,
@@ -19,13 +19,13 @@ import { formatDate } from '../utils/date'
 import {
   createLinkProvider,
   ensureGitSync,
+  hasLocalTag,
   resolveBranchPolicy,
   getCurrentBranch,
   getLastReleaseCommit,
   getPackageCommits,
   getRepoUrl,
   run,
-  runSafe,
 } from '../utils/git'
 import { cliLogger } from '../utils/logger'
 import {
@@ -246,10 +246,26 @@ export async function versionWorkspace(
       existingRootChangelog + '\n' + rootNewEntries.join('\n'),
     )
     const presentContents = new Set(rootNewEntries)
-    const draftRecords = filterDraftsForTargetVersion(
+    const draftAnalysis = analyzeDraftsForTargetVersion(
       await readChangelogDrafts(cwd),
       globalNextVersion,
     )
+    const draftRecords = draftAnalysis.matching
+    if (draftAnalysis.behind.length > 0) {
+      cliLogger.warn(
+        `Found ${draftAnalysis.behind.length} stale draft(s) behind ${globalNextVersion}. Run cleanup if they are already merged manually.`,
+      )
+    }
+    if (draftAnalysis.ahead.length > 0) {
+      cliLogger.dim(
+        `Found ${draftAnalysis.ahead.length} draft(s) for future versions; kept for later import.`,
+      )
+    }
+    if (draftAnalysis.invalid.length > 0) {
+      cliLogger.warn(
+        `Ignored ${draftAnalysis.invalid.length} malformed draft file(s).`,
+      )
+    }
 
     for (const record of draftRecords) {
       let importedCount = 0
@@ -617,14 +633,28 @@ async function commitAndTagWorkspace(
   await run('git', ['commit', '-m', msg], { cwd })
 
   const taggable = changed.filter(t => !t.private)
+  const tagsToCreate: string[] = []
 
   if (mode === 'locked' && taggable.length > 0) {
-    await runSafe('git', ['tag', `v${globalNextVersion}`], { cwd })
+    tagsToCreate.push(`v${globalNextVersion}`)
   } else {
     for (const t of taggable) {
-      await runSafe('git', ['tag', `${t.name}@${t.nextVersion}`], { cwd })
+      tagsToCreate.push(`${t.name}@${t.nextVersion}`)
     }
-    await runSafe('git', ['tag', `v${globalNextVersion}`], { cwd })
+    tagsToCreate.push(`v${globalNextVersion}`)
+  }
+
+  for (const tag of tagsToCreate) {
+    if (await hasLocalTag(cwd, tag)) {
+      cliLogger.error(
+        `Tag "${tag}" already exists locally. Stop to avoid ambiguous release state.`,
+      )
+      abort(1)
+    }
+  }
+
+  for (const tag of tagsToCreate) {
+    await run('git', ['tag', tag], { cwd })
   }
 
   await run('git', ['push', 'origin', '--tags'], { cwd })

@@ -212,6 +212,7 @@ export const DEFAULT_CONFIG: NxspubConfig = {
       refactor: 'Refactors',
       revert: 'Reverts',
     },
+    writeOnBranches: ['main', 'master'],
   },
   lint: {
     'commit-msg': {

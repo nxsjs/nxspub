@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, vi } from 'vitest'
@@ -14,6 +14,7 @@ vi.mock('../src/utils/git', async () => {
 })
 
 import {
+  analyzeDraftsForTargetVersion,
   applyContributorsToChangelog,
   archiveChangelogIfNeeded,
   canWriteChangelogOnBranch,
@@ -193,6 +194,53 @@ describe('changelog helpers', () => {
     await removeChangelogDraft(draftAPath)
     const afterRemove = await readChangelogDrafts(tempDir)
     expect(afterRemove).toHaveLength(1)
+  })
+
+  it('ignores malformed draft items and classifies remaining drafts by target version', async () => {
+    await mkdir(path.join(tempDir, '.nxspub', 'changelog-drafts', 'alpha'), {
+      recursive: true,
+    })
+    await writeFile(
+      path.join(
+        tempDir,
+        '.nxspub',
+        'changelog-drafts',
+        'alpha',
+        '1.3.0-alpha.0.json',
+      ),
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          branch: 'alpha',
+          version: '1.3.0-alpha.0',
+          generatedAt: '2026-04-18T00:00:00.000Z',
+          items: [
+            { label: 'Features', hash: 'abcdef123', content: '* good item' },
+            { label: 'Features', hash: 123, content: '* broken item' },
+          ],
+        },
+        null,
+        2,
+      ),
+    )
+
+    await writeChangelogDraft(tempDir, {
+      schemaVersion: 1,
+      branch: 'beta',
+      version: '1.2.0-beta.0',
+      generatedAt: '2026-04-18T00:00:00.000Z',
+      items: [{ label: 'Bug Fixes', hash: '123456789', content: '* fix item' }],
+    })
+
+    const drafts = await readChangelogDrafts(tempDir)
+    expect(drafts).toHaveLength(2)
+    expect(drafts[0].draft.items).toHaveLength(1)
+
+    const analysis = analyzeDraftsForTargetVersion(drafts, '1.3.0')
+    expect(analysis.matching).toHaveLength(1)
+    expect(analysis.behind).toHaveLength(1)
+    expect(analysis.ahead).toHaveLength(0)
+    expect(analysis.invalid).toHaveLength(0)
   })
 
   it('extracts short commit hashes from changelog links', () => {

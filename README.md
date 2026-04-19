@@ -168,6 +168,15 @@ changelog: {
 
 When running `nxspub version` on non-allowed branches, nxspub writes draft files under `.nxspub/changelog-drafts/*`.  
 When you later run `nxspub version` on an allowed branch, matching drafts are auto-imported and deduplicated.
+Drafts that are behind/ahead of current target version are kept and reported as warnings, so they are not silently dropped.
+
+You can audit draft health manually:
+
+```bash
+nxspub draft-doctor --cwd . --target 1.3.0
+```
+
+`nxspub version` and `nxspub release` also use a repository lock file (`.nxspub/version.lock`) to prevent concurrent pipelines from mutating version/tag state at the same time.
 
 ## Configuration
 

@@ -4,12 +4,12 @@ import * as semver from 'semver-es'
 import type { NxspubConfig } from '../config'
 import { abort } from '../utils/errors'
 import {
+  analyzeDraftsForTargetVersion,
   applyContributorsToChangelog,
   archiveChangelogIfNeeded,
   canWriteChangelogOnBranch,
   cleanupExistingEntry,
   extractShortCommitHashes,
-  filterDraftsForTargetVersion,
   parseCommit,
   readChangelogDrafts,
   removeChangelogDraft,
@@ -262,10 +262,26 @@ export async function versionSingle(
         draftItems.map(item => item.content).join('\n'),
     )
 
-    const draftRecords = filterDraftsForTargetVersion(
+    const draftAnalysis = analyzeDraftsForTargetVersion(
       await readChangelogDrafts(cwd),
       targetVersion,
     )
+    const draftRecords = draftAnalysis.matching
+    if (draftAnalysis.behind.length > 0) {
+      cliLogger.warn(
+        `Found ${draftAnalysis.behind.length} stale draft(s) behind ${targetVersion}. Run cleanup if they are already merged manually.`,
+      )
+    }
+    if (draftAnalysis.ahead.length > 0) {
+      cliLogger.dim(
+        `Found ${draftAnalysis.ahead.length} draft(s) for future versions; kept for later import.`,
+      )
+    }
+    if (draftAnalysis.invalid.length > 0) {
+      cliLogger.warn(
+        `Ignored ${draftAnalysis.invalid.length} malformed draft file(s).`,
+      )
+    }
 
     for (const record of draftRecords) {
       let importedCount = 0

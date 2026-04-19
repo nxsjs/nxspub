@@ -2,6 +2,7 @@ import { abort } from '../utils/errors'
 import { runSafe } from '../utils/git'
 import { loadConfig } from '../utils/load-config'
 import { cliLogger } from '../utils/logger'
+import { withReleaseLock } from '../utils/release-lock'
 import { versionSingle } from './version-single'
 import type { VersionOptions } from './types'
 import { versionWorkspace } from './version-workspace'
@@ -35,9 +36,17 @@ export async function versionCommand(options: VersionOptions) {
     abort(1)
   }
 
-  if (config.workspace) {
-    await versionWorkspace(options, config)
+  const runVersionFlow = async () => {
+    if (config.workspace) {
+      await versionWorkspace(options, config)
+    } else {
+      await versionSingle(options, config)
+    }
+  }
+
+  if (dry) {
+    await runVersionFlow()
   } else {
-    await versionSingle(options, config)
+    await withReleaseLock(cwd, runVersionFlow)
   }
 }

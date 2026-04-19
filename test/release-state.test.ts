@@ -34,4 +34,18 @@ describe('release state', () => {
     expect(state.branches?.main?.rootVersion).toBe('1.3.0')
     expect(state.branches?.main?.packageVersions?.['@scope/a']).toBe('1.3.0')
   })
+
+  it('persists branch states without filename collision for similar branch names', async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), 'nxspub-state-'))
+    await updateStableBranchState(tempDir, 'feature/a_b', {
+      rootVersion: '1.3.0',
+    })
+    await updateStableBranchState(tempDir, 'feature/a/b', {
+      rootVersion: '1.4.0',
+    })
+
+    const state = await loadReleaseState(tempDir)
+    expect(state.branches?.['feature/a_b']?.rootVersion).toBe('1.3.0')
+    expect(state.branches?.['feature/a/b']?.rootVersion).toBe('1.4.0')
+  })
 })
