@@ -278,10 +278,10 @@ export async function getCurrentBranch(
  *
  * @example
  * // If branches is { "main": "latest", "feat/*": "preminor" }
- * resolveBranchType("main", branches) // returns "latest"
- * resolveBranchType("feat/ui-button", branches) // returns "preminor"
+ * resolveBranchPolicy("main", branches) // returns "latest"
+ * resolveBranchPolicy("feat/ui-button", branches) // returns "preminor"
  */
-export function resolveBranchType(
+export function resolveBranchPolicy(
   branch: string,
   branches?: Record<string, BranchType>,
 ): BranchType | null {
@@ -718,6 +718,11 @@ export function createLinkProvider(repoUrl: string) {
 export const splitGitLogRecord = parseGitLogRecord
 
 /**
- * @deprecated Use resolveBranchType instead.
+ * @deprecated Use resolveBranchPolicy instead.
  */
-export const getBranchContract = resolveBranchType
+export const resolveBranchType = resolveBranchPolicy
+
+/**
+ * @deprecated Use resolveBranchPolicy instead.
+ */
+export const getBranchContract = resolveBranchPolicy

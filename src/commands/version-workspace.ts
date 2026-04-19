@@ -13,7 +13,7 @@ import { formatDate } from '../utils/date'
 import {
   createLinkProvider,
   ensureGitSync,
-  resolveBranchType,
+  resolveBranchPolicy,
   getCurrentBranch,
   getLastReleaseCommit,
   getPackageCommits,
@@ -46,7 +46,10 @@ export async function versionWorkspace(
   const mode = config.workspace?.mode || 'locked'
 
   const currentBranch = await getCurrentBranch(cwd)
-  const branchReleasePolicy = resolveBranchType(currentBranch!, config.branches)
+  const branchReleasePolicy = resolveBranchPolicy(
+    currentBranch!,
+    config.branches,
+  )
   if (!branchReleasePolicy) {
     cliLogger.error(
       `Admission Denied: Branch "${currentBranch}" not configured.`,

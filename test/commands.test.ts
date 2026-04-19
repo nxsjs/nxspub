@@ -118,7 +118,7 @@ describe('command dispatch', () => {
 
     vi.doMock('../src/utils/git', () => ({
       ensureGitSync,
-      resolveBranchType: () => 'latest',
+      resolveBranchPolicy: () => 'latest',
       getCurrentBranch,
       run,
     }))

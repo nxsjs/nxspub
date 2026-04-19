@@ -3,7 +3,7 @@ import { defineConfig } from '../src/index'
 import {
   createLinkProvider,
   parseGitLogRecord,
-  resolveBranchType,
+  resolveBranchPolicy,
 } from '../src/utils/git'
 import { normalizeRegExp } from '../src/utils/regexp'
 import { formatDate } from '../src/utils/date'
@@ -29,11 +29,11 @@ describe('core utilities', () => {
   })
 
   it('matches branch policies from string patterns', () => {
-    expect(resolveBranchType('main', DEFAULT_CONFIG.branches)).toBe('latest')
+    expect(resolveBranchPolicy('main', DEFAULT_CONFIG.branches)).toBe('latest')
     expect(
-      resolveBranchType('feature/demo', { 'feature/.*': 'preminor' }),
+      resolveBranchPolicy('feature/demo', { 'feature/.*': 'preminor' }),
     ).toBe('preminor')
-    expect(resolveBranchType('unknown', DEFAULT_CONFIG.branches)).toBeNull()
+    expect(resolveBranchPolicy('unknown', DEFAULT_CONFIG.branches)).toBeNull()
   })
 
   it('parses git log records by the first pipe only', () => {

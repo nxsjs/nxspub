@@ -5,7 +5,7 @@ import type { ReleaseOptions } from './types'
 import { abort } from '../utils/errors'
 import {
   ensureGitSync,
-  resolveBranchType,
+  resolveBranchPolicy,
   getCurrentBranch,
   run,
 } from '../utils/git'
@@ -34,7 +34,10 @@ export async function releaseSingle(
   const pkg = await readJSON(pkgPath)
   const packageManager = await detectPackageManager(cwd)
   const currentBranch = branch || (await getCurrentBranch(cwd))
-  const branchReleasePolicy = resolveBranchType(currentBranch!, config.branches)
+  const branchReleasePolicy = resolveBranchPolicy(
+    currentBranch!,
+    config.branches,
+  )
 
   if (!branchReleasePolicy) {
     cliLogger.error(

@@ -13,7 +13,7 @@ import { formatDate } from '../utils/date'
 import {
   createLinkProvider,
   ensureGitSync,
-  resolveBranchType,
+  resolveBranchPolicy,
   getCurrentBranch,
   getLastReleaseCommit,
   getRawCommits,
@@ -36,7 +36,10 @@ export async function versionSingle(
   const changelogPath = path.resolve(cwd, 'CHANGELOG.md')
 
   const currentBranch = await getCurrentBranch(cwd)
-  const branchReleasePolicy = resolveBranchType(currentBranch!, config.branches)
+  const branchReleasePolicy = resolveBranchPolicy(
+    currentBranch!,
+    config.branches,
+  )
   if (!branchReleasePolicy) {
     cliLogger.error(
       `Admission Denied: Branch "${currentBranch}" not configured.`,

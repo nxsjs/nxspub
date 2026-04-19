@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import type { NxspubConfig } from '../config'
 import { abort } from '../utils/errors'
-import { resolveBranchType, getCurrentBranch } from '../utils/git'
+import { resolveBranchPolicy, getCurrentBranch } from '../utils/git'
 import { cliLogger } from '../utils/logger'
 import { normalizeRegExp } from '../utils/regexp'
 import { determineBumpType } from '../utils/versions'
@@ -56,7 +56,7 @@ export async function lintCommitMsg(
   const currentBranch = await getCurrentBranch(cwd)
   const branchReleasePolicy =
     currentBranch && config.branches
-      ? resolveBranchType(currentBranch, config.branches)
+      ? resolveBranchPolicy(currentBranch, config.branches)
       : null
 
   if (branchReleasePolicy && branchReleasePolicy !== 'latest') {
