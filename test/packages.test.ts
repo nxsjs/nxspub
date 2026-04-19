@@ -2,6 +2,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, vi } from 'vitest'
+import { NxspubError } from '../src/utils/errors'
 import {
   loadPackageJSON,
   savePackageJSON,
@@ -38,14 +39,6 @@ describe('package utilities', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
-
-  function mockExit() {
-    return vi
-      .spyOn(process, 'exit')
-      .mockImplementation((code?: string | number | null) => {
-        throw new Error(`process.exit:${code}`)
-      })
-  }
 
   it('preserves indentation when rewriting json files', async () => {
     const file = path.join(tempDir, 'package.json')
@@ -125,15 +118,11 @@ describe('package utilities', () => {
   })
 
   it('aborts on circular dependencies', () => {
-    const exitSpy = mockExit()
-
     const tasks = new Map<string, PackageTask>([
       ['a', makeTask('a', ['b'])],
       ['b', makeTask('b', ['a'])],
     ])
 
-    expect(() => topologicalSort(tasks)).toThrow('process.exit:1')
-
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    expect(() => topologicalSort(tasks)).toThrow(NxspubError)
   })
 })

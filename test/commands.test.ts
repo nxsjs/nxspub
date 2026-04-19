@@ -7,14 +7,6 @@ afterEach(() => {
 })
 
 describe('command dispatch', () => {
-  function mockExit() {
-    return vi
-      .spyOn(process, 'exit')
-      .mockImplementation((code?: string | number | null) => {
-        throw new Error(`process.exit:${code}`)
-      })
-  }
-
   it('lintCommand loads config and delegates when edit is provided', async () => {
     const loadConfig = vi.fn().mockResolvedValue({ lint: {} })
     const lintCommitMsg = vi.fn().mockResolvedValue(undefined)
@@ -55,19 +47,17 @@ describe('command dispatch', () => {
     const runSafe = vi.fn().mockResolvedValue({ stdout: ' M package.json' })
     const versionSingle = vi.fn()
     const versionWorkspace = vi.fn()
-    const exitSpy = mockExit()
-
     vi.doMock('../src/utils/load-config', () => ({ loadConfig }))
     vi.doMock('../src/utils/git', () => ({ runSafe }))
     vi.doMock('../src/commands/version-single', () => ({ versionSingle }))
     vi.doMock('../src/commands/version-workspace', () => ({ versionWorkspace }))
 
     const { versionCommand } = await import('../src/commands/version')
-    await expect(versionCommand({ cwd: '/repo' })).rejects.toThrow(
-      'process.exit:1',
-    )
+    await expect(versionCommand({ cwd: '/repo' })).rejects.toMatchObject({
+      name: 'NxspubError',
+      exitCode: 1,
+    })
 
-    expect(exitSpy).toHaveBeenCalledWith(1)
     expect(versionSingle).not.toHaveBeenCalled()
     expect(versionWorkspace).not.toHaveBeenCalled()
   })
@@ -97,17 +87,15 @@ describe('command dispatch', () => {
   it('gitHooksCommand catches install errors and exits', async () => {
     const loadConfig = vi.fn().mockResolvedValue({})
     const installGitHooks = vi.fn().mockRejectedValue(new Error('boom'))
-    const exitSpy = mockExit()
 
     vi.doMock('../src/utils/load-config', () => ({ loadConfig }))
     vi.doMock('../src/commands/install-git-hooks', () => ({ installGitHooks }))
 
     const { gitHooksCommand } = await import('../src/commands/git-hooks')
-    await expect(gitHooksCommand({ cwd: '/repo' })).rejects.toThrow(
-      'process.exit:1',
-    )
-
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    await expect(gitHooksCommand({ cwd: '/repo' })).rejects.toMatchObject({
+      name: 'NxspubError',
+      exitCode: 1,
+    })
   })
 
   it('releaseSingle uses the detected package manager for build and publish', async () => {

@@ -1,6 +1,7 @@
 import { execa } from 'execa'
 import { createHash } from 'node:crypto'
 import type { BrancheType } from '../config'
+import { abort } from './errors'
 import { nxsLog } from './logger'
 import { normalizeRegExp } from './regexp'
 
@@ -514,7 +515,7 @@ export async function ensureGitSync(currentBranch: string, cwd: string) {
   if (isDirty.trim()) {
     nxsLog.error('Admission Denied: Working directory is not clean.')
     nxsLog.item('Please commit or stash your changes before releasing.')
-    process.exit(1)
+    abort(1)
   }
 
   try {
@@ -549,7 +550,7 @@ export async function ensureGitSync(currentBranch: string, cwd: string) {
         nxsLog.item(
           'Please resolve merge conflicts manually before running nxspub.',
         )
-        process.exit(1)
+        abort(1)
       }
     } else if (ahead > 0) {
       nxsLog.error(`Local branch is ahead of remote by ${ahead} commit(s).`)
@@ -559,13 +560,13 @@ export async function ensureGitSync(currentBranch: string, cwd: string) {
       nxsLog.item(
         'This ensures all changes are tracked and verified by remote CI.',
       )
-      process.exit(1)
+      abort(1)
     } else {
       nxsLog.item('Local branch is perfectly aligned with remote.')
     }
   } catch (e) {
     nxsLog.error(JSON.stringify(e))
-    process.exit(1)
+    abort(1)
   }
 }
 

@@ -3,17 +3,10 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, vi } from 'vitest'
 import { installGitHooks } from '../src/commands/install-git-hooks'
+import { NxspubError } from '../src/utils/errors'
 
 describe('installGitHooks', () => {
   let tempDir: string
-
-  function mockExit() {
-    return vi
-      .spyOn(process, 'exit')
-      .mockImplementation((code?: string | number | null) => {
-        throw new Error(`process.exit:${code}`)
-      })
-  }
 
   beforeEach(async () => {
     tempDir = await mkdtemp(path.join(os.tmpdir(), 'nxspub-hooks-'))
@@ -96,7 +89,6 @@ describe('installGitHooks', () => {
 
   it('aborts when git metadata is missing', async () => {
     const noGitDir = await mkdtemp(path.join(os.tmpdir(), 'nxspub-no-git-'))
-    const exitSpy = mockExit()
 
     await expect(
       installGitHooks(
@@ -107,8 +99,6 @@ describe('installGitHooks', () => {
           },
         },
       ),
-    ).rejects.toThrow('process.exit:1')
-
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    ).rejects.toBeInstanceOf(NxspubError)
   })
 })

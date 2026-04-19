@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import type { NxspubConfig } from '../config'
+import { abort } from '../utils/errors'
 import { getBranchContract, getCurrentBranch } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { normalizeRegExp } from '../utils/regexp'
@@ -20,7 +21,7 @@ export async function lintCommitMsg(
     .catch(() => false)
   if (!isExists) {
     nxsLog.error(`Could not find commit message file at: ${msgPath}`)
-    process.exit(1)
+    abort(1)
   }
 
   const msg = (await fs.readFile(msgPath, 'utf-8')).trim()
@@ -40,14 +41,14 @@ export async function lintCommitMsg(
       const result = await rule.message(isValid, msg)
       if (!isValid && typeof result === 'string') {
         nxsLog.error(result)
-        process.exit(1)
+        abort(1)
       } else if (!isValid) {
-        process.exit(1)
+        abort(1)
       }
     } else {
       if (!isValid) {
         nxsLog.error(rule.message)
-        process.exit(1)
+        abort(1)
       }
     }
   }
@@ -78,7 +79,7 @@ export async function lintCommitMsg(
         nxsLog.error(
           `[Contract Violation] Branch "${currentBranch}" (Contract: ${branchContract}) prohibits ${bumpType.toUpperCase()} commits.`,
         )
-        process.exit(1)
+        abort(1)
       }
     }
   }

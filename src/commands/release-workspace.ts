@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { NxspubConfig } from '../config'
+import type { ReleaseOptions } from './types'
 import { ensureGitSync, getCurrentBranch, run } from '../utils/git'
 import { nxsLog } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
@@ -11,16 +12,7 @@ import {
 import { releaseSingle } from './release-single'
 
 export async function releaseWorkspace(
-  options: {
-    cwd: string
-    dry?: boolean
-    provenance?: boolean
-    registry?: string
-    access?: string
-    tag?: string
-    branch?: string
-    skipSync?: boolean
-  },
+  options: ReleaseOptions,
   config: NxspubConfig,
 ) {
   const { cwd, dry, branch, skipSync } = options

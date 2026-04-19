@@ -1,11 +1,13 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import type { NxspubConfig } from '../config'
+import { abort, toErrorMessage } from '../utils/errors'
 import { nxsLog } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
+import type { GitHooksOptions } from './types'
 
 export async function installGitHooks(
-  options: { cwd: string; dry?: boolean },
+  options: GitHooksOptions,
   config: NxspubConfig,
 ) {
   const { cwd, dry } = options
@@ -17,7 +19,7 @@ export async function installGitHooks(
     .catch(() => false)
   if (!hasGit) {
     nxsLog.error('Git directory not found. Please run "git init" first.')
-    process.exit(1)
+    abort(1)
   }
 
   const hooksDir = path.resolve(gitDir, 'hooks')
@@ -63,8 +65,8 @@ export async function installGitHooks(
           mode: 0o755,
         })
         await fs.chmod(hookPath, 0o755)
-      } catch (err: any) {
-        nxsLog.error(`Failed to install ${name}: ${err.message}`)
+      } catch (err) {
+        nxsLog.error(`Failed to install ${name}: ${toErrorMessage(err)}`)
       }
     } else {
       nxsLog.dim(`[Dry Run] Content for ${name}:\n${fileContent}`)

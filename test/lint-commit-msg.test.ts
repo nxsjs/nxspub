@@ -4,19 +4,12 @@ import path from 'node:path'
 import { afterEach, beforeEach, vi } from 'vitest'
 import { lintCommitMsg } from '../src/commands/lint-commit-msg'
 import { DEFAULT_CONFIG } from '../src/config'
+import { NxspubError } from '../src/utils/errors'
 
 describe('lintCommitMsg', () => {
   let tempDir: string
   const originalGithubRefType = process.env.GITHUB_REF_TYPE
   const originalGithubRefName = process.env.GITHUB_REF_NAME
-
-  function mockExit() {
-    return vi
-      .spyOn(process, 'exit')
-      .mockImplementation((code?: string | number | null) => {
-        throw new Error(`process.exit:${code}`)
-      })
-  }
 
   beforeEach(async () => {
     tempDir = await mkdtemp(path.join(os.tmpdir(), 'nxspub-lint-msg-'))
@@ -38,22 +31,17 @@ describe('lintCommitMsg', () => {
   })
 
   it('fails when the commit message file does not exist', async () => {
-    const exitSpy = mockExit()
-
     await expect(
       lintCommitMsg(
         { cwd: tempDir, edit: path.join(tempDir, 'missing.txt') },
         DEFAULT_CONFIG,
       ),
-    ).rejects.toThrow('process.exit:1')
-
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    ).rejects.toBeInstanceOf(NxspubError)
   })
 
   it('supports custom validator functions and custom error messages', async () => {
     const msgFile = path.join(tempDir, 'COMMIT_EDITMSG')
     await writeFile(msgFile, 'bad message\n')
-    const exitSpy = mockExit()
 
     await expect(
       lintCommitMsg(
@@ -67,9 +55,7 @@ describe('lintCommitMsg', () => {
           },
         },
       ),
-    ).rejects.toThrow('process.exit:1')
-
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    ).rejects.toBeInstanceOf(NxspubError)
   })
 
   it('rejects a feat commit on a patch-only branch contract', async () => {
@@ -78,8 +64,6 @@ describe('lintCommitMsg', () => {
 
     const msgFile = path.join(tempDir, 'COMMIT_EDITMSG')
     await writeFile(msgFile, 'feat(core): add unsupported feature\n')
-    const exitSpy = mockExit()
-
     await expect(
       lintCommitMsg(
         { cwd: tempDir, edit: msgFile },
@@ -90,9 +74,7 @@ describe('lintCommitMsg', () => {
           },
         },
       ),
-    ).rejects.toThrow('process.exit:1')
-
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    ).rejects.toBeInstanceOf(NxspubError)
   })
 
   it('allows a fix commit on a patch-only branch contract', async () => {

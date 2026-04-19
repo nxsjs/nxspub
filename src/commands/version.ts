@@ -1,10 +1,12 @@
+import { abort } from '../utils/errors'
 import { runSafe } from '../utils/git'
 import { loadConfig } from '../utils/load-config'
 import { nxsLog } from '../utils/logger'
 import { versionSingle } from './version-single'
+import type { VersionOptions } from './types'
 import { versionWorkspace } from './version-workspace'
 
-export async function versionCommand(options: { cwd: string; dry?: boolean }) {
+export async function versionCommand(options: VersionOptions) {
   const { cwd, dry } = options
   const config = await loadConfig(cwd)
 
@@ -18,7 +20,7 @@ export async function versionCommand(options: { cwd: string; dry?: boolean }) {
       'Uncommitted changes detected. Please commit or stash them before releasing.',
     )
     nxsLog.item('Files:\n' + dirtyFiles)
-    process.exit(1)
+    abort(1)
   }
 
   if (config.workspace) {

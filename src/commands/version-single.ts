@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { NxspubConfig } from '../config'
+import { abort } from '../utils/errors'
 import {
   applyContributorsToChangelog,
   archiveChangelogIfNeeded,
@@ -24,9 +25,10 @@ import { nxsLog } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
 import { readJSON, writeJSON } from '../utils/packages'
 import { determineBumpType } from '../utils/versions'
+import type { VersionOptions } from './types'
 
 export async function versionSingle(
-  options: { cwd: string; dry?: boolean },
+  options: VersionOptions,
   config: NxspubConfig,
 ) {
   const { cwd, dry } = options
@@ -37,7 +39,7 @@ export async function versionSingle(
   const branchContract = getBranchContract(currentBranch!, config.branches)
   if (!branchContract) {
     nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
-    process.exit(1)
+    abort(1)
   }
 
   if (currentBranch && !dry) {
@@ -113,7 +115,7 @@ export async function versionSingle(
     nxsLog.error(
       `[Contract Violation] Branch "${currentBranch}" (Contract: ${branchContract}) prohibits ${bumpType.toUpperCase()} changes.`,
     )
-    process.exit(1)
+    abort(1)
   }
 
   let targetVersion: string

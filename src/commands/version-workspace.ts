@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { BrancheType, NxspubConfig, WorkspaceMode } from '../config'
+import { abort } from '../utils/errors'
 import {
   applyContributorsToChangelog,
   archiveChangelogIfNeeded,
@@ -30,6 +31,7 @@ import {
   writeJSON,
   type PackageTask,
 } from '../utils/packages'
+import type { VersionOptions } from './types'
 import {
   determineBumpType,
   getHighestBumpType,
@@ -37,7 +39,7 @@ import {
 } from '../utils/versions'
 
 export async function versionWorkspace(
-  options: { cwd: string; dry?: boolean },
+  options: VersionOptions,
   config: NxspubConfig,
 ) {
   const { cwd, dry } = options
@@ -47,7 +49,7 @@ export async function versionWorkspace(
   const branchContract = getBranchContract(currentBranch!, config.branches)
   if (!branchContract) {
     nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
-    process.exit(1)
+    abort(1)
   }
 
   if (currentBranch && !dry) {

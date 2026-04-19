@@ -4,6 +4,7 @@ import yaml from 'js-yaml'
 import { promises as fs } from 'node:fs'
 import path, { resolve } from 'node:path'
 import type { BrancheType } from '../config'
+import { abort } from './errors'
 import { nxsLog } from './logger'
 
 /**
@@ -248,7 +249,7 @@ export function topologicalSort(tasks: Map<string, PackageTask>): string[] {
       nxsLog.error(
         `Circular dependency: ${Array.from(visiting).join(' -> ')} -> ${name}`,
       )
-      process.exit(1)
+      abort(1)
     }
     if (!visited.has(name)) {
       visiting.add(name)

@@ -3,10 +3,27 @@ import pkg from '../package.json'
 import { gitHooksCommand } from './commands/git-hooks'
 import { lintCommand } from './commands/lint'
 import { releaseCommand } from './commands/release'
+import type {
+  GitHooksOptions,
+  LintOptions,
+  ReleaseOptions,
+  VersionOptions,
+} from './commands/types'
 import { versionCommand } from './commands/version'
+import { handleCliError } from './utils/errors'
 import { printBanner } from './utils/logger'
 
 const cli = cac('nxspub')
+
+function withCliErrorHandling<T>(runner: (options: T) => Promise<void>) {
+  return async (options: T) => {
+    try {
+      await runner(options)
+    } catch (error) {
+      handleCliError(error)
+    }
+  }
+}
 
 cli
   .command('git-hooks', 'Install git hooks')
@@ -14,9 +31,12 @@ cli
     default: process.cwd(),
   })
   .option('--dry', 'Preview Mode')
-  .action(async options => {
-    await gitHooksCommand(options)
-  })
+  .action(
+    withCliErrorHandling(async options => {
+      const typedOptions = options as GitHooksOptions
+      await gitHooksCommand(typedOptions)
+    }),
+  )
 
 cli
   .command('lint', 'Lint commit message')
@@ -24,9 +44,12 @@ cli
     default: process.cwd(),
   })
   .option('--edit <path>', 'Path to the commit message file')
-  .action(async options => {
-    await lintCommand(options)
-  })
+  .action(
+    withCliErrorHandling(async options => {
+      const typedOptions = options as LintOptions
+      await lintCommand(typedOptions)
+    }),
+  )
 
 cli
   .command('version', 'Update the version and push the tag')
@@ -34,10 +57,13 @@ cli
     default: process.cwd(),
   })
   .option('--dry', 'Preview Mode')
-  .action(async options => {
-    printBanner()
-    await versionCommand(options)
-  })
+  .action(
+    withCliErrorHandling(async options => {
+      const typedOptions = options as VersionOptions
+      printBanner()
+      await versionCommand(typedOptions)
+    }),
+  )
 
 cli
   .command('release', 'Build and publish to NPM')
@@ -54,10 +80,13 @@ cli
   .option('--skipSync', 'Skip remote git synchronization check', {
     default: false,
   })
-  .action(async options => {
-    printBanner()
-    await releaseCommand(options)
-  })
+  .action(
+    withCliErrorHandling(async options => {
+      const typedOptions = options as ReleaseOptions
+      printBanner()
+      await releaseCommand(typedOptions)
+    }),
+  )
 
 cli.help()
 cli.version(pkg.version)

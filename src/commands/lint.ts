@@ -1,13 +1,15 @@
 import { loadConfig } from '../utils/load-config'
+import { abort } from '../utils/errors'
 import { nxsLog } from '../utils/logger'
 import { lintCommitMsg } from './lint-commit-msg'
+import type { LintOptions } from './types'
 
-export async function lintCommand(options: any) {
+export async function lintCommand(options: LintOptions) {
   if (options.edit) {
     const config = await loadConfig(options.cwd)
-    await lintCommitMsg(options, config)
+    await lintCommitMsg({ cwd: options.cwd, edit: options.edit }, config)
   } else {
     nxsLog.error('Option --edit <path> is required.')
-    process.exit(1)
+    abort(1)
   }
 }

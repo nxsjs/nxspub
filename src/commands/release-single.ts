@@ -1,6 +1,8 @@
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { NxspubConfig } from '../config'
+import type { ReleaseOptions } from './types'
+import { abort } from '../utils/errors'
 import {
   ensureGitSync,
   getBranchContract,
@@ -13,17 +15,7 @@ import { detectPackageManager } from '../utils/package-manager'
 import { readJSON } from '../utils/packages'
 
 export async function releaseSingle(
-  options: {
-    cwd: string
-    dry?: boolean
-    provenance?: boolean
-    registry?: string
-    access?: string
-    tag?: string
-    branch?: string
-    skipBuild?: boolean
-    skipSync?: boolean
-  },
+  options: ReleaseOptions,
   config: NxspubConfig,
 ) {
   const {
@@ -46,7 +38,7 @@ export async function releaseSingle(
 
   if (!branchContract) {
     nxsLog.error(`Admission Denied: Branch "${currentBranch}" not configured.`)
-    process.exit(1)
+    abort(1)
   }
 
   if (currentBranch && !dry && !skipBuild && !skipSync) {
@@ -59,7 +51,7 @@ export async function releaseSingle(
     nxsLog.error(
       `Release Denied: Version "${pkg.version}" is not a valid prerelease for contract "${branchContract}".`,
     )
-    process.exit(1)
+    abort(1)
   }
 
   nxsLog.step(`Checking registry...`)
@@ -118,6 +110,6 @@ export async function releaseSingle(
     }
   } catch {
     nxsLog.error(`NPM Publish failed for ${pkg.name}`)
-    process.exit(1)
+    abort(1)
   }
 }
