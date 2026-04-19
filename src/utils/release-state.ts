@@ -24,8 +24,16 @@ export interface ReleaseState {
   branches?: Record<string, StableBranchState>
 }
 
-function getStateFilePath(cwd: string): string {
-  return path.join(cwd, '.nxspub', 'release-state.json')
+function sanitizeBranch(branch: string): string {
+  return branch.replace(/[^\w.-]+/g, '_')
+}
+
+function getStateRootDir(cwd: string): string {
+  return path.join(cwd, '.nxspub', 'release-state')
+}
+
+function getBranchStateFilePath(cwd: string, branch: string): string {
+  return path.join(getStateRootDir(cwd), `${sanitizeBranch(branch)}.json`)
 }
 
 /**
@@ -41,12 +49,29 @@ function getStateFilePath(cwd: string): string {
  * @zh 解析后的发布状态对象。
  */
 export async function loadReleaseState(cwd: string): Promise<ReleaseState> {
-  const statePath = getStateFilePath(cwd)
+  const rootDir = getStateRootDir(cwd)
   try {
-    const raw = await fs.readFile(statePath, 'utf-8')
-    const parsed = JSON.parse(raw) as ReleaseState
-    if (!parsed || typeof parsed !== 'object') return {}
-    return parsed
+    const entries = await fs.readdir(rootDir, { withFileTypes: true })
+    const branches: Record<string, StableBranchState> = {}
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.json')) continue
+      const filePath = path.join(rootDir, entry.name)
+      try {
+        const raw = await fs.readFile(filePath, 'utf-8')
+        const parsed = JSON.parse(raw) as {
+          branch?: string
+          state?: StableBranchState
+        }
+        if (parsed?.branch && parsed.state) {
+          branches[parsed.branch] = parsed.state
+        }
+      } catch {
+        // ignore invalid state file
+      }
+    }
+
+    return { branches }
   } catch {
     return {}
   }
@@ -72,9 +97,18 @@ export async function saveReleaseState(
   cwd: string,
   state: ReleaseState,
 ): Promise<void> {
-  const statePath = getStateFilePath(cwd)
-  await fs.mkdir(path.dirname(statePath), { recursive: true })
-  await fs.writeFile(statePath, JSON.stringify(state, null, 2) + '\n', 'utf-8')
+  const rootDir = getStateRootDir(cwd)
+  await fs.mkdir(rootDir, { recursive: true })
+
+  const branches = state.branches || {}
+  for (const [branch, branchState] of Object.entries(branches)) {
+    const filePath = getBranchStateFilePath(cwd, branch)
+    await fs.writeFile(
+      filePath,
+      JSON.stringify({ branch, state: branchState }, null, 2) + '\n',
+      'utf-8',
+    )
+  }
 }
 
 /**
@@ -102,14 +136,19 @@ export async function updateStableBranchState(
   branch: string,
   payload: { rootVersion?: string; packageVersions?: Record<string, string> },
 ): Promise<void> {
-  const current = await loadReleaseState(cwd)
-  const branches = { ...(current.branches || {}) }
-  branches[branch] = {
+  const state: StableBranchState = {
     rootVersion: payload.rootVersion,
     packageVersions: payload.packageVersions,
     updatedAt: new Date().toISOString(),
   }
-  await saveReleaseState(cwd, { ...current, branches })
+
+  const filePath = getBranchStateFilePath(cwd, branch)
+  await fs.mkdir(path.dirname(filePath), { recursive: true })
+  await fs.writeFile(
+    filePath,
+    JSON.stringify({ branch, state }, null, 2) + '\n',
+    'utf-8',
+  )
 }
 
 /**
