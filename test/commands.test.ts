@@ -152,4 +152,44 @@ describe('command dispatch', () => {
       { cwd: '/repo' },
     )
   })
+
+  it('releaseSingle blocks prerelease versions on non-prerelease branch policy', async () => {
+    const run = vi.fn().mockResolvedValue(undefined)
+    const ensureGitSync = vi.fn().mockResolvedValue(undefined)
+    const getCurrentBranch = vi.fn().mockResolvedValue('main')
+    const detectPackageManager = vi.fn().mockResolvedValue({
+      name: 'npm',
+      runScript: () => ({ bin: 'npm', args: ['run', 'build'] }),
+      install: () => ({ bin: 'npm', args: ['install'] }),
+      publish: (args: string[]) => ({ bin: 'npm', args: ['publish', ...args] }),
+      devLintHook: () => 'npm run start -- lint --edit "$1"',
+    })
+    const readJSON = vi.fn().mockResolvedValue({
+      name: 'demo',
+      version: '1.2.3-alpha.1',
+      scripts: { build: 'tsc' },
+    })
+    const checkVersionExists = vi.fn().mockResolvedValue(false)
+
+    vi.doMock('../src/utils/git', () => ({
+      ensureGitSync,
+      resolveBranchPolicy: () => 'latest',
+      getCurrentBranch,
+      run,
+    }))
+    vi.doMock('../src/utils/package-manager', () => ({ detectPackageManager }))
+    vi.doMock('../src/utils/packages', () => ({ readJSON }))
+    vi.doMock('../src/utils/npm', () => ({ checkVersionExists }))
+    vi.doUnmock('../src/commands/release-single')
+
+    const { releaseSingle } = await import('../src/commands/release-single')
+    await expect(
+      releaseSingle({ cwd: '/repo', skipSync: true }, {}),
+    ).rejects.toMatchObject({
+      name: 'NxspubError',
+      exitCode: 1,
+    })
+
+    expect(checkVersionExists).not.toHaveBeenCalled()
+  })
 })

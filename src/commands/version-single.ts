@@ -446,17 +446,25 @@ export async function versionSingle(
     await run('git', ['tag', releaseTag], { cwd })
 
     cliLogger.step('Pushing to remote...')
-    await run(
-      'git',
-      [
-        'push',
-        '--atomic',
-        'origin',
-        `HEAD:${currentBranch}`,
-        `refs/tags/${releaseTag}`,
-      ],
-      { cwd },
-    )
+    try {
+      await run(
+        'git',
+        [
+          'push',
+          '--atomic',
+          'origin',
+          `HEAD:${currentBranch}`,
+          `refs/tags/${releaseTag}`,
+        ],
+        { cwd },
+      )
+    } catch (error) {
+      cliLogger.warn(
+        `Atomic push failed. Rolling back local tag "${releaseTag}" to keep reruns idempotent.`,
+      )
+      await runSafe('git', ['tag', '-d', releaseTag], { cwd }).catch(() => {})
+      throw error
+    }
 
     cliLogger.success(`Successfully released and pushed v${targetVersion}`)
   } else {

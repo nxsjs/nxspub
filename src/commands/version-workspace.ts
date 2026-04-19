@@ -27,6 +27,7 @@ import {
   getPackageCommits,
   getRepoUrl,
   run,
+  runSafe,
 } from '../utils/git'
 import { cliLogger } from '../utils/logger'
 import {
@@ -685,17 +686,27 @@ async function commitAndTagWorkspace(
     await run('git', ['tag', tag], { cwd })
   }
 
-  await run(
-    'git',
-    [
-      'push',
-      '--atomic',
-      'origin',
-      `HEAD:${currentBranch}`,
-      ...tagsToCreate.map(tag => `refs/tags/${tag}`),
-    ],
-    { cwd },
-  )
+  try {
+    await run(
+      'git',
+      [
+        'push',
+        '--atomic',
+        'origin',
+        `HEAD:${currentBranch}`,
+        ...tagsToCreate.map(tag => `refs/tags/${tag}`),
+      ],
+      { cwd },
+    )
+  } catch (error) {
+    cliLogger.warn(
+      'Atomic push failed. Rolling back local tags to keep reruns idempotent.',
+    )
+    for (const tag of tagsToCreate) {
+      await runSafe('git', ['tag', '-d', tag], { cwd }).catch(() => {})
+    }
+    throw error
+  }
 
   cliLogger.success(
     `Released ${taggable.length} public packages [Global: v${globalNextVersion}]`,

@@ -74,6 +74,12 @@ export async function releaseSingle(
     )
     abort(1)
   }
+  if (!isPrereleasePolicy && preTags.length > 0) {
+    cliLogger.error(
+      `Release Denied: Branch policy "${branchReleasePolicy}" does not allow prerelease version "${packageJson.version}".`,
+    )
+    abort(1)
+  }
 
   cliLogger.step(`Checking registry...`)
   cliLogger.item(`Package: ${packageJson.name}`)
