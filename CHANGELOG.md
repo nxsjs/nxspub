@@ -1,3 +1,22 @@
+## [0.7.0](https://github.com/nxsjs/nxspub/compare/0.6.4...0.7.0) (2026-04-19)
+
+### Features
+
+* implement `nxspub preview` base functionality ([44341e4](https://github.com/nxsjs/nxspub/commit/44341e401801a093ec56bc2f820a99da8cf617eb))
+* **release:** implement branch-specific release strategies ([8f0a584](https://github.com/nxsjs/nxspub/commit/8f0a584c629889fea1cc4944025ac7714610144f))
+* **draft:** implement auto-cleanup for stale changelog drafts ([4b909c7](https://github.com/nxsjs/nxspub/commit/4b909c77f148634a8f0a9f3f0775eabc4eed665a))
+
+### Bug Fixes
+
+* **release:** fix package manager detection and optimize workspace release flow ([13fb508](https://github.com/nxsjs/nxspub/commit/13fb50808c55e8c3343d3bf6789003728c1757ae))
+* **lock:** mitigate lock stale check risk due to PID reuse ([7d65a70](https://github.com/nxsjs/nxspub/commit/7d65a7094418d7854b31d52f6be5da949e77a4c0))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.6.4](https://github.com/nxsjs/nxspub/compare/0.6.3...0.6.4) (2026-04-19)
 
 ### Bug Fixes
