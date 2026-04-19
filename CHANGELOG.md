@@ -1,3 +1,25 @@
+## [0.6.3](https://github.com/nxsjs/nxspub/compare/0.6.2...0.6.3) (2026-04-19)
+
+### Bug Fixes
+
+* typing and debug logging ([af7c127](https://github.com/nxsjs/nxspub/commit/af7c12719975aa774fd79dddd9a2679922ebf1d1))
+
+### Refactors
+
+* refine naming in release workflow ([b7b145b](https://github.com/nxsjs/nxspub/commit/b7b145b66dfe1b020c7bb072fcf39e4eeb1a5f7f))
+* remove deprecated logger and git aliases ([dda0980](https://github.com/nxsjs/nxspub/commit/dda09800b07ca21e3829a2cdc06967cbf482b6e8))
+* rename branch policy resolver ([a1e8870](https://github.com/nxsjs/nxspub/commit/a1e88708a73b4729549ac69f64469d82c2aac09e))
+* rename branch contract terminology to policy ([a1d91b8](https://github.com/nxsjs/nxspub/commit/a1d91b82d4c646131b4cb2fd0a8e8a8b62dd02e2))
+* unify logger and branch naming ([a4d7ade](https://github.com/nxsjs/nxspub/commit/a4d7aded65804e7c68a2838e4e5aeaf9b7355f0c))
+* cli error handling and command types ([8745efd](https://github.com/nxsjs/nxspub/commit/8745efdcd3286953efd47c0076e5d1817e5752d1))
+* **changelog:** upgrade commit parsing logic ([65c337f](https://github.com/nxsjs/nxspub/commit/65c337fa22b7e74ca8e0e7c6583835d3e1584111))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.6.2](https://github.com/nxsjs/nxspub/compare/0.6.1...0.6.2) (2026-04-18)
 
 ### Bug Fixes
