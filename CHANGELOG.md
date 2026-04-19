@@ -1,3 +1,25 @@
+## [0.6.4](https://github.com/nxsjs/nxspub/compare/0.6.3...0.6.4) (2026-04-19)
+
+### Bug Fixes
+
+* **release:** prevent mis-prerelease & auto-rollback tags ([a8ecb2b](https://github.com/nxsjs/nxspub/commit/a8ecb2bfa5f3c7aa02b61928d100c2b6acb50aec))
+* target atomic version pushes to current branch ([0832b22](https://github.com/nxsjs/nxspub/commit/0832b22398a36c0e04e6992c02a576e1c1c36f62))
+* harden prerelease channel handling and atomic pushes ([c0c051a](https://github.com/nxsjs/nxspub/commit/c0c051a64370b07cad413f590ad3036d3cf5413a))
+* harden multi-branch release tag and lock handling ([dc5eec4](https://github.com/nxsjs/nxspub/commit/dc5eec4ed4865152e8cfeabe833a447605701f98))
+* harden draft locking and unreadable draft reporting ([b5fefaa](https://github.com/nxsjs/nxspub/commit/b5fefaafbbba41d8f8677639414a2afe2921d0b4))
+* store release state per branch ([db1bee1](https://github.com/nxsjs/nxspub/commit/db1bee1ec85411a85580d209ed7af93875bf6532))
+
+### Refactors
+
+* harden multi-branch release flow ([3d3bb51](https://github.com/nxsjs/nxspub/commit/3d3bb512dc1b0a9d8a26f2a4c2d582ab05dffa5b))
+* persist changelog drafts across branch releases ([7990bdb](https://github.com/nxsjs/nxspub/commit/7990bdbd65115af07433d405916dd85c4634e365))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.6.3](https://github.com/nxsjs/nxspub/compare/0.6.2...0.6.3) (2026-04-19)
 
 ### Bug Fixes
