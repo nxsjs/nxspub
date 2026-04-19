@@ -170,12 +170,23 @@ export async function versionSingle(
 
   let targetVersion: string
   const isPrereleasePolicy = branchReleasePolicy.startsWith('pre')
-  const prereleaseIdentifier = currentBranch!
+  const prereleaseIdentifier = currentBranch!.replace(/\//g, '-')
   if (isPrereleasePolicy) {
-    const isCurrentlyPre = !!semver.prerelease(currentPackageVersion)
-    const action = isCurrentlyPre
+    const prereleaseTokens = semver.prerelease(currentPackageVersion)
+    const currentPrereleaseIdentifier =
+      prereleaseTokens && typeof prereleaseTokens[0] === 'string'
+        ? prereleaseTokens[0]
+        : undefined
+    const shouldContinueCurrentChannel =
+      !!prereleaseTokens && currentPrereleaseIdentifier === prereleaseIdentifier
+    const action = shouldContinueCurrentChannel
       ? 'prerelease'
       : (branchReleasePolicy as semver.ReleaseType)
+    if (prereleaseTokens && !shouldContinueCurrentChannel) {
+      cliLogger.dim(
+        `Prerelease channel switched from "${currentPrereleaseIdentifier || 'unknown'}" to "${prereleaseIdentifier}", recalculating by policy "${branchReleasePolicy}".`,
+      )
+    }
     targetVersion = semver.inc(
       currentPackageVersion,
       action,
@@ -435,9 +446,11 @@ export async function versionSingle(
     await run('git', ['tag', releaseTag], { cwd })
 
     cliLogger.step('Pushing to remote...')
-
-    await run('git', ['push'], { cwd })
-    await run('git', ['push', 'origin', `refs/tags/${releaseTag}`], { cwd })
+    await run(
+      'git',
+      ['push', '--atomic', 'origin', 'HEAD', `refs/tags/${releaseTag}`],
+      { cwd },
+    )
 
     cliLogger.success(`Successfully released and pushed v${targetVersion}`)
   } else {

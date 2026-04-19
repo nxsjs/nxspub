@@ -420,10 +420,18 @@ function bumpVersionByPolicy(
   prereleaseIdentifier: string,
 ) {
   if (releasePolicy.startsWith('pre')) {
-    const isPre = !!semver.prerelease(version)
+    const prereleaseTokens = semver.prerelease(version)
+    const currentPrereleaseIdentifier =
+      prereleaseTokens && typeof prereleaseTokens[0] === 'string'
+        ? prereleaseTokens[0]
+        : undefined
+    const shouldContinueCurrentChannel =
+      !!prereleaseTokens && currentPrereleaseIdentifier === prereleaseIdentifier
     return semver.inc(
       version,
-      isPre ? 'prerelease' : (releasePolicy as semver.ReleaseType),
+      shouldContinueCurrentChannel
+        ? 'prerelease'
+        : (releasePolicy as semver.ReleaseType),
       prereleaseIdentifier,
     )!
   }
@@ -670,8 +678,17 @@ async function commitAndTagWorkspace(
     await run('git', ['tag', tag], { cwd })
   }
 
-  await run('git', ['push', 'origin'], { cwd })
-  await run('git', ['push', 'origin', '--tags'], { cwd })
+  await run(
+    'git',
+    [
+      'push',
+      '--atomic',
+      'origin',
+      'HEAD',
+      ...tagsToCreate.map(tag => `refs/tags/${tag}`),
+    ],
+    { cwd },
+  )
 
   cliLogger.success(
     `Released ${taggable.length} public packages [Global: v${globalNextVersion}]`,

@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { BranchType } from '../config'
@@ -285,7 +286,16 @@ export interface DraftImportAnalysis {
 
 function getDraftDir(cwd: string, branch: string) {
   const safeBranch = branch.replace(/[^\w.-]+/g, '_')
-  return path.join(cwd, '.nxspub', 'changelog-drafts', safeBranch)
+  const branchHash = createHash('sha1')
+    .update(branch)
+    .digest('hex')
+    .slice(0, 10)
+  return path.join(
+    cwd,
+    '.nxspub',
+    'changelog-drafts',
+    `${safeBranch}.${branchHash}`,
+  )
 }
 
 function getCoreVersion(version: string): string {

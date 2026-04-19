@@ -243,6 +243,32 @@ describe('changelog helpers', () => {
     expect(analysis.invalid).toHaveLength(0)
   })
 
+  it('stores drafts from similarly sanitized branch names without collisions', async () => {
+    await writeChangelogDraft(tempDir, {
+      schemaVersion: 1,
+      branch: 'feature/a_b',
+      version: '1.3.0-alpha.0',
+      generatedAt: '2026-04-18T00:00:00.000Z',
+      items: [
+        { label: 'Features', hash: 'aaaaaaa1', content: '* feature one' },
+      ],
+    })
+    await writeChangelogDraft(tempDir, {
+      schemaVersion: 1,
+      branch: 'feature/a/b',
+      version: '1.3.0-alpha.1',
+      generatedAt: '2026-04-18T00:00:00.000Z',
+      items: [
+        { label: 'Features', hash: 'bbbbbbb2', content: '* feature two' },
+      ],
+    })
+
+    const drafts = await readChangelogDrafts(tempDir)
+    const branchSet = new Set(drafts.map(d => d.draft.branch))
+    expect(branchSet.has('feature/a_b')).toBe(true)
+    expect(branchSet.has('feature/a/b')).toBe(true)
+  })
+
   it('extracts short commit hashes from changelog links', () => {
     const content =
       '* feat ([abc1234](https://github.com/acme/repo/commit/abc1234))\n' +
