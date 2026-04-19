@@ -7,6 +7,8 @@ import { DEFAULT_CONFIG } from '../src/config'
 
 describe('lintCommitMsg', () => {
   let tempDir: string
+  const originalGithubRefType = process.env.GITHUB_REF_TYPE
+  const originalGithubRefName = process.env.GITHUB_REF_NAME
 
   function mockExit() {
     return vi
@@ -21,6 +23,8 @@ describe('lintCommitMsg', () => {
   })
 
   afterEach(() => {
+    process.env.GITHUB_REF_TYPE = originalGithubRefType
+    process.env.GITHUB_REF_NAME = originalGithubRefName
     vi.restoreAllMocks()
   })
 
@@ -66,5 +70,48 @@ describe('lintCommitMsg', () => {
     ).rejects.toThrow('process.exit:1')
 
     expect(exitSpy).toHaveBeenCalledWith(1)
+  })
+
+  it('rejects a feat commit on a patch-only branch contract', async () => {
+    process.env.GITHUB_REF_TYPE = 'branch'
+    process.env.GITHUB_REF_NAME = 'hotfix'
+
+    const msgFile = path.join(tempDir, 'COMMIT_EDITMSG')
+    await writeFile(msgFile, 'feat(core): add unsupported feature\n')
+    const exitSpy = mockExit()
+
+    await expect(
+      lintCommitMsg(
+        { cwd: tempDir, edit: msgFile },
+        {
+          ...DEFAULT_CONFIG,
+          branches: {
+            hotfix: 'patch',
+          },
+        },
+      ),
+    ).rejects.toThrow('process.exit:1')
+
+    expect(exitSpy).toHaveBeenCalledWith(1)
+  })
+
+  it('allows a fix commit on a patch-only branch contract', async () => {
+    process.env.GITHUB_REF_TYPE = 'branch'
+    process.env.GITHUB_REF_NAME = 'hotfix'
+
+    const msgFile = path.join(tempDir, 'COMMIT_EDITMSG')
+    await writeFile(msgFile, 'fix(core): patch-safe change\n')
+
+    await expect(
+      lintCommitMsg(
+        { cwd: tempDir, edit: msgFile },
+        {
+          ...DEFAULT_CONFIG,
+          branches: {
+            hotfix: 'patch',
+          },
+        },
+      ),
+    ).resolves.toBeUndefined()
   })
 })
