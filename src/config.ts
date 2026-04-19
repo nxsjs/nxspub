@@ -134,6 +134,15 @@ export interface NxspubConfig {
      * @example { "feat": "🚀 Features", "fix": "🐛 Bug Fixes" }
      */
     labels?: Record<string, string>
+
+    /**
+     * @en Optional branch allowlist for changelog writes.
+     * When configured, changelog files are only written on these branches.
+     * @zh 可选的变更日志写入分支白名单。
+     * 配置后，仅在这些分支上写入 changelog 文件。
+     * @example ["main", "master"]
+     */
+    writeOnBranches?: string[]
   }
 
   /**

@@ -16,8 +16,14 @@ vi.mock('../src/utils/git', async () => {
 import {
   applyContributorsToChangelog,
   archiveChangelogIfNeeded,
+  canWriteChangelogOnBranch,
   cleanupExistingEntry,
+  extractShortCommitHashes,
+  filterDraftsForTargetVersion,
   parseCommit,
+  readChangelogDrafts,
+  removeChangelogDraft,
+  writeChangelogDraft,
 } from '../src/utils/changelog'
 import { getContributors } from '../src/utils/git'
 
@@ -139,5 +145,62 @@ describe('changelog helpers', () => {
     const archivedPath = path.join(tempDir, 'changelogs', 'CHANGELOG-v1.x.md')
     expect((await stat(archivedPath)).isFile()).toBe(true)
     expect(await readFile(archivedPath, 'utf8')).toContain('## [1.0.0]')
+  })
+
+  it('evaluates changelog write branch allowlist correctly', () => {
+    expect(canWriteChangelogOnBranch(undefined, 'main')).toBe(true)
+    expect(canWriteChangelogOnBranch([], 'main')).toBe(false)
+    expect(canWriteChangelogOnBranch(['main', 'master'], 'main')).toBe(true)
+    expect(canWriteChangelogOnBranch(['main', 'master'], 'alpha')).toBe(false)
+    expect(canWriteChangelogOnBranch(['main'], undefined)).toBe(false)
+  })
+
+  it('writes, reads, filters and removes changelog drafts', async () => {
+    const draftAPath = await writeChangelogDraft(tempDir, {
+      schemaVersion: 1,
+      branch: 'alpha',
+      version: '1.3.0-alpha.3',
+      generatedAt: '2026-04-18T00:00:00.000Z',
+      items: [
+        {
+          label: 'Features',
+          hash: '1234567890abcdef1234567890abcdef12345678',
+          content: '* alpha feature',
+        },
+      ],
+    })
+    await writeChangelogDraft(tempDir, {
+      schemaVersion: 1,
+      branch: 'beta',
+      version: '2.0.0-beta.1',
+      generatedAt: '2026-04-18T00:00:00.000Z',
+      items: [
+        {
+          label: 'Features',
+          hash: 'abcdef1234567890abcdef1234567890abcdef12',
+          content: '* beta feature',
+        },
+      ],
+    })
+
+    const allDrafts = await readChangelogDrafts(tempDir)
+    expect(allDrafts).toHaveLength(2)
+
+    const targetDrafts = filterDraftsForTargetVersion(allDrafts, '1.3.0')
+    expect(targetDrafts).toHaveLength(1)
+    expect(targetDrafts[0].draft.branch).toBe('alpha')
+
+    await removeChangelogDraft(draftAPath)
+    const afterRemove = await readChangelogDrafts(tempDir)
+    expect(afterRemove).toHaveLength(1)
+  })
+
+  it('extracts short commit hashes from changelog links', () => {
+    const content =
+      '* feat ([abc1234](https://github.com/acme/repo/commit/abc1234))\n' +
+      '* fix ([def5678](https://github.com/acme/repo/commit/def5678))'
+    const hashes = extractShortCommitHashes(content)
+    expect(hashes.has('abc1234')).toBe(true)
+    expect(hashes.has('def5678')).toBe(true)
   })
 })

@@ -158,6 +158,17 @@ It also:
 - appends contributor sections
 - archives oversized or major-version changelogs
 
+You can restrict changelog writes to specific branches:
+
+```ts
+changelog: {
+  writeOnBranches: ['main', 'master']
+}
+```
+
+When running `nxspub version` on non-allowed branches, nxspub writes draft files under `.nxspub/changelog-drafts/*`.  
+When you later run `nxspub version` on an allowed branch, matching drafts are auto-imported and deduplicated.
+
 ## Configuration
 
 ### Full Example
@@ -190,6 +201,7 @@ export default defineConfig({
     ],
   },
   changelog: {
+    writeOnBranches: ['main', 'master'],
     labels: {
       feat: 'Features',
       fix: 'Bug Fixes',

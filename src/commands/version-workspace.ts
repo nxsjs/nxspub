@@ -6,8 +6,14 @@ import { abort } from '../utils/errors'
 import {
   applyContributorsToChangelog,
   archiveChangelogIfNeeded,
+  canWriteChangelogOnBranch,
   cleanupExistingEntry,
+  extractShortCommitHashes,
+  filterDraftsForTargetVersion,
   parseCommit,
+  readChangelogDrafts,
+  removeChangelogDraft,
+  writeChangelogDraft,
 } from '../utils/changelog'
 import { formatDate } from '../utils/date'
 import {
@@ -22,6 +28,11 @@ import {
   runSafe,
 } from '../utils/git'
 import { cliLogger } from '../utils/logger'
+import {
+  chooseStableBaselineVersion,
+  loadReleaseState,
+  updateStableBranchState,
+} from '../utils/release-state'
 import {
   loadPackageJSON,
   readJSON,
@@ -82,9 +93,27 @@ export async function versionWorkspace(
   const lastRelease = await getLastReleaseCommit(cwd)
   const workspacePackages = await scanWorkspacePackages(cwd)
   const repoUrl = await getRepoUrl(cwd)
+  const shouldWriteChangelog = canWriteChangelogOnBranch(
+    config.changelog?.writeOnBranches,
+    currentBranch,
+  )
+  const stableBranchState =
+    branchReleasePolicy === 'latest' && currentBranch
+      ? (await loadReleaseState(cwd)).branches?.[currentBranch]
+      : undefined
 
   const tasks = new Map<string, PackageTask>()
   for (const info of workspacePackages) {
+    const normalizedVersion = chooseStableBaselineVersion(
+      info.version,
+      stableBranchState?.packageVersions?.[info.name],
+    )
+    if (normalizedVersion !== info.version) {
+      cliLogger.dim(
+        `Using stable baseline version ${normalizedVersion} for ${info.name} (was ${info.version}).`,
+      )
+    }
+
     const commits = await getPackageCommits(
       cwd,
       info.relativeDir,
@@ -97,7 +126,7 @@ export async function versionWorkspace(
     if (
       !bumpType &&
       !isPrereleaseBranchPolicy &&
-      semver.prerelease(info.version)
+      semver.prerelease(normalizedVersion)
     ) {
       bumpType = 'patch'
       cliLogger.item(
@@ -107,6 +136,7 @@ export async function versionWorkspace(
 
     tasks.set(info.name, {
       ...info,
+      version: normalizedVersion,
       commits,
       bumpType,
       isPassive: false,
@@ -151,17 +181,20 @@ export async function versionWorkspace(
   }
 
   const rootNewEntries: string[] = []
+  const rootDraftItems: { label: string; hash: string; content: string }[] = []
 
   for (const task of tasks.values()) {
     if (!task.nextVersion || task.nextVersion === task.version) continue
 
     if (!task.private) {
-      const archivedFooter = await archiveChangelogIfNeeded(
-        task.changelogPath,
-        task.version,
-        task.bumpType || 'patch',
-        branchReleasePolicy.startsWith('pre'),
-      )
+      const archivedFooter = shouldWriteChangelog
+        ? await archiveChangelogIfNeeded(
+            task.changelogPath,
+            task.version,
+            task.bumpType || 'patch',
+            branchReleasePolicy.startsWith('pre'),
+          )
+        : undefined
 
       const result = await updatePackageChangelog(
         task,
@@ -170,10 +203,28 @@ export async function versionWorkspace(
         repoUrl,
         lastRelease?.hash,
         lastRelease?.version,
+        shouldWriteChangelog,
         archivedFooter,
       )
 
-      if (result?.entry) rootNewEntries.push(result.entry)
+      if (result?.entry) {
+        rootNewEntries.push(result.entry)
+        if (result.commitHashes.length > 0) {
+          for (const hash of result.commitHashes) {
+            rootDraftItems.push({
+              label: '__root__',
+              hash,
+              content: result.entry,
+            })
+          }
+        } else {
+          rootDraftItems.push({
+            label: '__root__',
+            hash: `draft-${task.name}-${task.nextVersion}`,
+            content: result.entry,
+          })
+        }
+      }
     }
 
     const rawPkg = await readJSON(task.pkgPath)
@@ -186,7 +237,67 @@ export async function versionWorkspace(
     }
   }
 
-  if (rootNewEntries.length > 0 && globalNextVersion) {
+  if (shouldWriteChangelog && globalNextVersion) {
+    const rootChangelogPath = path.join(cwd, 'CHANGELOG.md')
+    const existingRootChangelog = await fs
+      .readFile(rootChangelogPath, 'utf-8')
+      .catch(() => '')
+    const presentShortHashes = extractShortCommitHashes(
+      existingRootChangelog + '\n' + rootNewEntries.join('\n'),
+    )
+    const presentContents = new Set(rootNewEntries)
+    const draftRecords = filterDraftsForTargetVersion(
+      await readChangelogDrafts(cwd),
+      globalNextVersion,
+    )
+
+    for (const record of draftRecords) {
+      let importedCount = 0
+
+      for (const item of record.draft.items) {
+        if (item.label !== '__root__') continue
+        if (presentContents.has(item.content)) continue
+
+        const shortHash = item.hash.slice(0, 7).toLowerCase()
+        const hashIsSynthetic = item.hash.startsWith('draft-')
+        if (!hashIsSynthetic && presentShortHashes.has(shortHash)) continue
+
+        rootNewEntries.push(item.content)
+        presentContents.add(item.content)
+        if (!hashIsSynthetic) {
+          presentShortHashes.add(shortHash)
+        }
+        importedCount++
+      }
+
+      await removeChangelogDraft(record.filePath)
+
+      if (importedCount > 0) {
+        cliLogger.item(
+          `Imported ${importedCount} draft workspace changelog section(s) from ${record.draft.branch}@${record.draft.version}`,
+        )
+      }
+    }
+  } else if (!shouldWriteChangelog) {
+    const draftBranch = currentBranch || 'unknown'
+    if (rootDraftItems.length > 0) {
+      await writeChangelogDraft(cwd, {
+        schemaVersion: 1,
+        branch: draftBranch,
+        version: globalNextVersion,
+        generatedAt: new Date().toISOString(),
+        items: rootDraftItems,
+      })
+      cliLogger.item(
+        `Saved changelog draft for ${draftBranch}@${globalNextVersion} in .nxspub/changelog-drafts`,
+      )
+    }
+    cliLogger.dim(
+      `Skipping changelog write on branch "${currentBranch}" due to changelog.writeOnBranches config.`,
+    )
+  }
+
+  if (shouldWriteChangelog && rootNewEntries.length > 0 && globalNextVersion) {
     await updateRootChangelog(
       cwd,
       rootNewEntries,
@@ -195,6 +306,17 @@ export async function versionWorkspace(
       lastRelease?.version,
       globalNextVersion,
     )
+  }
+
+  if (branchReleasePolicy === 'latest' && currentBranch) {
+    const packageVersions: Record<string, string> = {}
+    for (const task of tasks.values()) {
+      packageVersions[task.name] = task.nextVersion || task.version
+    }
+    await updateStableBranchState(cwd, currentBranch, {
+      rootVersion: globalNextVersion,
+      packageVersions,
+    })
   }
 
   await commitAndTagWorkspace(cwd, tasks, mode, globalNextVersion)
@@ -292,6 +414,7 @@ async function updatePackageChangelog(
   repoUrl: string,
   lastHash: string | undefined,
   lastVer: string | undefined,
+  shouldWritePackageChangelog: boolean,
   archivedFooter?: string,
 ) {
   if (task.commits.length === 0 && !task.isPassive) return null
@@ -303,6 +426,7 @@ async function updatePackageChangelog(
   const compareUrl = links.compare(lastVer, task.nextVersion!)
 
   const groups: Record<string, string[]> = {}
+  const commitHashes: string[] = []
 
   if (task.isPassive && task.passiveReasons) {
     const depsLabel = config.changelog?.labels?.['deps'] || 'Dependencies'
@@ -353,32 +477,35 @@ async function updatePackageChangelog(
     }
 
     groups[label].push(entry)
+    commitHashes.push(c.hash)
   })
 
-  let localEntry = `## [${task.nextVersion}](${compareUrl}) (${date})\n\n`
+  if (shouldWritePackageChangelog) {
+    let localEntry = `## [${task.nextVersion}](${compareUrl}) (${date})\n\n`
 
-  for (const [label, lines] of Object.entries(groups)) {
-    localEntry += `### ${label}\n${lines.join('\n')}\n\n`
+    for (const [label, lines] of Object.entries(groups)) {
+      localEntry += `### ${label}\n${lines.join('\n')}\n\n`
+    }
+
+    const existing =
+      archivedFooter ??
+      (await fs.readFile(task.changelogPath, 'utf-8').catch(() => ''))
+
+    const cleanedExisting = cleanupExistingEntry(existing, task.nextVersion!)
+
+    localEntry = await applyContributorsToChangelog(
+      localEntry,
+      cwd,
+      repoUrl,
+      lastHash,
+      task.relativeDir,
+    )
+
+    await fs.writeFile(
+      task.changelogPath,
+      (localEntry + cleanedExisting).trim() + '\n',
+    )
   }
-
-  const existing =
-    archivedFooter ??
-    (await fs.readFile(task.changelogPath, 'utf-8').catch(() => ''))
-
-  const cleanedExisting = cleanupExistingEntry(existing, task.nextVersion!)
-
-  localEntry = await applyContributorsToChangelog(
-    localEntry,
-    cwd,
-    repoUrl,
-    lastHash,
-    task.relativeDir,
-  )
-
-  await fs.writeFile(
-    task.changelogPath,
-    (localEntry + cleanedExisting).trim() + '\n',
-  )
 
   const rootLines: string[] = []
   for (const [label, lines] of Object.entries(groups)) {
@@ -390,7 +517,7 @@ async function updatePackageChangelog(
 
   const rootEntry = `### ${task.name}@${task.nextVersion}\n${rootLines.join('\n')}`
 
-  return { entry: rootEntry }
+  return { entry: rootEntry, commitHashes }
 }
 
 async function updateRootChangelog(

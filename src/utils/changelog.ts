@@ -191,6 +191,228 @@ export async function applyContributorsToChangelog(
 }
 
 /**
+ * @en Decide whether changelog files should be written on current branch.
+ * @zh 判断当前分支是否允许写入 changelog 文件。
+ *
+ * @param writeOnBranches
+ * @en Optional branch allowlist from config.
+ * @zh 配置中的可选分支白名单。
+ *
+ * @param currentBranch
+ * @en Current git branch name.
+ * @zh 当前 Git 分支名。
+ *
+ * @returns
+ * @en True when changelog writing is allowed.
+ * @zh 允许写入 changelog 时返回 true。
+ */
+export function canWriteChangelogOnBranch(
+  writeOnBranches: string[] | undefined,
+  currentBranch: string | undefined,
+): boolean {
+  if (!writeOnBranches) return true
+  if (writeOnBranches.length === 0) return false
+  if (!currentBranch) return false
+  return writeOnBranches.includes(currentBranch)
+}
+
+/**
+ * @en A normalized changelog draft item.
+ * @zh 标准化的 changelog 草稿条目。
+ */
+export interface ChangelogDraftItem {
+  /** @en Label key used for section grouping. @zh 用于分组的标签键。 */
+  label: string
+  /** @en Commit hash related to the item. @zh 与条目关联的提交哈希。 */
+  hash: string
+  /** @en Rendered markdown content line/block. @zh 已渲染的 Markdown 内容行/块。 */
+  content: string
+}
+
+/**
+ * @en Changelog draft file model persisted in repository.
+ * @zh 持久化在仓库中的 changelog 草稿文件模型。
+ */
+export interface ChangelogDraft {
+  /** @en Schema version for forward compatibility. @zh 用于前向兼容的结构版本。 */
+  schemaVersion: 1
+  /** @en Source branch name that generated the draft. @zh 生成草稿的源分支名。 */
+  branch: string
+  /** @en Version string produced on source branch. @zh 源分支产出的版本号。 */
+  version: string
+  /** @en Timestamp string when draft was generated. @zh 草稿生成时间戳字符串。 */
+  generatedAt: string
+  /** @en Draft items to merge into target changelog. @zh 待合并到目标 changelog 的草稿条目。 */
+  items: ChangelogDraftItem[]
+}
+
+/**
+ * @en Changelog draft loaded from file system with file path.
+ * @zh 从文件系统读取并带文件路径的 changelog 草稿。
+ */
+export interface ChangelogDraftRecord {
+  /** @en Absolute file path of the draft json file. @zh 草稿 JSON 文件的绝对路径。 */
+  filePath: string
+  /** @en Parsed draft payload. @zh 解析后的草稿内容。 */
+  draft: ChangelogDraft
+}
+
+function getDraftDir(cwd: string, branch: string) {
+  const safeBranch = branch.replace(/[^\w.-]+/g, '_')
+  return path.join(cwd, '.nxspub', 'changelog-drafts', safeBranch)
+}
+
+function getCoreVersion(version: string): string {
+  const prereleaseIndex = version.indexOf('-')
+  return prereleaseIndex === -1 ? version : version.slice(0, prereleaseIndex)
+}
+
+/**
+ * @en Extract short commit hashes referenced in changelog markdown.
+ * @zh 提取 changelog Markdown 中引用的短提交哈希。
+ *
+ * @param content
+ * @en Changelog markdown content.
+ * @zh Changelog 的 Markdown 内容。
+ *
+ * @returns
+ * @en Set of 7-char short hashes.
+ * @zh 7 位短哈希集合。
+ */
+export function extractShortCommitHashes(content: string): Set<string> {
+  const hashes = new Set<string>()
+  const regex = /\[([0-9a-f]{7})\]\(/gi
+  let match: RegExpExecArray | null = null
+  while ((match = regex.exec(content)) !== null) {
+    hashes.add(match[1].toLowerCase())
+  }
+  return hashes
+}
+
+/**
+ * @en Persist changelog draft json for non-write branches.
+ * @zh 为非写入分支持久化 changelog 草稿 JSON。
+ *
+ * @param cwd
+ * @en Project root directory.
+ * @zh 项目根目录。
+ *
+ * @param draft
+ * @en Draft payload to persist.
+ * @zh 需要持久化的草稿内容。
+ *
+ * @returns
+ * @en Absolute path of persisted draft file.
+ * @zh 持久化后的草稿文件绝对路径。
+ */
+export async function writeChangelogDraft(
+  cwd: string,
+  draft: ChangelogDraft,
+): Promise<string> {
+  const draftDir = getDraftDir(cwd, draft.branch)
+  await fs.mkdir(draftDir, { recursive: true })
+  const filePath = path.join(draftDir, `${draft.version}.json`)
+  await fs.writeFile(filePath, JSON.stringify(draft, null, 2) + '\n', 'utf-8')
+  return filePath
+}
+
+/**
+ * @en Read all changelog draft json files from workspace.
+ * @zh 读取工作区下所有 changelog 草稿 JSON 文件。
+ *
+ * @param cwd
+ * @en Project root directory.
+ * @zh 项目根目录。
+ *
+ * @returns
+ * @en Parsed draft records.
+ * @zh 解析后的草稿记录列表。
+ */
+export async function readChangelogDrafts(
+  cwd: string,
+): Promise<ChangelogDraftRecord[]> {
+  const rootDir = path.join(cwd, '.nxspub', 'changelog-drafts')
+  try {
+    const branchDirs = await fs.readdir(rootDir, { withFileTypes: true })
+    const records: ChangelogDraftRecord[] = []
+
+    for (const branchDir of branchDirs) {
+      if (!branchDir.isDirectory()) continue
+      const branchPath = path.join(rootDir, branchDir.name)
+      const files = await fs.readdir(branchPath, { withFileTypes: true })
+      for (const file of files) {
+        if (!file.isFile() || !file.name.endsWith('.json')) continue
+        const filePath = path.join(branchPath, file.name)
+        try {
+          const raw = await fs.readFile(filePath, 'utf-8')
+          const draft = JSON.parse(raw) as ChangelogDraft
+          if (
+            draft &&
+            draft.schemaVersion === 1 &&
+            typeof draft.branch === 'string' &&
+            typeof draft.version === 'string' &&
+            Array.isArray(draft.items)
+          ) {
+            records.push({ filePath, draft })
+          }
+        } catch {
+          // ignore malformed draft files
+        }
+      }
+    }
+
+    return records
+  } catch {
+    return []
+  }
+}
+
+/**
+ * @en Filter drafts matching a target stable version core.
+ * @zh 按目标稳定版本核心号筛选草稿。
+ *
+ * @param drafts
+ * @en Candidate draft records.
+ * @zh 候选草稿记录。
+ *
+ * @param targetVersion
+ * @en Target release version on current branch.
+ * @zh 当前分支的目标发布版本。
+ *
+ * @returns
+ * @en Drafts whose core version equals target version.
+ * @zh 核心版本与目标版本一致的草稿。
+ */
+export function filterDraftsForTargetVersion(
+  drafts: ChangelogDraftRecord[],
+  targetVersion: string,
+): ChangelogDraftRecord[] {
+  return drafts.filter(
+    record => getCoreVersion(record.draft.version) === targetVersion,
+  )
+}
+
+/**
+ * @en Delete a consumed changelog draft file.
+ * @zh 删除已消费的 changelog 草稿文件。
+ *
+ * @param filePath
+ * @en Absolute draft file path.
+ * @zh 草稿文件绝对路径。
+ *
+ * @returns
+ * @en Resolves when file deletion is attempted.
+ * @zh 尝试删除文件后返回。
+ */
+export async function removeChangelogDraft(filePath: string): Promise<void> {
+  try {
+    await fs.unlink(filePath)
+  } catch {
+    // ignore
+  }
+}
+
+/**
  * @en Structured data of a parsed commit message.
  * @zh 解析后的提交信息结构化数据。
  */

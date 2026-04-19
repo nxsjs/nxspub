@@ -6,8 +6,14 @@ import { abort } from '../utils/errors'
 import {
   applyContributorsToChangelog,
   archiveChangelogIfNeeded,
+  canWriteChangelogOnBranch,
   cleanupExistingEntry,
+  extractShortCommitHashes,
+  filterDraftsForTargetVersion,
   parseCommit,
+  readChangelogDrafts,
+  removeChangelogDraft,
+  writeChangelogDraft,
 } from '../utils/changelog'
 import { formatDate } from '../utils/date'
 import {
@@ -23,6 +29,11 @@ import {
 } from '../utils/git'
 import { cliLogger } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
+import {
+  chooseStableBaselineVersion,
+  loadReleaseState,
+  updateStableBranchState,
+} from '../utils/release-state'
 import { readJSON, writeJSON } from '../utils/packages'
 import { determineBumpType } from '../utils/versions'
 import type { VersionOptions } from './types'
@@ -79,8 +90,24 @@ export async function versionSingle(
 
   const packageJson = await readJSON(pkgPath)
   const packageManager = await detectPackageManager(cwd)
-  const currentPackageVersion = packageJson.version
+  const stableBranchState =
+    branchReleasePolicy === 'latest' && currentBranch
+      ? (await loadReleaseState(cwd)).branches?.[currentBranch]
+      : undefined
+  const currentPackageVersion = chooseStableBaselineVersion(
+    packageJson.version,
+    stableBranchState?.rootVersion,
+  )
+  if (currentPackageVersion !== packageJson.version) {
+    cliLogger.dim(
+      `Using stable baseline version ${currentPackageVersion} instead of package.json version ${packageJson.version}.`,
+    )
+  }
   const repoUrl = await getRepoUrl(cwd)
+  const shouldWriteChangelog = canWriteChangelogOnBranch(
+    config.changelog?.writeOnBranches,
+    currentBranch,
+  )
 
   cliLogger.step(`Branch Policy`)
   cliLogger.item(`${currentBranch}: ${branchReleasePolicy}`)
@@ -164,13 +191,12 @@ export async function versionSingle(
   )
   cliLogger.item(`Target Version: ${cliLogger.highlight(targetVersion)}`)
 
-  const date = formatDate()
   const links = createLinkProvider(repoUrl)
-  const compareUrl = links.compare(lastRelease?.version, targetVersion)
   const groups: Record<string, string[]> = {}
   Object.values(config.changelog?.labels || {}).forEach(label => {
     groups[label] = []
   })
+  const draftItems: { label: string; hash: string; content: string }[] = []
 
   commits.forEach(({ message, hash }) => {
     const parsed = parseCommit(message, repoUrl)
@@ -222,51 +248,126 @@ export async function versionSingle(
       groups[label] = []
     }
     groups[label].push(entry)
+    draftItems.push({ label, hash, content: entry })
   })
 
-  let newEntry = `## [${targetVersion}](${compareUrl}) (${date})\n\n`
-  for (const [title, items] of Object.entries(groups)) {
-    if (items.length > 0) newEntry += `### ${title}\n\n${items.join('\n')}\n\n`
+  let newEntry = ''
+  if (shouldWriteChangelog) {
+    const existingChangelogRaw = await fs
+      .readFile(changelogPath, 'utf-8')
+      .catch(() => '')
+    const presentShortHashes = extractShortCommitHashes(
+      existingChangelogRaw +
+        '\n' +
+        draftItems.map(item => item.content).join('\n'),
+    )
+
+    const draftRecords = filterDraftsForTargetVersion(
+      await readChangelogDrafts(cwd),
+      targetVersion,
+    )
+
+    for (const record of draftRecords) {
+      let importedCount = 0
+
+      for (const item of record.draft.items) {
+        const shortHash = item.hash.slice(0, 7).toLowerCase()
+        if (presentShortHashes.has(shortHash)) continue
+        if (!groups[item.label]) groups[item.label] = []
+        groups[item.label].push(item.content)
+        presentShortHashes.add(shortHash)
+        importedCount++
+      }
+
+      await removeChangelogDraft(record.filePath)
+
+      if (importedCount > 0) {
+        cliLogger.item(
+          `Imported ${importedCount} draft changelog item(s) from ${record.draft.branch}@${record.draft.version}`,
+        )
+      }
+    }
+
+    const date = formatDate()
+    const compareUrl = links.compare(lastRelease?.version, targetVersion)
+    newEntry = `## [${targetVersion}](${compareUrl}) (${date})\n\n`
+    for (const [title, items] of Object.entries(groups)) {
+      if (items.length > 0)
+        newEntry += `### ${title}\n\n${items.join('\n')}\n\n`
+    }
+
+    newEntry = await applyContributorsToChangelog(
+      newEntry,
+      cwd,
+      repoUrl,
+      lastRelease?.hash,
+    )
   }
 
-  newEntry = await applyContributorsToChangelog(
-    newEntry,
-    cwd,
-    repoUrl,
-    lastRelease?.hash,
-  )
-
   if (dry) {
-    cliLogger.warn('DRY RUN: Changelog entry:')
-    cliLogger.log(newEntry)
+    if (shouldWriteChangelog) {
+      cliLogger.warn('DRY RUN: Changelog entry:')
+      cliLogger.log(newEntry)
+    } else {
+      cliLogger.warn('DRY RUN: Changelog draft entry:')
+      cliLogger.log(draftItems.map(item => item.content).join('\n'))
+      cliLogger.dim(
+        `Skipping changelog write on branch "${currentBranch}" due to changelog.writeOnBranches config.`,
+      )
+    }
     return
   }
 
   cliLogger.step('Updating Files')
-  cliLogger.item(changelogPath)
+  if (shouldWriteChangelog) {
+    cliLogger.item(changelogPath)
+  }
 
-  let currentChangelog = ''
-  try {
-    currentChangelog = await fs.readFile(changelogPath, 'utf-8')
-    const footerChangelog = await archiveChangelogIfNeeded(
+  if (shouldWriteChangelog) {
+    let currentChangelog = ''
+    try {
+      currentChangelog = await fs.readFile(changelogPath, 'utf-8')
+      const footerChangelog = await archiveChangelogIfNeeded(
+        changelogPath,
+        currentPackageVersion,
+        bumpType,
+        isPrereleasePolicy,
+      )
+      if (footerChangelog) {
+        currentChangelog = footerChangelog
+      }
+    } catch {}
+
+    currentChangelog = cleanupExistingEntry(currentChangelog, targetVersion)
+
+    cliLogger.item(`Updating ${changelogPath}...`)
+    await fs.writeFile(
       changelogPath,
-      currentPackageVersion,
-      bumpType,
-      isPrereleasePolicy,
+      (newEntry + currentChangelog).trim() + '\n',
     )
-    if (footerChangelog) {
-      currentChangelog = footerChangelog
+  } else {
+    if (draftItems.length > 0) {
+      const draftBranch = currentBranch || 'unknown'
+      await writeChangelogDraft(cwd, {
+        schemaVersion: 1,
+        branch: draftBranch,
+        version: targetVersion,
+        generatedAt: new Date().toISOString(),
+        items: draftItems,
+      })
+      cliLogger.item(
+        `Saved changelog draft for ${draftBranch}@${targetVersion} in .nxspub/changelog-drafts`,
+      )
     }
-  } catch {}
-
-  currentChangelog = cleanupExistingEntry(currentChangelog, targetVersion)
+    cliLogger.dim(
+      `Skipping changelog write on branch "${currentBranch}" due to changelog.writeOnBranches config.`,
+    )
+  }
 
   packageJson.version = targetVersion
   cliLogger.item(`Updating ${pkgPath}...`)
 
   await writeJSON(pkgPath, packageJson)
-  cliLogger.item(`Updating ${changelogPath}...`)
-  await fs.writeFile(changelogPath, (newEntry + currentChangelog).trim() + '\n')
 
   cliLogger.step('Updating lockfile...')
   const installCommand = packageManager.install()
@@ -293,8 +394,19 @@ export async function versionSingle(
 
     await run('git', ['push'], { cwd })
 
+    if (branchReleasePolicy === 'latest' && currentBranch) {
+      await updateStableBranchState(cwd, currentBranch, {
+        rootVersion: targetVersion,
+      })
+    }
+
     cliLogger.success(`Successfully released and pushed v${targetVersion}`)
   } else {
+    if (branchReleasePolicy === 'latest' && currentBranch) {
+      await updateStableBranchState(cwd, currentBranch, {
+        rootVersion: targetVersion,
+      })
+    }
     cliLogger.dim('No changes detected, skipping git push.')
   }
 
