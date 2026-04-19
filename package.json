@@ -31,6 +31,7 @@
     "format-check": "prettier --check --cache .",
     "preinstall": "npx only-allow pnpm",
     "postinstall": "node ./postinstall.mjs",
+    "nxspub-preview": "pnpm run start preview --web --open",
     "version": "pnpm run start version",
     "release": "pnpm run start release"
   },

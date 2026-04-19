@@ -38,6 +38,29 @@ export interface LintOptions extends CwdOptions {
 export interface VersionOptions extends DryRunOptions {}
 
 /**
+ * @en Command options for preview command.
+ * @zh preview 命令参数。
+ */
+export interface PreviewOptions extends CwdOptions {
+  /** @en Enable web preview server mode. @zh 启用 Web 预览服务模式。 */
+  web?: boolean
+  /** @en Output preview result as JSON. @zh 以 JSON 输出预览结果。 */
+  json?: boolean
+  /** @en Simulate preview on the given branch. @zh 基于指定分支进行模拟预览。 */
+  branch?: string
+  /** @en Host to bind the web server. @zh Web 服务监听主机。 */
+  host?: string
+  /** @en Port to bind the web server. @zh Web 服务监听端口。 */
+  port?: number
+  /** @en Auto-open browser after server starts. @zh 服务启动后自动打开浏览器。 */
+  open?: boolean
+  /** @en Strict read-only mode for web APIs. @zh Web API 严格只读模式。 */
+  readonlyStrict?: boolean
+  /** @en Allow remote access when host is 0.0.0.0. @zh 当 host 为 0.0.0.0 时允许远程访问。 */
+  allowRemote?: boolean
+}
+
+/**
  * @en Command options for release command.
  * @zh release 命令参数。
  */

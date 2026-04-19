@@ -3,11 +3,13 @@ import pkg from '../package.json'
 import { draftDoctorCommand } from './commands/draft-doctor'
 import { gitHooksCommand } from './commands/git-hooks'
 import { lintCommand } from './commands/lint'
+import { previewCommand } from './commands/preview'
 import { releaseCommand } from './commands/release'
 import type {
   CwdOptions,
   GitHooksOptions,
   LintOptions,
+  PreviewOptions,
   ReleaseOptions,
   VersionOptions,
 } from './commands/types'
@@ -67,6 +69,30 @@ cli
     withCliErrorHandling(async options => {
       const typedOptions = options as LintOptions
       await lintCommand(typedOptions)
+    }),
+  )
+
+cli
+  .command('preview', 'Preview release result and risks')
+  .option('--cwd <cwd>', 'Specify the working directory', {
+    default: process.cwd(),
+  })
+  .option('--json', 'Output machine-readable JSON result', { default: false })
+  .option('--branch <branch>', 'Simulate release on a specific branch')
+  .option('--web', 'Start local web preview server', { default: false })
+  .option('--host <host>', 'Web server host', { default: '127.0.0.1' })
+  .option('--port <port>', 'Web server port', { default: 4173 })
+  .option('--open', 'Open browser after server starts', { default: false })
+  .option('--readonly-strict', 'Disable all write endpoints in web mode', {
+    default: false,
+  })
+  .option('--allow-remote', 'Allow remote access when host is 0.0.0.0', {
+    default: false,
+  })
+  .action(
+    withCliErrorHandling(async options => {
+      const typedOptions = options as PreviewOptions
+      await previewCommand(typedOptions)
     }),
   )
 
