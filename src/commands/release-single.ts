@@ -11,8 +11,15 @@ import {
 } from '../utils/git'
 import { cliLogger } from '../utils/logger'
 import { checkVersionExists } from '../utils/npm'
-import { detectPackageManager } from '../utils/package-manager'
+import {
+  detectPackageManager,
+  type PackageManagerInfo,
+} from '../utils/package-manager'
 import { readJSON } from '../utils/packages'
+
+interface InternalReleaseOptions extends ReleaseOptions {
+  resolvedPackageManager?: PackageManagerInfo
+}
 
 /**
  * @en Publish a single package to registry with branch policy and safety checks.
@@ -31,7 +38,7 @@ import { readJSON } from '../utils/packages'
  * @zh 发布流程完成后返回。
  */
 export async function releaseSingle(
-  options: ReleaseOptions,
+  options: InternalReleaseOptions,
   config: NxspubConfig,
 ) {
   const {
@@ -48,7 +55,8 @@ export async function releaseSingle(
   const pkgPath = path.resolve(cwd, 'package.json')
 
   const packageJson = await readJSON(pkgPath)
-  const packageManager = await detectPackageManager(cwd)
+  const packageManager =
+    options.resolvedPackageManager ?? (await detectPackageManager(cwd))
   const currentBranch = branch || (await getCurrentBranch(cwd))
   const branchReleasePolicy = resolveBranchPolicy(
     currentBranch!,

@@ -1,7 +1,14 @@
 import path from 'node:path'
+import * as semver from 'semver-es'
 import type { NxspubConfig } from '../config'
 import type { ReleaseOptions } from './types'
-import { ensureGitSync, getCurrentBranch, run } from '../utils/git'
+import { abort } from '../utils/errors'
+import {
+  ensureGitSync,
+  getCurrentBranch,
+  resolveBranchPolicy,
+  run,
+} from '../utils/git'
 import { cliLogger } from '../utils/logger'
 import { detectPackageManager } from '../utils/package-manager'
 import {
@@ -41,6 +48,17 @@ export async function releaseWorkspace(
     await ensureGitSync(currentBranch, cwd)
   }
 
+  const branchReleasePolicy = resolveBranchPolicy(
+    currentBranch!,
+    config.branches,
+  )
+  if (!branchReleasePolicy) {
+    cliLogger.error(
+      `Admission Denied: Branch "${currentBranch}" not configured.`,
+    )
+    abort(1)
+  }
+
   cliLogger.step('Workspace Release: Initializing Pipeline')
 
   const workspacePackages = await scanWorkspacePackages(cwd)
@@ -58,6 +76,24 @@ export async function releaseWorkspace(
   if (publicPackages.length === 0) {
     cliLogger.success('No public packages found in workspace.')
     return
+  }
+
+  const isPrereleasePolicy = branchReleasePolicy.startsWith('pre')
+  const invalidPackage = publicPackages.find(pkg => {
+    const preTags = semver.prerelease(pkg.version) || []
+    if (isPrereleasePolicy) {
+      return preTags.length < 2
+    }
+    return preTags.length > 0
+  })
+  if (invalidPackage) {
+    const hint = isPrereleasePolicy
+      ? `expects prerelease versions`
+      : `does not allow prerelease versions`
+    cliLogger.error(
+      `Release Denied: Branch policy "${branchReleasePolicy}" ${hint}, but found ${invalidPackage.name}@${invalidPackage.version}.`,
+    )
+    abort(1)
   }
 
   cliLogger.item(
@@ -88,6 +124,7 @@ export async function releaseWorkspace(
         ...options,
         cwd: packageInfo.dir,
         skipBuild: true,
+        resolvedPackageManager: packageManager,
       },
       config,
     )
