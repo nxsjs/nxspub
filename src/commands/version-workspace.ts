@@ -46,8 +46,8 @@ export async function versionWorkspace(
   const mode = config.workspace?.mode || 'locked'
 
   const currentBranch = await getCurrentBranch(cwd)
-  const branchReleaseType = resolveBranchType(currentBranch!, config.branches)
-  if (!branchReleaseType) {
+  const branchReleasePolicy = resolveBranchType(currentBranch!, config.branches)
+  if (!branchReleasePolicy) {
     cliLogger.error(
       `Admission Denied: Branch "${currentBranch}" not configured.`,
     )
@@ -73,7 +73,7 @@ export async function versionWorkspace(
     )
     let bumpType = determineBumpType(commits, config)
 
-    const isPreBranch = branchReleaseType && branchReleaseType.startsWith('pre')
+    const isPreBranch = branchReleasePolicy.startsWith('pre')
 
     if (!bumpType && !isPreBranch && semver.prerelease(info.version)) {
       bumpType = 'patch'
@@ -102,7 +102,7 @@ export async function versionWorkspace(
 
   const globalNextVersion = calculateVersions(
     tasks,
-    branchReleaseType,
+    branchReleasePolicy,
     currentBranch!,
     mode,
   )
@@ -137,7 +137,7 @@ export async function versionWorkspace(
         task.changelogPath,
         task.version,
         task.bumpType || 'patch',
-        branchReleaseType.startsWith('pre'),
+        branchReleasePolicy.startsWith('pre'),
       )
 
       const result = await updatePackageChangelog(
@@ -208,7 +208,7 @@ function propagateWorkspaceChanges(
 
 function calculateVersions(
   tasks: Map<string, PackageTask>,
-  contract: BranchType,
+  releasePolicy: BranchType,
   branch: string,
   mode: WorkspaceMode,
 ): string {
@@ -220,7 +220,7 @@ function calculateVersions(
     .map(t => t.version)
     .sort(semver.rcompare)[0]
 
-  const globalNext = inc(maxCurrentVer, highestBump, contract, preid)
+  const globalNext = inc(maxCurrentVer, highestBump, releasePolicy, preid)
 
   if (mode === 'locked') {
     for (const t of tasks.values()) t.nextVersion = globalNext
@@ -228,23 +228,28 @@ function calculateVersions(
   } else {
     for (const t of tasks.values()) {
       if (t.bumpType) {
-        t.nextVersion = inc(t.version, t.bumpType, contract, preid)
+        t.nextVersion = inc(t.version, t.bumpType, releasePolicy, preid)
       }
     }
     return globalNext
   }
 }
 
-function inc(v: string, bump: BranchType, contract: BranchType, preid: string) {
-  if (contract.startsWith('pre')) {
-    const isPre = !!semver.prerelease(v)
+function inc(
+  version: string,
+  bumpType: BranchType,
+  releasePolicy: BranchType,
+  preid: string,
+) {
+  if (releasePolicy.startsWith('pre')) {
+    const isPre = !!semver.prerelease(version)
     return semver.inc(
-      v,
-      isPre ? 'prerelease' : (contract as semver.ReleaseType),
+      version,
+      isPre ? 'prerelease' : (releasePolicy as semver.ReleaseType),
       preid,
     )!
   }
-  return semver.inc(v, bump as semver.ReleaseType)!
+  return semver.inc(version, bumpType as semver.ReleaseType)!
 }
 
 async function updatePackageChangelog(

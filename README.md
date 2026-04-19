@@ -19,7 +19,7 @@
 It handles:
 
 - commit-message linting
-- branch-based version contracts
+- branch-based version policies
 - changelog generation
 - git tagging and pushing
 - npm publishing
@@ -100,7 +100,7 @@ pnpm release
 
 ## Core Concepts
 
-### Branch Contracts
+### Branch Policies
 
 Each branch can define what kind of release it is allowed to produce.
 
@@ -115,7 +115,7 @@ branches: {
 }
 ```
 
-Available branch contract types:
+Available branch policy types:
 
 - `major`
 - `minor`

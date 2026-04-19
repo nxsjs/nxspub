@@ -36,8 +36,8 @@ export async function versionSingle(
   const changelogPath = path.resolve(cwd, 'CHANGELOG.md')
 
   const currentBranch = await getCurrentBranch(cwd)
-  const branchReleaseType = resolveBranchType(currentBranch!, config.branches)
-  if (!branchReleaseType) {
+  const branchReleasePolicy = resolveBranchType(currentBranch!, config.branches)
+  if (!branchReleasePolicy) {
     cliLogger.error(
       `Admission Denied: Branch "${currentBranch}" not configured.`,
     )
@@ -63,8 +63,8 @@ export async function versionSingle(
   const currentPkgVersion = pkg.version
   const repoUrl = await getRepoUrl(cwd)
 
-  cliLogger.step(`Branch Contract`)
-  cliLogger.item(`${currentBranch}: ${branchReleaseType}`)
+  cliLogger.step(`Branch Policy`)
+  cliLogger.item(`${currentBranch}: ${branchReleasePolicy}`)
 
   cliLogger.step('Synchronizing version state')
   const lastRelease = await getLastReleaseCommit(cwd)
@@ -81,7 +81,7 @@ export async function versionSingle(
     const preInfo = semver.prerelease(currentPkgVersion)
 
     if (preInfo) {
-      if (branchReleaseType && branchReleaseType.startsWith('pre')) {
+      if (branchReleasePolicy && branchReleasePolicy.startsWith('pre')) {
         cliLogger.success(
           'No incremental changes found in pre-release branch. Skipping.',
         )
@@ -106,28 +106,28 @@ export async function versionSingle(
     premajor: 3,
     latest: 4,
   }
-  const contractLevel = semverOrder[branchReleaseType] || 0
+  const policyLevel = semverOrder[branchReleasePolicy] || 0
   const bumpLevel = semverOrder[bumpType] || 0
 
   if (
-    contractLevel > 0 &&
-    bumpLevel > contractLevel &&
-    branchReleaseType !== 'latest'
+    policyLevel > 0 &&
+    bumpLevel > policyLevel &&
+    branchReleasePolicy !== 'latest'
   ) {
     cliLogger.error(
-      `[Contract Violation] Branch "${currentBranch}" (Contract: ${branchReleaseType}) prohibits ${bumpType.toUpperCase()} changes.`,
+      `[Policy Violation] Branch "${currentBranch}" (Policy: ${branchReleasePolicy}) prohibits ${bumpType.toUpperCase()} changes.`,
     )
     abort(1)
   }
 
   let targetVersion: string
-  const isPreContract = branchReleaseType.startsWith('pre')
+  const isPrereleasePolicy = branchReleasePolicy.startsWith('pre')
   const preid = currentBranch!
-  if (isPreContract) {
+  if (isPrereleasePolicy) {
     const isCurrentlyPre = !!semver.prerelease(currentPkgVersion)
     const action = isCurrentlyPre
       ? 'prerelease'
-      : (branchReleaseType as semver.ReleaseType)
+      : (branchReleasePolicy as semver.ReleaseType)
     targetVersion = semver.inc(currentPkgVersion, action, preid)!
   } else {
     targetVersion = semver.inc(
@@ -227,7 +227,7 @@ export async function versionSingle(
       changelogPath,
       currentPkgVersion,
       bumpType,
-      isPreContract,
+      isPrereleasePolicy,
     )
     if (footerChangelog) {
       currentChangelog = footerChangelog

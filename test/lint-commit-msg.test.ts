@@ -58,7 +58,7 @@ describe('lintCommitMsg', () => {
     ).rejects.toBeInstanceOf(NxspubError)
   })
 
-  it('rejects a feat commit on a patch-only branch contract', async () => {
+  it('rejects a feat commit on a patch-only branch policy', async () => {
     process.env.GITHUB_REF_TYPE = 'branch'
     process.env.GITHUB_REF_NAME = 'hotfix'
 
@@ -77,7 +77,7 @@ describe('lintCommitMsg', () => {
     ).rejects.toBeInstanceOf(NxspubError)
   })
 
-  it('allows a fix commit on a patch-only branch contract', async () => {
+  it('allows a fix commit on a patch-only branch policy', async () => {
     process.env.GITHUB_REF_TYPE = 'branch'
     process.env.GITHUB_REF_NAME = 'hotfix'
 

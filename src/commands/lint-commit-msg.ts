@@ -54,12 +54,12 @@ export async function lintCommitMsg(
   }
 
   const currentBranch = await getCurrentBranch(cwd)
-  const branchReleaseType =
+  const branchReleasePolicy =
     currentBranch && config.branches
       ? resolveBranchType(currentBranch, config.branches)
       : null
 
-  if (branchReleaseType && branchReleaseType !== 'latest') {
+  if (branchReleasePolicy && branchReleasePolicy !== 'latest') {
     const bumpType = determineBumpType([{ message: msg }], config)
     if (bumpType) {
       const semverOrder: Record<string, number> = {
@@ -72,12 +72,12 @@ export async function lintCommitMsg(
         latest: 4,
       }
 
-      const contractLevel = semverOrder[branchReleaseType] || 0
+      const policyLevel = semverOrder[branchReleasePolicy] || 0
       const bumpLevel = semverOrder[bumpType] || 0
 
-      if (bumpLevel > contractLevel) {
+      if (bumpLevel > policyLevel) {
         cliLogger.error(
-          `[Contract Violation] Branch "${currentBranch}" (Contract: ${branchReleaseType}) prohibits ${bumpType.toUpperCase()} commits.`,
+          `[Policy Violation] Branch "${currentBranch}" (Policy: ${branchReleasePolicy}) prohibits ${bumpType.toUpperCase()} commits.`,
         )
         abort(1)
       }

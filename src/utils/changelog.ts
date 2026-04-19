@@ -13,7 +13,7 @@ export async function archiveChangelogIfNeeded(
   changelogPath: string,
   currentVersion: string,
   bumpType: BranchType,
-  isPreContract: boolean,
+  isPrereleasePolicy: boolean,
 ): Promise<string | undefined> {
   const PREVIOUS_HEADER = '## Previous Changelogs'
   try {
@@ -24,7 +24,8 @@ export async function archiveChangelogIfNeeded(
     const MAX_SIZE = 1 * 1024 * 1024 // 1MB
     const isTooLarge = stats.size > MAX_SIZE
 
-    if (isPreContract || (bumpType !== 'major' && !isTooLarge)) return undefined
+    if (isPrereleasePolicy || (bumpType !== 'major' && !isTooLarge))
+      return undefined
 
     const mainContent = content.split(PREVIOUS_HEADER)[0].trim()
     if (!mainContent) return undefined

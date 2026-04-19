@@ -28,7 +28,7 @@ describe('core utilities', () => {
     expect(formatDate(new Date('2026-04-18T12:30:00.000Z'))).toBe('2026-04-18')
   })
 
-  it('matches branch contracts from string patterns', () => {
+  it('matches branch policies from string patterns', () => {
     expect(resolveBranchType('main', DEFAULT_CONFIG.branches)).toBe('latest')
     expect(
       resolveBranchType('feature/demo', { 'feature/.*': 'preminor' }),

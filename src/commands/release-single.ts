@@ -34,9 +34,9 @@ export async function releaseSingle(
   const pkg = await readJSON(pkgPath)
   const packageManager = await detectPackageManager(cwd)
   const currentBranch = branch || (await getCurrentBranch(cwd))
-  const branchReleaseType = resolveBranchType(currentBranch!, config.branches)
+  const branchReleasePolicy = resolveBranchType(currentBranch!, config.branches)
 
-  if (!branchReleaseType) {
+  if (!branchReleasePolicy) {
     cliLogger.error(
       `Admission Denied: Branch "${currentBranch}" not configured.`,
     )
@@ -47,11 +47,11 @@ export async function releaseSingle(
     await ensureGitSync(currentBranch, cwd)
   }
 
-  const isPreContract = branchReleaseType.startsWith('pre')
+  const isPrereleasePolicy = branchReleasePolicy.startsWith('pre')
   const preTags = semver.prerelease(pkg.version) || []
-  if (isPreContract && preTags.length < 2) {
+  if (isPrereleasePolicy && preTags.length < 2) {
     cliLogger.error(
-      `Release Denied: Version "${pkg.version}" is not a valid prerelease for contract "${branchReleaseType}".`,
+      `Release Denied: Version "${pkg.version}" is not a valid prerelease for policy "${branchReleasePolicy}".`,
     )
     abort(1)
   }
