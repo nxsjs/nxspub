@@ -33,9 +33,13 @@ cli
     default: process.cwd(),
   })
   .option('--target <version>', 'Target stable version (x.y.z)')
+  .option('--prune', 'Remove stale drafts behind target version')
   .action(
     withCliErrorHandling(async options => {
-      const typedOptions = options as CwdOptions & { target?: string }
+      const typedOptions = options as CwdOptions & {
+        target?: string
+        prune?: boolean
+      }
       await draftDoctorCommand(typedOptions)
     }),
   )

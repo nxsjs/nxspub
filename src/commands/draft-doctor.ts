@@ -3,6 +3,7 @@ import path from 'node:path'
 import { abort } from '../utils/errors'
 import {
   analyzeDraftsForTargetVersion,
+  removeChangelogDraft,
   readChangelogDraftsWithReport,
 } from '../utils/changelog'
 import { cliLogger } from '../utils/logger'
@@ -16,6 +17,8 @@ import type { CwdOptions } from './types'
 export interface DraftDoctorOptions extends CwdOptions {
   /** @en Optional target stable version (x.y.z). @zh 可选目标稳定版本（x.y.z）。 */
   target?: string
+  /** @en Remove stale drafts that are behind target version. @zh 删除落后于目标版本的过期草稿。 */
+  prune?: boolean
 }
 
 function getCoreVersion(version: string): string {
@@ -32,7 +35,7 @@ function getCoreVersion(version: string): string {
  * @zh 命令参数，包含 cwd 与可选目标版本。
  */
 export async function draftDoctorCommand(options: DraftDoctorOptions) {
-  const { cwd, target } = options
+  const { cwd, target, prune } = options
   const draftReadReport = await readChangelogDraftsWithReport(cwd)
   const drafts = draftReadReport.records
   if (drafts.length === 0 && draftReadReport.malformedFileCount === 0) {
@@ -66,6 +69,14 @@ export async function draftDoctorCommand(options: DraftDoctorOptions) {
       .map(r => `${r.draft.branch}@${r.draft.version}`)
       .join(', ')
     cliLogger.warn(`Stale drafts sample: ${sample}`)
+    if (prune) {
+      for (const record of analysis.behind) {
+        await removeChangelogDraft(record.filePath)
+      }
+      cliLogger.item(
+        `Pruned ${analysis.behind.length} stale draft file(s) behind ${targetVersion}.`,
+      )
+    }
   }
   if (analysis.ahead.length > 0) {
     const sample = analysis.ahead

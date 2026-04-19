@@ -176,6 +176,12 @@ You can audit draft health manually:
 nxspub draft-doctor --cwd . --target 1.3.0
 ```
 
+You can also prune stale drafts (versions behind the current target):
+
+```bash
+nxspub draft-doctor --cwd . --target 1.3.0 --prune
+```
+
 `nxspub version` and `nxspub release` also use a repository lock file under Git metadata (for example `.git/nxspub/version.lock`) to prevent concurrent pipelines from mutating version/tag state at the same time.
 
 ## Configuration
