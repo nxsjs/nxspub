@@ -11,7 +11,7 @@ import {
   cleanupExistingEntry,
   extractShortCommitHashes,
   parseCommit,
-  readChangelogDrafts,
+  readChangelogDraftsWithReport,
   removeChangelogDraft,
   writeChangelogDraft,
 } from '../utils/changelog'
@@ -246,8 +246,9 @@ export async function versionWorkspace(
       existingRootChangelog + '\n' + rootNewEntries.join('\n'),
     )
     const presentContents = new Set(rootNewEntries)
+    const draftReadReport = await readChangelogDraftsWithReport(cwd)
     const draftAnalysis = analyzeDraftsForTargetVersion(
-      await readChangelogDrafts(cwd),
+      draftReadReport.records,
       globalNextVersion,
     )
     const draftRecords = draftAnalysis.matching
@@ -264,6 +265,11 @@ export async function versionWorkspace(
     if (draftAnalysis.invalid.length > 0) {
       cliLogger.warn(
         `Ignored ${draftAnalysis.invalid.length} malformed draft file(s).`,
+      )
+    }
+    if (draftReadReport.malformedFileCount > 0) {
+      cliLogger.warn(
+        `Skipped ${draftReadReport.malformedFileCount} unreadable draft file(s).`,
       )
     }
 

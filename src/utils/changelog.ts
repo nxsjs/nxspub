@@ -258,6 +258,17 @@ export interface ChangelogDraftRecord {
 }
 
 /**
+ * @en Detailed result of reading changelog drafts from filesystem.
+ * @zh 从文件系统读取 changelog 草稿后的详细结果。
+ */
+export interface ChangelogDraftReadReport {
+  /** @en Valid draft records. @zh 合法草稿记录。 */
+  records: ChangelogDraftRecord[]
+  /** @en Count of malformed/invalid files ignored while reading. @zh 读取时被忽略的损坏/非法文件数量。 */
+  malformedFileCount: number
+}
+
+/**
  * @en Partition draft records by their relation to target stable version.
  * @zh 按与目标稳定版本的关系对草稿记录进行分组。
  */
@@ -346,7 +357,26 @@ export async function writeChangelogDraft(
 export async function readChangelogDrafts(
   cwd: string,
 ): Promise<ChangelogDraftRecord[]> {
+  return (await readChangelogDraftsWithReport(cwd)).records
+}
+
+/**
+ * @en Read changelog drafts and report malformed file count.
+ * @zh 读取 changelog 草稿并返回损坏文件计数。
+ *
+ * @param cwd
+ * @en Project root directory.
+ * @zh 项目根目录。
+ *
+ * @returns
+ * @en Valid draft records and malformed file count.
+ * @zh 合法草稿记录与损坏文件计数。
+ */
+export async function readChangelogDraftsWithReport(
+  cwd: string,
+): Promise<ChangelogDraftReadReport> {
   const rootDir = path.join(cwd, '.nxspub', 'changelog-drafts')
+  let malformedFileCount = 0
   try {
     const branchDirs = await fs.readdir(rootDir, { withFileTypes: true })
     const records: ChangelogDraftRecord[] = []
@@ -387,16 +417,18 @@ export async function readChangelogDrafts(
                 items: normalizedItems,
               },
             })
+          } else {
+            malformedFileCount++
           }
         } catch {
-          // ignore malformed draft files
+          malformedFileCount++
         }
       }
     }
 
-    return records
+    return { records, malformedFileCount }
   } catch {
-    return []
+    return { records: [], malformedFileCount }
   }
 }
 

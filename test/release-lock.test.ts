@@ -44,4 +44,28 @@ describe('release lock', () => {
     const lockExistsAfterRun = await readFile(lockPath, 'utf-8').catch(() => '')
     expect(lockExistsAfterRun).toBe('')
   })
+
+  it('uses a repo-level lock when called from subdirectories', async () => {
+    const repoDir = await mkdtemp(path.join(os.tmpdir(), 'nxspub-lock-repo-'))
+    await mkdir(path.join(repoDir, '.git'), { recursive: true })
+    const subDir = path.join(repoDir, 'packages', 'a')
+    await mkdir(subDir, { recursive: true })
+
+    let releaseFirstTask: (() => void) | undefined
+    const firstTask = withReleaseLock(subDir, async () => {
+      await new Promise<void>(resolve => {
+        releaseFirstTask = resolve
+      })
+      return 'first-done'
+    })
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    await expect(
+      withReleaseLock(repoDir, async () => 'second-done'),
+    ).rejects.toThrow(/lock/)
+
+    releaseFirstTask?.()
+    await expect(firstTask).resolves.toBe('first-done')
+  })
 })

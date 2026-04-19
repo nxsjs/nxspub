@@ -176,7 +176,7 @@ You can audit draft health manually:
 nxspub draft-doctor --cwd . --target 1.3.0
 ```
 
-`nxspub version` and `nxspub release` also use a repository lock file (`.nxspub/version.lock`) to prevent concurrent pipelines from mutating version/tag state at the same time.
+`nxspub version` and `nxspub release` also use a repository lock file under Git metadata (for example `.git/nxspub/version.lock`) to prevent concurrent pipelines from mutating version/tag state at the same time.
 
 ## Configuration
 

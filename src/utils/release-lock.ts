@@ -24,7 +24,8 @@ export async function withReleaseLock<T>(
   cwd: string,
   task: () => Promise<T>,
 ): Promise<T> {
-  const lockFilePath = path.join(cwd, '.nxspub', 'version.lock')
+  const lockDir = await resolveLockDir(cwd)
+  const lockFilePath = path.join(lockDir, 'version.lock')
   const lockPayload = {
     pid: process.pid,
     createdAt: new Date().toISOString(),
@@ -57,6 +58,53 @@ export async function withReleaseLock<T>(
     return await task()
   } finally {
     await fs.unlink(lockFilePath).catch(() => {})
+  }
+}
+
+/**
+ * @en Resolve lock directory for current working tree.
+ * @zh 解析当前工作树对应的锁目录。
+ *
+ * @param cwd
+ * @en Any directory inside repository.
+ * @zh 仓库内任意目录。
+ *
+ * @returns
+ * @en Absolute lock directory path.
+ * @zh 锁目录绝对路径。
+ */
+async function resolveLockDir(cwd: string): Promise<string> {
+  const start = path.resolve(cwd)
+  let current = start
+
+  while (true) {
+    const gitMetaDir = await resolveGitPath(path.join(current, '.git'), current)
+    if (gitMetaDir) return path.join(gitMetaDir, 'nxspub')
+
+    const parent = path.dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+
+  return path.join(start, '.nxspub')
+}
+
+async function resolveGitPath(
+  gitPath: string,
+  parentDir: string,
+): Promise<string | null> {
+  try {
+    const stat = await fs.stat(gitPath)
+    if (stat.isDirectory()) return gitPath
+    if (!stat.isFile()) return null
+
+    const raw = await fs.readFile(gitPath, 'utf-8')
+    const match = raw.match(/^gitdir:\s*(.+)\s*$/im)
+    if (!match) return null
+    const target = match[1].trim()
+    return path.isAbsolute(target) ? target : path.resolve(parentDir, target)
+  } catch {
+    return null
   }
 }
 

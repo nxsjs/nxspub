@@ -3,7 +3,7 @@ import path from 'node:path'
 import { abort } from '../utils/errors'
 import {
   analyzeDraftsForTargetVersion,
-  readChangelogDrafts,
+  readChangelogDraftsWithReport,
 } from '../utils/changelog'
 import { cliLogger } from '../utils/logger'
 import { readJSON } from '../utils/packages'
@@ -33,8 +33,9 @@ function getCoreVersion(version: string): string {
  */
 export async function draftDoctorCommand(options: DraftDoctorOptions) {
   const { cwd, target } = options
-  const drafts = await readChangelogDrafts(cwd)
-  if (drafts.length === 0) {
+  const draftReadReport = await readChangelogDraftsWithReport(cwd)
+  const drafts = draftReadReport.records
+  if (drafts.length === 0 && draftReadReport.malformedFileCount === 0) {
     cliLogger.success('No changelog drafts found.')
     return
   }
@@ -72,5 +73,10 @@ export async function draftDoctorCommand(options: DraftDoctorOptions) {
       .map(r => `${r.draft.branch}@${r.draft.version}`)
       .join(', ')
     cliLogger.dim(`Future drafts sample: ${sample}`)
+  }
+  if (draftReadReport.malformedFileCount > 0) {
+    cliLogger.warn(
+      `Skipped ${draftReadReport.malformedFileCount} unreadable draft file(s).`,
+    )
   }
 }
