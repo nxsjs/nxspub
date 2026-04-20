@@ -347,6 +347,85 @@ pnpm exec nxspub release --registry https://registry.npmjs.org
 pnpm exec nxspub release --cwd /path/to/repo --branch main
 ```
 
+### `nxspub preview`
+
+Preview release computation without writing version/tag/changelog files.
+
+Options:
+
+- `--cwd <cwd>`: operate on a target repository
+- `--json`: print machine-readable preview output
+- `--branch <branch>`: simulate policy/checks on a target branch
+- `--web`: start local preview web console
+- `--host <host>`: web bind host, default `127.0.0.1`
+- `--port <port>`: web bind port, default `4173`
+- `--open`: open browser after web service starts
+- `--readonly-strict`: disable write endpoints (for example draft prune and snapshot save/delete)
+- `--allow-remote`: required when `--host 0.0.0.0`
+- `--api-only`: serve API endpoints only, without web static assets
+
+Feature flag (rollout/rollback):
+
+- `NXSPUB_PREVIEW_WEB_ENABLED=false` disables `preview --web` startup globally (CLI `preview` remains available)
+
+Examples:
+
+```bash
+pnpm exec nxspub preview --json
+pnpm exec nxspub preview --branch alpha --json
+pnpm exec nxspub preview --web --open
+pnpm exec nxspub preview --web --api-only --port 4173
+```
+
+#### Preview Web Workflow
+
+Build frontend assets:
+
+```bash
+pnpm run preview:web:build
+```
+
+Run web preview server:
+
+```bash
+pnpm exec nxspub preview --web --host 127.0.0.1 --port 4173
+```
+
+Run API-only mode (for custom frontend or proxy):
+
+```bash
+pnpm exec nxspub preview --web --api-only --host 127.0.0.1 --port 4173
+```
+
+All `/api/*` requests require header:
+
+```txt
+x-nxspub-preview-token: <token from server startup>
+```
+
+Diagnostic bundle export endpoints:
+
+- `GET /api/export.bundle?format=json`
+- `GET /api/export.bundle?format=zip`
+
+Bundle includes runtime context, preview result, checks report, and draft health data for troubleshooting.
+
+Web console also supports branch-to-branch comparison (for example `main` vs `alpha`) to inspect target version and release scope differences.
+Workspace mode includes a layered dependency propagation panel to inspect internal dependency edges and passive bump reasons.
+
+Snapshot endpoints:
+
+- `GET /api/snapshots` list saved snapshots
+- `POST /api/snapshots` save current comparison snapshot
+- `GET /api/snapshots/:id` load snapshot payload
+- `DELETE /api/snapshots/:id` delete a saved snapshot
+
+Snapshots are stored under `.nxspub/preview-snapshots`.
+
+Realtime status stream:
+
+- `GET /api/events?token=<session-token>` (Server-Sent Events)
+
 ## Git Hook Setup
 
 Typical hook setup:

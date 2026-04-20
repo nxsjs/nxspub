@@ -58,6 +58,8 @@ export interface PreviewOptions extends CwdOptions {
   readonlyStrict?: boolean
   /** @en Allow remote access when host is 0.0.0.0. @zh 当 host 为 0.0.0.0 时允许远程访问。 */
   allowRemote?: boolean
+  /** @en Start only API service without serving web assets. @zh 仅启动 API 服务，不提供 Web 静态页面。 */
+  apiOnly?: boolean
 }
 
 /**

@@ -644,10 +644,10 @@ End-to-end (optional for MVP):
 
 ## 16. Implementation Checklist (Extended)
 
-- [ ] Parameter matrix implemented and covered by tests
-- [ ] API responses include `apiVersion`
-- [ ] `/api/drafts/prune` supports dry-run
-- [ ] `--readonly-strict` enforced for write endpoints
-- [ ] Static hosting and cache policy match documentation
-- [ ] Recovery paths (`401/timeout/cancel`) are verifiable
-- [ ] Rollout/rollback switch is configurable
+- [x] Parameter matrix implemented and covered by tests
+- [x] API responses include `apiVersion`
+- [x] `/api/drafts/prune` supports dry-run
+- [x] `--readonly-strict` enforced for write endpoints
+- [x] Static hosting and cache policy match documentation
+- [x] Recovery paths (`401/timeout/cancel`) are verifiable
+- [x] Rollout/rollback switch is configurable (`NXSPUB_PREVIEW_WEB_ENABLED`)

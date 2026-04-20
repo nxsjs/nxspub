@@ -23,7 +23,9 @@
   ],
   "scripts": {
     "start": "tsx ./src/cli.ts",
-    "build": "tsdown",
+    "build": "tsdown && pnpm preview:web:build",
+    "preview:web:dev": "vite --config src/preview/web/vite.config.mjs",
+    "preview:web:build": "vite build --config src/preview/web/vite.config.mjs",
     "test": "tsdown && vitest",
     "check": "tsc --incremental --noEmit",
     "lint": "eslint --cache .",
@@ -31,7 +33,7 @@
     "format-check": "prettier --check --cache .",
     "preinstall": "npx only-allow pnpm",
     "postinstall": "node ./postinstall.mjs",
-    "nxspub-preview": "pnpm run start preview --web --open",
+    "preview": "pnpm preview:web:build && pnpm run start preview --web --open",
     "version": "pnpm run start version",
     "release": "pnpm run start release"
   },
@@ -56,12 +58,16 @@
     "detect-indent": "^7.0.2",
     "execa": "^9.6.1",
     "fast-glob": "^3.3.3",
+    "fflate": "^0.8.2",
     "jiti": "^2.6.1",
     "js-yaml": "^4.1.1",
     "semver-es": "^0.1.1",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.0.4",
     "@rolldown/binding-darwin-arm64": "1.0.0-rc.15",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
@@ -72,9 +78,12 @@
     "globals": "^17.4.0",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "tsdown": "^0.21.7",
     "tsx": "^4.19.4",
     "typescript": "^6.0.2",
+    "vite": "^7.1.12",
     "vitest": "^4.1.4"
   },
   "keywords": [

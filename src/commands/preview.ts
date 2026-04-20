@@ -1,9 +1,10 @@
-import { buildPreviewChecks, buildPreviewResult } from '../preview/core'
+import { buildPreviewChecksReport, buildPreviewResult } from '../preview/core'
 import {
   startPreviewWebServer,
   validatePreviewHostPolicy,
 } from '../preview/server'
 import type { PreviewOptions } from './types'
+import { NxspubError } from '../utils/errors'
 import { cliLogger } from '../utils/logger'
 import { runSafe } from '../utils/git'
 
@@ -65,6 +66,13 @@ async function openBrowserIfNeeded(url: string, shouldOpen?: boolean) {
   }
 }
 
+function isPreviewWebEnabled(): boolean {
+  const rawFlag = process.env.NXSPUB_PREVIEW_WEB_ENABLED
+  if (!rawFlag) return true
+  const normalizedFlag = rawFlag.trim().toLowerCase()
+  return !['0', 'false', 'off', 'no'].includes(normalizedFlag)
+}
+
 /**
  * @en Run preview command in terminal mode or web mode.
  * @zh 运行 preview 命令（终端模式或 Web 模式）。
@@ -84,16 +92,27 @@ export async function previewCommand(options: PreviewOptions) {
     open,
     readonlyStrict,
     allowRemote,
+    apiOnly,
   } = options
 
   if (web) {
+    if (!isPreviewWebEnabled()) {
+      throw new NxspubError(
+        'preview --web is disabled by NXSPUB_PREVIEW_WEB_ENABLED.',
+      )
+    }
     validatePreviewHostPolicy(host, allowRemote)
     const server = await startPreviewWebServer({
       cwd,
       host,
       port,
       readonlyStrict,
+      apiOnly,
     })
+    if (apiOnly) {
+      cliLogger.step('Preview API Token')
+      cliLogger.item(`x-nxspub-preview-token: ${server.token}`)
+    }
     await openBrowserIfNeeded(server.url, open)
     return
   }
@@ -104,7 +123,8 @@ export async function previewCommand(options: PreviewOptions) {
     includeChangelog: true,
     includeChecks: false,
   })
-  preview.checks = await buildPreviewChecks(cwd, preview)
+  const checksReport = await buildPreviewChecksReport(cwd, preview)
+  preview.checks = checksReport.items
 
   if (json) {
     process.stdout.write(`${JSON.stringify(preview, null, 2)}\n`)

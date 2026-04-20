@@ -89,6 +89,9 @@ cli
   .option('--allow-remote', 'Allow remote access when host is 0.0.0.0', {
     default: false,
   })
+  .option('--api-only', 'Start API service only without serving web UI', {
+    default: false,
+  })
   .action(
     withCliErrorHandling(async options => {
       const typedOptions = options as PreviewOptions

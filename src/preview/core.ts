@@ -40,12 +40,15 @@ import type {
   DraftPruneRequest,
   DraftPruneResult,
   PreviewCheckItem,
+  PreviewChecksReport,
   PreviewContext,
   PreviewDraftHealth,
   PreviewImportedDraft,
+  PreviewRegistryConflict,
   PreviewPackagePlan,
   PreviewPolicyStatus,
   PreviewResult,
+  PreviewTagConflict,
 } from './types'
 
 interface BuildPreviewOptions {
@@ -105,6 +108,20 @@ function computePolicyStatus(
     policy,
     ok: true,
   }
+}
+
+function sortChecksByRisk(items: PreviewCheckItem[]): PreviewCheckItem[] {
+  const rank: Record<PreviewCheckItem['level'], number> = {
+    blocker: 0,
+    warn: 1,
+    info: 2,
+  }
+
+  return [...items].sort((left, right) => {
+    const riskOrder = rank[left.level] - rank[right.level]
+    if (riskOrder !== 0) return riskOrder
+    return left.title.localeCompare(right.title)
+  })
 }
 
 function computeVersionByPolicy(
@@ -399,6 +416,13 @@ async function buildSinglePreview(options: {
     targetVersion,
     commitCount: commits.length,
     releasePackageCount: 1,
+    singlePlan: {
+      bumpType,
+      commits: commits.map(commit => ({
+        hash: commit.hash,
+        subject: commit.message.split('\n').find(Boolean)?.trim() || '',
+      })),
+    },
   }
 
   if (includeChangelog) {
@@ -492,6 +516,7 @@ async function buildWorkspacePreview(options: {
       isPassive: task.isPassive,
       passiveReasons: task.passiveReasons,
       commitCount: task.commits.length,
+      dependencies: task.dependencies.filter(depName => tasks.has(depName)),
     }))
 
   const releasePackageCount = packagePlans.filter(
@@ -610,8 +635,8 @@ export async function buildPreviewResult(
 }
 
 /**
- * @en Build pre-release checks from preview result.
- * @zh 基于预览结果构建发布前检查项。
+ * @en Build pre-release checks report from preview result.
+ * @zh 基于预览结果构建发布前检查报告。
  *
  * @param cwd
  * @en Workspace root directory.
@@ -622,15 +647,23 @@ export async function buildPreviewResult(
  * @zh 用于检查的预览结果。
  *
  * @returns
- * @en Ordered list of check items.
- * @zh 有序检查项列表。
+ * @en Structured checks report with flattened UI items.
+ * @zh 包含结构化结果与扁平 UI 项的检查报告。
  */
-export async function buildPreviewChecks(
+export async function buildPreviewChecksReport(
   cwd: string,
   preview: PreviewResult,
-): Promise<PreviewCheckItem[]> {
+): Promise<PreviewChecksReport> {
   const checks: PreviewCheckItem[] = []
   const branch = preview.branch
+  const tagConflicts: PreviewTagConflict[] = []
+  const registryConflicts: PreviewRegistryConflict[] = []
+  let gitSync = {
+    ok: false,
+    ahead: 0,
+    behind: 0,
+    dirty: false,
+  }
 
   checks.push({
     id: 'policy',
@@ -657,6 +690,12 @@ export async function buildPreviewChecks(
     const ahead = Number(aheadRaw || 0)
     const behind = Number(behindRaw || 0)
     const syncOk = !dirty && ahead === 0 && behind === 0
+    gitSync = {
+      ok: syncOk,
+      ahead,
+      behind,
+      dirty,
+    }
 
     checks.push({
       id: 'git-sync',
@@ -675,6 +714,12 @@ export async function buildPreviewChecks(
       level: 'warn',
       ok: false,
     })
+    gitSync = {
+      ok: false,
+      ahead: 0,
+      behind: 0,
+      dirty: true,
+    }
   }
 
   if (preview.targetVersion) {
@@ -685,6 +730,13 @@ export async function buildPreviewChecks(
         hasRemoteTag(cwd, globalTag),
       ])
       const tagOk = !localExists && !remoteExists
+      if (!tagOk) {
+        tagConflicts.push({
+          tag: globalTag,
+          local: localExists,
+          remote: remoteExists,
+        })
+      }
       checks.push({
         id: 'tag',
         title: 'Tag Conflict',
@@ -711,6 +763,12 @@ export async function buildPreviewChecks(
       const exists = preview.targetVersion
         ? await checkRegistryWithTimeout(pkg.name, preview.targetVersion)
         : false
+      if (exists && preview.targetVersion) {
+        registryConflicts.push({
+          name: pkg.name,
+          version: preview.targetVersion,
+        })
+      }
       checks.push({
         id: 'registry',
         title: 'Registry Conflict',
@@ -733,7 +791,13 @@ export async function buildPreviewChecks(
           row.name,
           row.nextVersion!,
         )
-        if (exists) conflicts.push(`${row.name}@${row.nextVersion}`)
+        if (exists) {
+          conflicts.push(`${row.name}@${row.nextVersion}`)
+          registryConflicts.push({
+            name: row.name,
+            version: row.nextVersion!,
+          })
+        }
       }
       checks.push({
         id: 'registry',
@@ -756,7 +820,16 @@ export async function buildPreviewChecks(
     })
   }
 
-  return checks
+  return {
+    policy: {
+      ok: preview.policy.ok,
+      message: preview.policy.message,
+    },
+    gitSync,
+    tagConflicts,
+    registryConflicts,
+    items: sortChecksByRisk(checks),
+  }
 }
 
 /**

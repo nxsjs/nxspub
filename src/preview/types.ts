@@ -24,6 +24,89 @@ export interface PreviewCheckItem {
 }
 
 /**
+ * @en Structured policy check report.
+ * @zh 结构化分支策略检查结果。
+ */
+export interface PreviewPolicyCheck {
+  /** @en Whether branch policy passes. @zh 分支策略是否通过。 */
+  ok: boolean
+  /** @en Optional policy message. @zh 可选策略说明。 */
+  message?: string
+}
+
+/**
+ * @en Structured git sync check report.
+ * @zh 结构化 Git 同步检查结果。
+ */
+export interface PreviewGitSyncCheck {
+  /** @en Whether git sync passes. @zh Git 同步是否通过。 */
+  ok: boolean
+  /** @en Ahead commit count. @zh ahead 提交数量。 */
+  ahead: number
+  /** @en Behind commit count. @zh behind 提交数量。 */
+  behind: number
+  /** @en Whether workspace is dirty. @zh 工作区是否有未提交改动。 */
+  dirty: boolean
+}
+
+/**
+ * @en Structured tag conflict record.
+ * @zh 结构化 Tag 冲突记录。
+ */
+export interface PreviewTagConflict {
+  /** @en Tag name. @zh Tag 名称。 */
+  tag: string
+  /** @en Whether local tag exists. @zh 本地是否存在该 Tag。 */
+  local: boolean
+  /** @en Whether remote tag exists. @zh 远程是否存在该 Tag。 */
+  remote: boolean
+}
+
+/**
+ * @en Structured registry conflict record.
+ * @zh 结构化 registry 冲突记录。
+ */
+export interface PreviewRegistryConflict {
+  /** @en Package name. @zh 包名。 */
+  name: string
+  /** @en Conflicting version. @zh 冲突版本。 */
+  version: string
+}
+
+/**
+ * @en Structured pre-release checks response.
+ * @zh 结构化发布前检查响应。
+ */
+export interface PreviewChecksReport {
+  /** @en Branch policy check result. @zh 分支策略检查结果。 */
+  policy: PreviewPolicyCheck
+  /** @en Git sync check result. @zh Git 同步检查结果。 */
+  gitSync: PreviewGitSyncCheck
+  /** @en Tag conflict list. @zh Tag 冲突列表。 */
+  tagConflicts: PreviewTagConflict[]
+  /** @en Registry conflict list. @zh Registry 冲突列表。 */
+  registryConflicts: PreviewRegistryConflict[]
+  /** @en Optional flattened items for UI quick render. @zh 供 UI 快速渲染的扁平检查项。 */
+  items: PreviewCheckItem[]
+}
+
+/**
+ * @en Single-package version plan details.
+ * @zh 单包模式版本计划详情。
+ */
+export interface PreviewSinglePlan {
+  /** @en Computed bump type for single mode. @zh 单包模式计算出的升级类型。 */
+  bumpType?: BranchType | null
+  /** @en Triggering commit list for single mode. @zh 单包模式触发的提交列表。 */
+  commits: Array<{
+    /** @en Full commit hash. @zh 完整提交哈希。 */
+    hash: string
+    /** @en Commit subject line. @zh 提交主题行。 */
+    subject: string
+  }>
+}
+
+/**
  * @en Workspace package preview row.
  * @zh 工作区包预览行。
  */
@@ -44,6 +127,8 @@ export interface PreviewPackagePlan {
   passiveReasons?: string[]
   /** @en Number of triggering commits. @zh 触发提交数量。 */
   commitCount: number
+  /** @en Internal workspace dependency names for this package. @zh 该包在工作区内的依赖包名列表。 */
+  dependencies?: string[]
 }
 
 /**
@@ -144,6 +229,8 @@ export interface PreviewResult {
   commitCount: number
   /** @en Number of public packages planned for release. @zh 计划发布的公开包数量。 */
   releasePackageCount: number
+  /** @en Single mode plan details. @zh 单包模式计划详情。 */
+  singlePlan?: PreviewSinglePlan
   /** @en Workspace package plan rows. @zh 工作区包计划行。 */
   packages?: PreviewPackagePlan[]
   /** @en Optional changelog preview block. @zh 可选 changelog 预览区块。 */
@@ -178,4 +265,75 @@ export interface DraftPruneResult {
   remaining: number
   /** @en File path list affected by prune call. @zh 本次清理影响的文件列表。 */
   affectedFiles: string[]
+}
+
+/**
+ * @en Diagnostic bundle payload for troubleshooting preview behavior.
+ * @zh 用于排障的预览诊断包内容。
+ */
+export interface PreviewDiagnosticBundle {
+  /** @en Diagnostic metadata. @zh 诊断元信息。 */
+  meta: {
+    generatedAt: string
+    apiVersion: 'v1'
+    nodeVersion: string
+    cwd: string
+  }
+  /** @en Current runtime context. @zh 当前运行上下文。 */
+  context: PreviewContext
+  /** @en Latest preview result. @zh 最新预览结果。 */
+  preview: PreviewResult
+  /** @en Structured checks report. @zh 结构化检查报告。 */
+  checks: PreviewChecksReport
+  /** @en Draft health summary. @zh 草稿健康摘要。 */
+  drafts: PreviewDraftHealth
+}
+
+/**
+ * @en Snapshot metadata used for listing saved preview snapshots.
+ * @zh 用于列出已保存预览快照的元数据。
+ */
+export interface PreviewSnapshotSummary {
+  /** @en Snapshot id (file stem). @zh 快照标识（文件名 stem）。 */
+  id: string
+  /** @en ISO creation timestamp. @zh ISO 创建时间。 */
+  createdAt: string
+  /** @en Base branch used when snapshot was saved. @zh 保存快照时的基准分支。 */
+  baseBranch: string
+  /** @en Optional compare branch in snapshot. @zh 快照中的可选对比分支。 */
+  compareBranch?: string
+}
+
+/**
+ * @en Persisted snapshot payload for preview comparison recovery.
+ * @zh 用于恢复预览对比的持久化快照内容。
+ */
+export interface PreviewSnapshotPayload {
+  /** @en Snapshot id. @zh 快照标识。 */
+  id: string
+  /** @en ISO creation timestamp. @zh ISO 创建时间。 */
+  createdAt: string
+  /** @en Base branch label. @zh 基准分支标签。 */
+  baseBranch: string
+  /** @en Optional compare branch label. @zh 可选对比分支标签。 */
+  compareBranch?: string
+  /** @en Base preview result at save time. @zh 保存时的基准预览结果。 */
+  basePreview: PreviewResult
+  /** @en Compare preview result at save time. @zh 保存时的对比预览结果。 */
+  comparePreview: PreviewResult
+}
+
+/**
+ * @en Server-sent event payload for preview runtime status updates.
+ * @zh 用于预览运行状态更新的 SSE 事件载荷。
+ */
+export interface PreviewSseEvent {
+  /** @en Event category name. @zh 事件类别名称。 */
+  kind: string
+  /** @en Status phase (start/success/error/info). @zh 状态阶段（start/success/error/info）。 */
+  phase: 'start' | 'success' | 'error' | 'info'
+  /** @en Human-readable status message. @zh 人类可读状态消息。 */
+  message: string
+  /** @en ISO timestamp. @zh ISO 时间戳。 */
+  timestamp: string
 }
