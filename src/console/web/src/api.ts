@@ -14,7 +14,7 @@ import type {
 
 function getSessionToken(): string {
   const tokenMeta = document.querySelector<HTMLMetaElement>(
-    'meta[name="nxspub-preview-token"]',
+    'meta[name="nxspub-console-token"]',
   )
   return tokenMeta?.content || ''
 }
@@ -32,7 +32,7 @@ async function request<T>(
     ...init,
     headers: {
       'content-type': 'application/json',
-      'x-nxspub-preview-token': SESSION_TOKEN,
+      'x-nxspub-console-token': SESSION_TOKEN,
       ...(init?.headers || {}),
     },
   })
@@ -120,7 +120,7 @@ export async function fetchDiagnosticBundleZip(): Promise<Blob> {
   const response = await fetch('/api/export.bundle?format=zip', {
     method: 'GET',
     headers: {
-      'x-nxspub-preview-token': SESSION_TOKEN,
+      'x-nxspub-console-token': SESSION_TOKEN,
     },
   })
   if (!response.ok) {

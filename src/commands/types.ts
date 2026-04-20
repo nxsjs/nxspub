@@ -38,10 +38,10 @@ export interface LintOptions extends CwdOptions {
 export interface VersionOptions extends DryRunOptions {}
 
 /**
- * @en Command options for preview command.
- * @zh preview 命令参数。
+ * @en Command options for console command.
+ * @zh console 命令参数。
  */
-export interface PreviewOptions extends CwdOptions {
+export interface ConsoleOptions extends CwdOptions {
   /** @en Enable web preview server mode. @zh 启用 Web 预览服务模式。 */
   web?: boolean
   /** @en Output preview result as JSON. @zh 以 JSON 输出预览结果。 */

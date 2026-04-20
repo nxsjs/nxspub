@@ -1,12 +1,13 @@
 import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  root: path.resolve(process.cwd(), 'src/preview/web'),
-  plugins: [react()],
+  root: path.resolve(process.cwd(), 'src/console/web'),
+  plugins: [react(), tailwindcss()],
   build: {
-    outDir: path.resolve(process.cwd(), 'dist/preview-web'),
+    outDir: path.resolve(process.cwd(), 'dist/console-web'),
     emptyOutDir: true,
   },
   server: {

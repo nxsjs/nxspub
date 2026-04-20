@@ -6,6 +6,7 @@ import {
   type ServerResponse,
 } from 'node:http'
 import { strToU8, zipSync } from 'fflate'
+import { createApp, eventHandler, toNodeListener } from 'h3'
 import path from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import { NxspubError } from '../utils/errors'
@@ -31,7 +32,7 @@ import type {
  * @en Options for starting preview web server.
  * @zh 启动预览 Web 服务的参数。
  */
-export interface PreviewServerOptions {
+export interface ConsoleServerOptions {
   /** @en Workspace root directory. @zh 工作区根目录。 */
   cwd: string
   /** @en Listen host. @zh 监听主机。 */
@@ -50,7 +51,7 @@ export interface PreviewServerOptions {
  * @en Running server handle.
  * @zh 运行中服务句柄。
  */
-export interface PreviewServerHandle {
+export interface ConsoleServerHandle {
   /** @en Final bound URL. @zh 最终绑定访问地址。 */
   url: string
   /** @en Session token required by API requests. @zh API 请求所需会话令牌。 */
@@ -174,7 +175,7 @@ function requireAuth(
   response: ServerResponse,
   sessionToken: string,
 ): boolean {
-  const token = request.headers['x-nxspub-preview-token']
+  const token = request.headers['x-nxspub-console-token']
   if (token === sessionToken) return true
   writeError(response, 401, 'UNAUTHORIZED', 'Invalid or missing session token.')
   return false
@@ -233,10 +234,10 @@ function getMimeType(filePath: string): string {
 async function resolveWebStaticRoot(): Promise<string | null> {
   const moduleDir = path.dirname(fileURLToPath(import.meta.url))
   const candidates = [
-    path.resolve(moduleDir, '../../dist/preview-web'),
-    path.resolve(moduleDir, '../preview-web'),
-    path.resolve(moduleDir, './preview-web'),
-    path.resolve(process.cwd(), 'dist/preview-web'),
+    path.resolve(moduleDir, '../../dist/console-web'),
+    path.resolve(moduleDir, '../console-web'),
+    path.resolve(moduleDir, './console-web'),
+    path.resolve(process.cwd(), 'dist/console-web'),
   ]
 
   for (const candidate of candidates) {
@@ -278,7 +279,7 @@ async function tryServeWebStatic(
     if (path.basename(filePath) === 'index.html') {
       const html = fileContent
         .toString('utf-8')
-        .replace(/__NXSPUB_PREVIEW_TOKEN__/g, sessionToken)
+        .replace(/__NXSPUB_CONSOLE_TOKEN__/g, sessionToken)
       response.statusCode = 200
       response.setHeader('content-type', 'text/html; charset=utf-8')
       response.setHeader('cache-control', 'no-cache')
@@ -298,7 +299,7 @@ async function tryServeWebStatic(
         response.statusCode = 200
         response.setHeader('content-type', 'text/html; charset=utf-8')
         response.setHeader('cache-control', 'no-cache')
-        response.end(html.replace(/__NXSPUB_PREVIEW_TOKEN__/g, sessionToken))
+        response.end(html.replace(/__NXSPUB_CONSOLE_TOKEN__/g, sessionToken))
         return true
       } catch {
         return false
@@ -447,9 +448,9 @@ async function writeSnapshot(
  * @en Running server handle.
  * @zh 运行中的服务句柄。
  */
-export async function startPreviewWebServer(
-  options: PreviewServerOptions,
-): Promise<PreviewServerHandle> {
+export async function startConsoleWebServer(
+  options: ConsoleServerOptions,
+): Promise<ConsoleServerHandle> {
   const { cwd, readonlyStrict, apiOnly, requestTimeoutMs = 20000 } = options
   const sessionToken = randomBytes(18).toString('hex')
   const staticRoot = apiOnly ? null : await resolveWebStaticRoot()
@@ -468,7 +469,10 @@ export async function startPreviewWebServer(
     }
   }
 
-  const server = createServer(async (request, response) => {
+  const requestHandler = async (
+    request: IncomingMessage,
+    response: ServerResponse,
+  ) => {
     try {
       const requestUrl = new URL(
         request.url || '/',
@@ -482,7 +486,7 @@ export async function startPreviewWebServer(
       if (pathname === '/api/events' && method === 'GET') {
         const token =
           requestUrl.searchParams.get('token') ||
-          (request.headers['x-nxspub-preview-token'] as string | undefined)
+          (request.headers['x-nxspub-console-token'] as string | undefined)
         if (token !== sessionToken) {
           writeError(
             response,
@@ -948,7 +952,15 @@ export async function startPreviewWebServer(
         timestamp: new Date().toISOString(),
       })
     }
-  })
+  }
+
+  const nitroApp = createApp()
+  nitroApp.use(
+    eventHandler(async event => {
+      await requestHandler(event.node.req, event.node.res)
+    }),
+  )
+  const server = createServer(toNodeListener(nitroApp))
 
   const listenResult = await new Promise<{ host: string; port: number }>(
     (resolve, reject) => {
@@ -983,7 +995,7 @@ export async function startPreviewWebServer(
   const urlHost =
     listenResult.host === '0.0.0.0' ? '127.0.0.1' : listenResult.host
   const url = `http://${urlHost}:${listenResult.port}`
-  cliLogger.success(`Preview web server running at ${url}`)
+  cliLogger.success(`Console web server running at ${url}`)
   cliLogger.item('Use Ctrl+C to stop the server.')
 
   return {
@@ -1015,7 +1027,7 @@ export async function startPreviewWebServer(
  * @en Whether remote access is explicitly allowed.
  * @zh 是否显式允许远程访问。
  */
-export function validatePreviewHostPolicy(host: string, allowRemote?: boolean) {
+export function validateConsoleHostPolicy(host: string, allowRemote?: boolean) {
   if (host === '0.0.0.0' && !allowRemote) {
     throw new NxspubError('Using --host 0.0.0.0 requires --allow-remote.', 1, {
       silent: false,

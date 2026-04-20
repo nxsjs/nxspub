@@ -1,19 +1,25 @@
 import type { PreviewResult } from '../types'
+import type { Translator } from '../i18n'
 
 interface VersionPlanTableProps {
   preview: PreviewResult | null
+  t: Translator
 }
 
-export function VersionPlanTable({ preview }: VersionPlanTableProps) {
+export function VersionPlanTable({ preview, t }: VersionPlanTableProps) {
   if (!preview) {
-    return <div className="meta">No preview result yet.</div>
+    return <div className="meta">{t('noPreviewResultYet')}</div>
   }
 
   if (preview.mode === 'single') {
     return (
       <div className="meta-grid">
-        <div>BUMP TYPE: {preview.singlePlan?.bumpType || '-'}</div>
-        <div>TRIGGER COMMITS: {preview.singlePlan?.commits.length || 0}</div>
+        <div>
+          {t('bumpType')}: {preview.singlePlan?.bumpType || '-'}
+        </div>
+        <div>
+          {t('triggerCommits')}: {preview.singlePlan?.commits.length || 0}
+        </div>
         <pre style={{ marginTop: 8 }}>
           {(preview.singlePlan?.commits || [])
             .map(commit => `${commit.hash.slice(0, 7)} ${commit.subject}`)
@@ -24,21 +30,19 @@ export function VersionPlanTable({ preview }: VersionPlanTableProps) {
   }
 
   if (!preview.packages?.length) {
-    return (
-      <div className="meta">No workspace package rows in current preview.</div>
-    )
+    return <div className="meta">{t('noWorkspaceRows')}</div>
   }
 
   return (
     <table>
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Current</th>
-          <th>Next</th>
-          <th>Bump</th>
-          <th>Passive</th>
-          <th>Reasons</th>
+          <th>{t('tableName')}</th>
+          <th>{t('tableCurrent')}</th>
+          <th>{t('tableNext')}</th>
+          <th>{t('tableBump')}</th>
+          <th>{t('tablePassive')}</th>
+          <th>{t('tableReasons')}</th>
         </tr>
       </thead>
       <tbody>
@@ -48,7 +52,7 @@ export function VersionPlanTable({ preview }: VersionPlanTableProps) {
             <td>{item.currentVersion}</td>
             <td>{item.nextVersion || '-'}</td>
             <td>{item.bumpType || '-'}</td>
-            <td>{item.isPassive ? 'YES' : 'NO'}</td>
+            <td>{item.isPassive ? t('yes') : t('no')}</td>
             <td>{item.passiveReasons?.join(', ') || '-'}</td>
           </tr>
         ))}

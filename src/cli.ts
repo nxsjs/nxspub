@@ -3,13 +3,13 @@ import pkg from '../package.json'
 import { draftDoctorCommand } from './commands/draft-doctor'
 import { gitHooksCommand } from './commands/git-hooks'
 import { lintCommand } from './commands/lint'
-import { previewCommand } from './commands/preview'
+import { consoleCommand } from './commands/console'
 import { releaseCommand } from './commands/release'
 import type {
+  ConsoleOptions,
   CwdOptions,
   GitHooksOptions,
   LintOptions,
-  PreviewOptions,
   ReleaseOptions,
   VersionOptions,
 } from './commands/types'
@@ -73,7 +73,7 @@ cli
   )
 
 cli
-  .command('preview', 'Preview release result and risks')
+  .command('console', 'Interactive release console with preview capabilities')
   .option('--cwd <cwd>', 'Specify the working directory', {
     default: process.cwd(),
   })
@@ -94,8 +94,8 @@ cli
   })
   .action(
     withCliErrorHandling(async options => {
-      const typedOptions = options as PreviewOptions
-      await previewCommand(typedOptions)
+      const typedOptions = options as ConsoleOptions
+      await consoleCommand(typedOptions)
     }),
   )
 

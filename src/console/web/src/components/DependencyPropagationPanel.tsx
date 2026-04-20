@@ -1,7 +1,9 @@
 import type { PreviewResult } from '../types'
+import type { Translator } from '../i18n'
 
 interface DependencyPropagationPanelProps {
   preview: PreviewResult | null
+  t: Translator
 }
 
 type GraphRow = {
@@ -53,7 +55,7 @@ function computeLayerByDepth(rows: GraphRow[]): Map<string, number> {
   return layerMap
 }
 
-function renderLayeredTopology(rows: GraphRow[]): string {
+function renderLayeredTopology(rows: GraphRow[], t: Translator): string {
   const layerMap = computeLayerByDepth(rows)
   const maxDepth = Math.max(...Array.from(layerMap.values()), 0)
   const lines: string[] = []
@@ -64,16 +66,16 @@ function renderLayeredTopology(rows: GraphRow[]): string {
       .sort((a, b) => a.name.localeCompare(b.name))
     if (layerRows.length === 0) continue
 
-    lines.push(`Layer ${layer}`)
+    lines.push(`${t('layer')} ${layer}`)
     for (const row of layerRows) {
       const depsText =
         row.dependencies.length > 0
           ? row.dependencies.join(', ')
-          : '(no internal deps)'
-      const passiveFlag = row.isPassive ? ' [PASSIVE]' : ''
+          : t('noInternalDeps')
+      const passiveFlag = row.isPassive ? ` ${t('passiveTag')}` : ''
       lines.push(`  ${row.name}${passiveFlag} <= ${depsText}`)
       if (row.passiveReasons.length > 0) {
-        lines.push(`    reason: ${row.passiveReasons.join(', ')}`)
+        lines.push(`    ${t('reason')}: ${row.passiveReasons.join(', ')}`)
       }
     }
     lines.push('')
@@ -82,7 +84,7 @@ function renderLayeredTopology(rows: GraphRow[]): string {
   return lines.join('\n').trim()
 }
 
-function renderPropagationEdges(rows: GraphRow[]): string {
+function renderPropagationEdges(rows: GraphRow[], t: Translator): string {
   const dependents = new Map<string, string[]>()
   for (const row of rows) {
     for (const dep of row.dependencies) {
@@ -99,35 +101,32 @@ function renderPropagationEdges(rows: GraphRow[]): string {
         `${dep} => ${list.sort((a, b) => a.localeCompare(b)).join(', ')}`,
     )
 
-  return lines.length > 0 ? lines.join('\n') : 'No propagation edges.'
+  return lines.length > 0 ? lines.join('\n') : t('noPropagationEdges')
 }
 
 export function DependencyPropagationPanel({
   preview,
+  t,
 }: DependencyPropagationPanelProps) {
   if (!preview) {
-    return <div className="meta">No preview result yet.</div>
+    return <div className="meta">{t('noPreviewResultYet')}</div>
   }
 
   if (preview.mode !== 'workspace') {
-    return (
-      <div className="meta">
-        Dependency propagation graph is available in workspace mode only.
-      </div>
-    )
+    return <div className="meta">{t('workspaceOnlyDependency')}</div>
   }
 
   const rows = buildGraphRows(preview)
   if (rows.length === 0) {
-    return <div className="meta">No workspace package data.</div>
+    return <div className="meta">{t('noWorkspaceData')}</div>
   }
 
   return (
     <div className="meta-grid">
-      <div>LAYERED TOPOLOGY (package &lt;= internal dependencies)</div>
-      <pre style={{ marginTop: 8 }}>{renderLayeredTopology(rows)}</pre>
-      <div>PROPAGATION EDGES (dependency =&gt; dependents)</div>
-      <pre style={{ marginTop: 8 }}>{renderPropagationEdges(rows)}</pre>
+      <div>{t('layeredTopology')}</div>
+      <pre style={{ marginTop: 8 }}>{renderLayeredTopology(rows, t)}</pre>
+      <div>{t('propagationEdges')}</div>
+      <pre style={{ marginTop: 8 }}>{renderPropagationEdges(rows, t)}</pre>
     </div>
   )
 }

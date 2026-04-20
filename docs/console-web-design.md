@@ -1,8 +1,8 @@
-# nxspub preview --web Design Plan (MVP)
+# nxspub console --web Design Plan (MVP)
 
 ## 1. Background and Goals
 
-`nxspub preview` currently works well for CLI users, but in multi-branch and multi-package workspace scenarios, users need to frequently switch branch strategies, compare version paths, and inspect changelog/draft health.
+`nxspub console` is the unified interactive entry for release planning. In multi-branch and multi-package workspace scenarios, users need to frequently switch branch strategies, compare version paths, and inspect changelog/draft health.
 The goal of `--web` is to provide a local visual "pre-release console" so users can validate release decisions before running `nxspub version/release`.
 
 Goals:
@@ -22,17 +22,17 @@ Non-goals (MVP):
 New command forms:
 
 ```bash
-nxspub preview
-nxspub preview --web
-nxspub preview --web --port 4173
-nxspub preview --web --host 127.0.0.1
-nxspub preview --web --open
-nxspub preview --json
+nxspub console
+nxspub console --web
+nxspub console --web --port 4173
+nxspub console --web --host 127.0.0.1
+nxspub console --web --open
+nxspub console --json
 ```
 
 Behavior rules:
-- `preview`: terminal mode (compatible with current expectation).
-- `preview --web`: start local HTTP service + frontend page.
+- `console`: terminal mode (compatible with current expectation).
+- `console --web`: start local HTTP service + frontend page.
 - Default listen host is `127.0.0.1`, default port is `4173`.
 - Browser is not auto-opened by default; use `--open` to open.
 - Service shuts down when process exits.
@@ -41,14 +41,14 @@ Behavior rules:
 
 | Command | Parameter | Type | Default | Description | Constraints |
 |---|---|---|---|---|---|
-| `preview` | `--cwd` | `string` | `process.cwd()` | Working directory | Must be a readable repository directory |
-| `preview` | `--json` | `boolean` | `false` | Machine-readable output | Can be used with `--branch` |
-| `preview` | `--branch` | `string` | current branch | Simulate branch policy | No disk writes |
-| `preview --web` | `--host` | `string` | `127.0.0.1` | Listen address | `0.0.0.0` requires `--allow-remote` |
-| `preview --web` | `--port` | `number` | `4173` | Listen port | Auto-detect next available port on conflict |
-| `preview --web` | `--open` | `boolean` | `false` | Auto-open browser | Ignored in no-GUI environments |
-| `preview --web` | `--readonly-strict` | `boolean` | `false` | Fully read-only mode | Disables prune API |
-| `preview --web` | `--allow-remote` | `boolean` | `false` | Allow non-local access | Must be used with `--host 0.0.0.0` |
+| `console` | `--cwd` | `string` | `process.cwd()` | Working directory | Must be a readable repository directory |
+| `console` | `--json` | `boolean` | `false` | Machine-readable output | Can be used with `--branch` |
+| `console` | `--branch` | `string` | current branch | Simulate branch policy | No disk writes |
+| `console --web` | `--host` | `string` | `127.0.0.1` | Listen address | `0.0.0.0` requires `--allow-remote` |
+| `console --web` | `--port` | `number` | `4173` | Listen port | Auto-detect next available port on conflict |
+| `console --web` | `--open` | `boolean` | `false` | Auto-open browser | Ignored in no-GUI environments |
+| `console --web` | `--readonly-strict` | `boolean` | `false` | Fully read-only mode | Disables prune API |
+| `console --web` | `--allow-remote` | `boolean` | `false` | Allow non-local access | Must be used with `--host 0.0.0.0` |
 
 ---
 
@@ -170,7 +170,7 @@ Goal: use a Neo-Brutalism visual language with strong contrast, hard borders, ha
 - Keep hard-border and hard-shadow style on mobile; do not degrade to default system style
 
 ### Implementation Suggestions (Frontend)
-- Define design tokens in `src/preview/web/styles/tokens.css`:
+- Define design tokens in `src/console/web/styles/tokens.css`:
   - `--neo-accent`, `--neo-border`, `--neo-shadow`, `--neo-shadow-accent`
 - Build reusable utility classes:
   - `.neo-border`, `.neo-shadow`, `.neo-shadow-accent`, `.neo-pressable`
@@ -208,8 +208,8 @@ Export:
 
 ### Service Layer (Node)
 - Runtime: Node.js (aligned with nxspub CLI runtime)
-- HTTP framework: `hono` (lightweight, TypeScript-friendly, suitable for local tool services)
-- Startup: `nxspub preview --web` starts local service in the same process
+- HTTP framework: Nitro HTTP layer (`h3`) for local service routing and middleware
+- Startup: `nxspub console --web` starts local service in the same process
 - Concurrency model: stateless requests + in-memory cache of latest preview result
 - Network binding: `127.0.0.1` by default, `4173` by default
 
@@ -217,7 +217,7 @@ Export:
 - Framework: React + Vite
 - Routing: SPA routing (MVP can avoid complex routing libraries)
 - State: React state + `@tanstack/react-query` (cache/retry)
-- UI components: native HTML + lightweight custom components (avoid heavy design systems)
+- Styling: TailwindCSS with project tokens/components layered on top
 - Charts/relationship visualization: table-based in MVP; dependency graph can be added in Milestone 2
 
 ### API Communication
@@ -227,7 +227,7 @@ Export:
 - Error format: unified `{ code, message, details? }`
 
 ### Relationship with CLI
-- Shared execution context: `preview --web` and CLI `preview` must call the same computation core
+- Shared execution context: `console --web` and CLI `console` must call the same computation core
 - No divergence: web must not reimplement version computation logic
 - Process lifecycle: web service exits with CLI process; no background daemon
 
@@ -236,7 +236,7 @@ Export:
 ```txt
 src/
   commands/
-    preview.ts                 # CLI entry (preview / preview --web)
+    preview.ts                 # CLI entry (console / console --web)
   preview/
     core/
       compute.ts               # Shared computation core (single/workspace)
@@ -244,7 +244,7 @@ src/
       drafts.ts                # draft health / prune
       types.ts                 # Shared types such as PreviewResult
     server/
-      app.ts                   # hono app + routes
+      app.ts                   # nitro(h3) app + routes
       auth.ts                  # token validation
     web/
       index.html
@@ -260,7 +260,7 @@ src/
 
 ### Build and Distribution
 - Backend: use current CLI build output path (`tsdown`)
-- Frontend: Vite output embedded to `dist/preview-web`
+- Frontend: Vite output embedded to `dist/console-web`
 - Runtime: CLI service hosts static assets + `/api/*` routes
 
 ---
@@ -474,7 +474,7 @@ Additional security items (recommended for MVP):
 ## 9. Milestone Plan
 
 ### Milestone 1 (MVP, 1~2 days)
-- `preview --web` service boot + base page
+- `console --web` service boot + base page
 - `/api/preview` + `/api/drafts` + `/api/drafts/prune`
 - version plan panel, Draft Health panel, JSON export
 - unified error codes and `requestId`
@@ -494,7 +494,7 @@ Additional security items (recommended for MVP):
 
 ## 10. Acceptance Criteria
 
-- `nxspub preview --web` starts correctly in both single and workspace modes.
+- `nxspub console --web` starts correctly in both single and workspace modes.
 - Version computation shown in page is identical to CLI `preview --json`.
 - `draft prune` filesystem result is correct and re-readable.
 - Output is stable and explainable for `main/alpha/hotfix` simulation without crashes.
@@ -544,7 +544,7 @@ End-to-end (optional for MVP):
 
 1. Add `preview` command skeleton and argument parsing
 2. Extract read-only `preview core` compute module
-3. Implement `hono` service and API routes
+3. Implement Nitro(h3) service and API routes
 4. Initialize React + Vite page skeleton
 5. Integrate version plan and draft panel
 6. Integrate checks panel and export
@@ -557,12 +557,12 @@ End-to-end (optional for MVP):
 
 - Development:
   - Frontend: `vite dev` (for example `5173`)
-  - Backend: `nxspub preview --web --api-only` (optional)
+  - Backend: `nxspub console --web --api-only` (optional)
   - Use proxy to forward `/api` to backend
 
 - Production:
-  - `vite build` outputs to `dist/preview-web`
-  - CLI service hosts `dist/preview-web` static files
+  - `vite build` outputs to `dist/console-web`
+  - CLI service hosts `dist/console-web` static files
   - Route fallback: all non-`/api/*` paths return `index.html`
   - Static cache: `index.html` no-cache, hashed assets long-cache
 
@@ -619,7 +619,7 @@ End-to-end (optional for MVP):
 
 2. Token expiration/invalid
 - Symptom: frontend gets `401`
-- Handling: refresh page to renegotiate; restart `preview --web` if needed
+- Handling: refresh page to renegotiate; restart `console --web` if needed
 
 3. API timeout
 - Symptom: partial panel load failure
@@ -650,4 +650,4 @@ End-to-end (optional for MVP):
 - [x] `--readonly-strict` enforced for write endpoints
 - [x] Static hosting and cache policy match documentation
 - [x] Recovery paths (`401/timeout/cancel`) are verifiable
-- [x] Rollout/rollback switch is configurable (`NXSPUB_PREVIEW_WEB_ENABLED`)
+- [x] Rollout/rollback switch is configurable (`NXSPUB_CONSOLE_WEB_ENABLED`)

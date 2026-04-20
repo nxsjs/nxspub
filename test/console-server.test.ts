@@ -11,7 +11,7 @@ afterEach(() => {
 
 describe('preview web server APIs', () => {
   it('returns 401 for api calls without session token', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -49,8 +49,8 @@ describe('preview web server APIs', () => {
       }),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -65,7 +65,7 @@ describe('preview web server APIs', () => {
   })
 
   it('returns 403 for prune endpoint in readonly-strict mode', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -99,8 +99,8 @@ describe('preview web server APIs', () => {
       pruneDrafts: vi.fn(),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -112,7 +112,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify({ target: '1.2.3', only: 'behind' }),
       })
@@ -123,7 +123,7 @@ describe('preview web server APIs', () => {
   })
 
   it('returns 403 for snapshot write endpoints in readonly-strict mode', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -162,8 +162,8 @@ describe('preview web server APIs', () => {
     }))
 
     const tempCwd = await mkdtemp(path.join(os.tmpdir(), 'nxspub-snapshot-'))
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: tempCwd,
       host: '127.0.0.1',
       port: 0,
@@ -195,7 +195,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify(snapshotPayload),
       })
@@ -206,7 +206,7 @@ describe('preview web server APIs', () => {
         {
           method: 'DELETE',
           headers: {
-            'x-nxspub-preview-token': handle.token,
+            'x-nxspub-console-token': handle.token,
           },
         },
       )
@@ -220,7 +220,7 @@ describe('preview web server APIs', () => {
     let resolveFirstPreview: (() => void) | undefined
     let previewCallCount = 0
 
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -266,8 +266,8 @@ describe('preview web server APIs', () => {
       }),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -278,7 +278,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify({ includeChangelog: false }),
       })
@@ -289,7 +289,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify({ includeChangelog: false }),
       })
@@ -311,7 +311,7 @@ describe('preview web server APIs', () => {
       affectedFiles: ['/repo/.nxspub/changelog-drafts/alpha/1.2.0.json'],
     })
 
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -345,8 +345,8 @@ describe('preview web server APIs', () => {
       pruneDrafts,
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -358,7 +358,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify({ target: '1.2.3', only: 'behind' }),
       })
@@ -383,7 +383,7 @@ describe('preview web server APIs', () => {
       affectedFiles: ['/repo/.nxspub/changelog-drafts/alpha/1.2.0.json'],
     })
 
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -417,8 +417,8 @@ describe('preview web server APIs', () => {
       pruneDrafts,
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -430,7 +430,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify({ target: '1.2.3', only: 'behind', dryRun: true }),
       })
@@ -446,7 +446,7 @@ describe('preview web server APIs', () => {
   })
 
   it('returns 404 for root page when running in api-only mode', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -484,8 +484,8 @@ describe('preview web server APIs', () => {
       }),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -501,7 +501,7 @@ describe('preview web server APIs', () => {
   })
 
   it('returns 400 for prune endpoint when target is not x.y.z', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -535,8 +535,8 @@ describe('preview web server APIs', () => {
       pruneDrafts: vi.fn(),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -548,7 +548,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify({ target: '1.2.3-alpha.1', only: 'behind' }),
       })
@@ -559,7 +559,7 @@ describe('preview web server APIs', () => {
   })
 
   it('returns 408 TIMEOUT when preview computation exceeds timeout budget', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -606,8 +606,8 @@ describe('preview web server APIs', () => {
       }),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -619,7 +619,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify({ includeChangelog: false }),
       })
@@ -632,7 +632,7 @@ describe('preview web server APIs', () => {
   })
 
   it('exports diagnostic bundle in json format', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -670,8 +670,8 @@ describe('preview web server APIs', () => {
       }),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -682,7 +682,7 @@ describe('preview web server APIs', () => {
         `${handle.url}/api/export.bundle?format=json`,
         {
           headers: {
-            'x-nxspub-preview-token': handle.token,
+            'x-nxspub-console-token': handle.token,
           },
         },
       )
@@ -707,7 +707,7 @@ describe('preview web server APIs', () => {
   })
 
   it('exports diagnostic bundle in zip format', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -745,8 +745,8 @@ describe('preview web server APIs', () => {
       }),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -757,7 +757,7 @@ describe('preview web server APIs', () => {
         `${handle.url}/api/export.bundle?format=zip`,
         {
           headers: {
-            'x-nxspub-preview-token': handle.token,
+            'x-nxspub-console-token': handle.token,
           },
         },
       )
@@ -771,7 +771,7 @@ describe('preview web server APIs', () => {
   })
 
   it('saves, lists, and loads preview snapshots', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -810,8 +810,8 @@ describe('preview web server APIs', () => {
     }))
 
     const tempCwd = await mkdtemp(path.join(os.tmpdir(), 'nxspub-snapshot-'))
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: tempCwd,
       host: '127.0.0.1',
       port: 0,
@@ -842,7 +842,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify(snapshotPayload),
       })
@@ -850,7 +850,7 @@ describe('preview web server APIs', () => {
 
       const listResponse = await fetch(`${handle.url}/api/snapshots`, {
         headers: {
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
       })
       expect(listResponse.status).toBe(200)
@@ -865,7 +865,7 @@ describe('preview web server APIs', () => {
         `${handle.url}/api/snapshots/main-vs-alpha`,
         {
           headers: {
-            'x-nxspub-preview-token': handle.token,
+            'x-nxspub-console-token': handle.token,
           },
         },
       )
@@ -881,7 +881,7 @@ describe('preview web server APIs', () => {
   })
 
   it('returns 404 when snapshot id does not exist', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -920,8 +920,8 @@ describe('preview web server APIs', () => {
     }))
 
     const tempCwd = await mkdtemp(path.join(os.tmpdir(), 'nxspub-snapshot-'))
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: tempCwd,
       host: '127.0.0.1',
       port: 0,
@@ -932,7 +932,7 @@ describe('preview web server APIs', () => {
         `${handle.url}/api/snapshots/does-not-exist`,
         {
           headers: {
-            'x-nxspub-preview-token': handle.token,
+            'x-nxspub-console-token': handle.token,
           },
         },
       )
@@ -943,7 +943,7 @@ describe('preview web server APIs', () => {
   })
 
   it('deletes snapshot and returns 404 after deletion', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -982,8 +982,8 @@ describe('preview web server APIs', () => {
     }))
 
     const tempCwd = await mkdtemp(path.join(os.tmpdir(), 'nxspub-snapshot-'))
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: tempCwd,
       host: '127.0.0.1',
       port: 0,
@@ -1014,7 +1014,7 @@ describe('preview web server APIs', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-nxspub-preview-token': handle.token,
+          'x-nxspub-console-token': handle.token,
         },
         body: JSON.stringify(snapshotPayload),
       })
@@ -1025,7 +1025,7 @@ describe('preview web server APIs', () => {
         {
           method: 'DELETE',
           headers: {
-            'x-nxspub-preview-token': handle.token,
+            'x-nxspub-console-token': handle.token,
           },
         },
       )
@@ -1041,7 +1041,7 @@ describe('preview web server APIs', () => {
         `${handle.url}/api/snapshots/to-be-deleted`,
         {
           headers: {
-            'x-nxspub-preview-token': handle.token,
+            'x-nxspub-console-token': handle.token,
           },
         },
       )
@@ -1052,7 +1052,7 @@ describe('preview web server APIs', () => {
   })
 
   it('returns 401 for SSE endpoint without token', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -1090,8 +1090,8 @@ describe('preview web server APIs', () => {
       }),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -1106,7 +1106,7 @@ describe('preview web server APIs', () => {
   })
 
   it('opens SSE endpoint with token query', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -1144,8 +1144,8 @@ describe('preview web server APIs', () => {
       }),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const handle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -1166,7 +1166,7 @@ describe('preview web server APIs', () => {
   })
 
   it('auto-selects next available port when requested port is occupied', async () => {
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewChecksReport: vi.fn().mockResolvedValue({
         policy: { ok: true },
         gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
@@ -1204,8 +1204,8 @@ describe('preview web server APIs', () => {
       }),
     }))
 
-    const { startPreviewWebServer } = await import('../src/preview/server')
-    const firstHandle = await startPreviewWebServer({
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const firstHandle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: 0,
@@ -1213,7 +1213,7 @@ describe('preview web server APIs', () => {
     const firstPort = Number(new URL(firstHandle.url).port)
     expect(firstPort).toBeGreaterThan(0)
 
-    const secondHandle = await startPreviewWebServer({
+    const secondHandle = await startConsoleWebServer({
       cwd: process.cwd(),
       host: '127.0.0.1',
       port: firstPort,

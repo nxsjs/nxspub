@@ -7,7 +7,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('preview command', () => {
+describe('console command', () => {
   it('prints JSON in terminal mode when --json is enabled', async () => {
     const buildPreviewResult = vi.fn().mockResolvedValue({
       mode: 'single',
@@ -29,20 +29,20 @@ describe('preview command', () => {
       .spyOn(process.stdout, 'write')
       .mockImplementation(() => true)
 
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewResult,
       buildPreviewChecksReport,
     }))
-    vi.doMock('../src/preview/server', () => ({
-      startPreviewWebServer: vi.fn(),
-      validatePreviewHostPolicy: vi.fn(),
+    vi.doMock('../src/console/server', () => ({
+      startConsoleWebServer: vi.fn(),
+      validateConsoleHostPolicy: vi.fn(),
     }))
     vi.doMock('../src/utils/git', () => ({
       runSafe: vi.fn(),
     }))
 
-    const { previewCommand } = await import('../src/commands/preview')
-    await previewCommand({ cwd: '/repo', json: true })
+    const { consoleCommand } = await import('../src/commands/console')
+    await consoleCommand({ cwd: '/repo', json: true })
 
     expect(buildPreviewResult).toHaveBeenCalledWith({
       cwd: '/repo',
@@ -54,27 +54,27 @@ describe('preview command', () => {
   })
 
   it('starts preview web server in --web mode', async () => {
-    const startPreviewWebServer = vi.fn().mockResolvedValue({
+    const startConsoleWebServer = vi.fn().mockResolvedValue({
       url: 'http://127.0.0.1:4173',
       token: 'token',
       close: vi.fn(),
     })
-    const validatePreviewHostPolicy = vi.fn()
+    const validateConsoleHostPolicy = vi.fn()
 
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewResult: vi.fn(),
       buildPreviewChecksReport: vi.fn(),
     }))
-    vi.doMock('../src/preview/server', () => ({
-      startPreviewWebServer,
-      validatePreviewHostPolicy,
+    vi.doMock('../src/console/server', () => ({
+      startConsoleWebServer,
+      validateConsoleHostPolicy,
     }))
     vi.doMock('../src/utils/git', () => ({
       runSafe: vi.fn(),
     }))
 
-    const { previewCommand } = await import('../src/commands/preview')
-    await previewCommand({
+    const { consoleCommand } = await import('../src/commands/console')
+    await consoleCommand({
       cwd: '/repo',
       web: true,
       host: '127.0.0.1',
@@ -82,11 +82,11 @@ describe('preview command', () => {
       open: false,
     })
 
-    expect(validatePreviewHostPolicy).toHaveBeenCalledWith(
+    expect(validateConsoleHostPolicy).toHaveBeenCalledWith(
       '127.0.0.1',
       undefined,
     )
-    expect(startPreviewWebServer).toHaveBeenCalledWith({
+    expect(startConsoleWebServer).toHaveBeenCalledWith({
       cwd: '/repo',
       host: '127.0.0.1',
       port: 4173,
@@ -96,22 +96,22 @@ describe('preview command', () => {
   })
 
   it('prints API token when running in --api-only mode', async () => {
-    const startPreviewWebServer = vi.fn().mockResolvedValue({
+    const startConsoleWebServer = vi.fn().mockResolvedValue({
       url: 'http://127.0.0.1:4173',
       token: 'preview-token',
       close: vi.fn(),
     })
-    const validatePreviewHostPolicy = vi.fn()
+    const validateConsoleHostPolicy = vi.fn()
     const step = vi.fn()
     const item = vi.fn()
 
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewResult: vi.fn(),
       buildPreviewChecksReport: vi.fn(),
     }))
-    vi.doMock('../src/preview/server', () => ({
-      startPreviewWebServer,
-      validatePreviewHostPolicy,
+    vi.doMock('../src/console/server', () => ({
+      startConsoleWebServer,
+      validateConsoleHostPolicy,
     }))
     vi.doMock('../src/utils/git', () => ({
       runSafe: vi.fn(),
@@ -130,8 +130,8 @@ describe('preview command', () => {
       },
     }))
 
-    const { previewCommand } = await import('../src/commands/preview')
-    await previewCommand({
+    const { consoleCommand } = await import('../src/commands/console')
+    await consoleCommand({
       cwd: '/repo',
       web: true,
       apiOnly: true,
@@ -140,32 +140,32 @@ describe('preview command', () => {
       open: false,
     })
 
-    expect(step).toHaveBeenCalledWith('Preview API Token')
-    expect(item).toHaveBeenCalledWith('x-nxspub-preview-token: preview-token')
+    expect(step).toHaveBeenCalledWith('Console API Token')
+    expect(item).toHaveBeenCalledWith('x-nxspub-console-token: preview-token')
   })
 
   it('forwards host policy related flags in web mode', async () => {
-    const startPreviewWebServer = vi.fn().mockResolvedValue({
+    const startConsoleWebServer = vi.fn().mockResolvedValue({
       url: 'http://127.0.0.1:4173',
       token: 'token',
       close: vi.fn(),
     })
-    const validatePreviewHostPolicy = vi.fn()
+    const validateConsoleHostPolicy = vi.fn()
 
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewResult: vi.fn(),
       buildPreviewChecksReport: vi.fn(),
     }))
-    vi.doMock('../src/preview/server', () => ({
-      startPreviewWebServer,
-      validatePreviewHostPolicy,
+    vi.doMock('../src/console/server', () => ({
+      startConsoleWebServer,
+      validateConsoleHostPolicy,
     }))
     vi.doMock('../src/utils/git', () => ({
       runSafe: vi.fn(),
     }))
 
-    const { previewCommand } = await import('../src/commands/preview')
-    await previewCommand({
+    const { consoleCommand } = await import('../src/commands/console')
+    await consoleCommand({
       cwd: '/repo',
       web: true,
       host: '0.0.0.0',
@@ -176,8 +176,8 @@ describe('preview command', () => {
       open: false,
     })
 
-    expect(validatePreviewHostPolicy).toHaveBeenCalledWith('0.0.0.0', true)
-    expect(startPreviewWebServer).toHaveBeenCalledWith({
+    expect(validateConsoleHostPolicy).toHaveBeenCalledWith('0.0.0.0', true)
+    expect(startConsoleWebServer).toHaveBeenCalledWith({
       cwd: '/repo',
       host: '0.0.0.0',
       port: 5181,
@@ -186,37 +186,37 @@ describe('preview command', () => {
     })
   })
 
-  it('blocks --web mode when preview web feature flag is disabled', async () => {
-    const startPreviewWebServer = vi.fn()
-    const validatePreviewHostPolicy = vi.fn()
-    vi.stubEnv('NXSPUB_PREVIEW_WEB_ENABLED', 'false')
+  it('blocks --web mode when console web feature flag is disabled', async () => {
+    const startConsoleWebServer = vi.fn()
+    const validateConsoleHostPolicy = vi.fn()
+    vi.stubEnv('NXSPUB_CONSOLE_WEB_ENABLED', 'false')
 
-    vi.doMock('../src/preview/core', () => ({
+    vi.doMock('../src/console/core', () => ({
       buildPreviewResult: vi.fn(),
       buildPreviewChecksReport: vi.fn(),
     }))
-    vi.doMock('../src/preview/server', () => ({
-      startPreviewWebServer,
-      validatePreviewHostPolicy,
+    vi.doMock('../src/console/server', () => ({
+      startConsoleWebServer,
+      validateConsoleHostPolicy,
     }))
     vi.doMock('../src/utils/git', () => ({
       runSafe: vi.fn(),
     }))
 
-    const { previewCommand } = await import('../src/commands/preview')
+    const { consoleCommand } = await import('../src/commands/console')
 
     await expect(
-      previewCommand({
+      consoleCommand({
         cwd: '/repo',
         web: true,
         host: '127.0.0.1',
         port: 4173,
       }),
     ).rejects.toThrow(
-      'preview --web is disabled by NXSPUB_PREVIEW_WEB_ENABLED.',
+      'console --web is disabled by NXSPUB_CONSOLE_WEB_ENABLED.',
     )
 
-    expect(validatePreviewHostPolicy).not.toHaveBeenCalled()
-    expect(startPreviewWebServer).not.toHaveBeenCalled()
+    expect(validateConsoleHostPolicy).not.toHaveBeenCalled()
+    expect(startConsoleWebServer).not.toHaveBeenCalled()
   })
 })

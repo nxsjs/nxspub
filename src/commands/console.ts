@@ -1,9 +1,9 @@
-import { buildPreviewChecksReport, buildPreviewResult } from '../preview/core'
+import { buildPreviewChecksReport, buildPreviewResult } from '../console/core'
 import {
-  startPreviewWebServer,
-  validatePreviewHostPolicy,
-} from '../preview/server'
-import type { PreviewOptions } from './types'
+  startConsoleWebServer,
+  validateConsoleHostPolicy,
+} from '../console/server'
+import type { ConsoleOptions } from './types'
 import { NxspubError } from '../utils/errors'
 import { cliLogger } from '../utils/logger'
 import { runSafe } from '../utils/git'
@@ -66,22 +66,22 @@ async function openBrowserIfNeeded(url: string, shouldOpen?: boolean) {
   }
 }
 
-function isPreviewWebEnabled(): boolean {
-  const rawFlag = process.env.NXSPUB_PREVIEW_WEB_ENABLED
+function isConsoleWebEnabled(): boolean {
+  const rawFlag = process.env.NXSPUB_CONSOLE_WEB_ENABLED
   if (!rawFlag) return true
   const normalizedFlag = rawFlag.trim().toLowerCase()
   return !['0', 'false', 'off', 'no'].includes(normalizedFlag)
 }
 
 /**
- * @en Run preview command in terminal mode or web mode.
- * @zh 运行 preview 命令（终端模式或 Web 模式）。
+ * @en Run console command in terminal mode or web mode.
+ * @zh 运行 console 命令（终端模式或 Web 模式）。
  *
  * @param options
- * @en Preview command options.
- * @zh preview 命令参数。
+ * @en Console command options.
+ * @zh console 命令参数。
  */
-export async function previewCommand(options: PreviewOptions) {
+export async function consoleCommand(options: ConsoleOptions) {
   const {
     cwd,
     web,
@@ -96,13 +96,13 @@ export async function previewCommand(options: PreviewOptions) {
   } = options
 
   if (web) {
-    if (!isPreviewWebEnabled()) {
+    if (!isConsoleWebEnabled()) {
       throw new NxspubError(
-        'preview --web is disabled by NXSPUB_PREVIEW_WEB_ENABLED.',
+        'console --web is disabled by NXSPUB_CONSOLE_WEB_ENABLED.',
       )
     }
-    validatePreviewHostPolicy(host, allowRemote)
-    const server = await startPreviewWebServer({
+    validateConsoleHostPolicy(host, allowRemote)
+    const server = await startConsoleWebServer({
       cwd,
       host,
       port,
@@ -110,8 +110,8 @@ export async function previewCommand(options: PreviewOptions) {
       apiOnly,
     })
     if (apiOnly) {
-      cliLogger.step('Preview API Token')
-      cliLogger.item(`x-nxspub-preview-token: ${server.token}`)
+      cliLogger.step('Console API Token')
+      cliLogger.item(`x-nxspub-console-token: ${server.token}`)
     }
     await openBrowserIfNeeded(server.url, open)
     return

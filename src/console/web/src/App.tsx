@@ -21,6 +21,8 @@ import { DependencyPropagationPanel } from './components/DependencyPropagationPa
 import { DraftHealthPanel } from './components/DraftHealthPanel'
 import { SummaryCards } from './components/SummaryCards'
 import { VersionPlanTable } from './components/VersionPlanTable'
+import { createTranslator } from './i18n'
+import type { PreviewLocale, Translator } from './i18n'
 import type {
   DraftPruneResult,
   PreviewChecksReport,
@@ -46,7 +48,20 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
 }
 
-export function App() {
+interface AppProps {
+  locale: PreviewLocale
+}
+
+type ViewMode =
+  | 'overview'
+  | 'comparison'
+  | 'drafts'
+  | 'dependencies'
+  | 'diagnostics'
+
+export function App({ locale }: AppProps) {
+  const t: Translator = createTranslator(locale)
+  const [activeView, setActiveView] = useState<ViewMode>('overview')
   const [branchInput, setBranchInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -211,17 +226,17 @@ export function App() {
     try {
       const target = preview?.targetVersion?.split('-')[0]
       if (!target) {
-        throw new Error('No target version available for draft prune.')
+        throw new Error(t('errNoTargetForPrune'))
       }
       if (!dryRun) {
         if (lastDryRunTarget !== target) {
-          throw new Error(
-            'Please run "Prune Dry Run" first for the current target version.',
-          )
+          throw new Error(t('errRunDryRunFirst'))
         }
         const confirmed = window.confirm(
-          `Confirm prune of behind drafts for ${target}?\n` +
-            `Last dry-run reported ${lastDryRunAffectedCount} affected file(s).`,
+          t('confirmPrune', {
+            target,
+            count: lastDryRunAffectedCount,
+          }),
         )
         if (!confirmed) return
       }
@@ -261,7 +276,7 @@ export function App() {
     setError('')
     try {
       if (!compareBranch) {
-        throw new Error('Select a compare branch first.')
+        throw new Error(t('errSelectCompareBranch'))
       }
       const baseBranch = branchInput || context?.currentBranch || undefined
       const [baseResult, compareResult] = await Promise.all([
@@ -293,11 +308,11 @@ export function App() {
     setError('')
     try {
       if (!compareBasePreview || !compareTargetPreview) {
-        throw new Error('Run comparison first before saving snapshot.')
+        throw new Error(t('errRunComparisonFirst'))
       }
       const saved = await saveSnapshot({
         id: snapshotNameInput || undefined,
-        baseBranch: branchInput || context?.currentBranch || 'current',
+        baseBranch: branchInput || context?.currentBranch || t('current'),
         compareBranch: compareBranch || undefined,
         basePreview: compareBasePreview,
         comparePreview: compareTargetPreview,
@@ -316,7 +331,7 @@ export function App() {
     setError('')
     try {
       if (!selectedSnapshotId) {
-        throw new Error('Select a snapshot first.')
+        throw new Error(t('errSelectSnapshotFirst'))
       }
       const snapshot = await loadSnapshot(selectedSnapshotId)
       setCompareBasePreview(snapshot.basePreview)
@@ -335,10 +350,10 @@ export function App() {
     setError('')
     try {
       if (!selectedSnapshotId) {
-        throw new Error('Select a snapshot first.')
+        throw new Error(t('errSelectSnapshotFirst'))
       }
       const confirmed = window.confirm(
-        `Delete snapshot "${selectedSnapshotId}"? This cannot be undone.`,
+        t('confirmDeleteSnapshot', { id: selectedSnapshotId }),
       )
       if (!confirmed) return
 
@@ -386,27 +401,27 @@ export function App() {
     <div className="app">
       <header className="neo-border neo-shadow topbar">
         <div className="brand">
-          <img src="/logo.svg" alt="NXSPUB logo" />
-          <span>NXSPUB PREVIEW</span>
+          <img src="/logo.svg" alt={t('appTitleA11y')} />
+          <span>{t('appTitle')}</span>
         </div>
         <div className="meta">
           {context
             ? `${context.mode.toUpperCase()} | ${context.packageManager.toUpperCase()} | ${context.currentBranch}`
-            : 'Loading context...'}
+            : t('loadingContext')}
         </div>
       </header>
 
       <section className="neo-border neo-shadow panel">
-        <h2>Controls</h2>
+        <h2>{t('globalControls')}</h2>
         <div className="meta" style={{ marginBottom: 8 }}>
-          CWD: {context?.cwd || '-'}
+          {t('cwd')}: {context?.cwd || '-'}
         </div>
         <div className="controls">
           <select
             value={branchInput}
             onChange={event => setBranchInput(event.target.value)}
           >
-            <option value="">Current Branch</option>
+            <option value="">{t('currentBranch')}</option>
             {(context?.availableBranches || []).map(branch => (
               <option key={branch} value={branch}>
                 {branch}
@@ -418,187 +433,235 @@ export function App() {
             className="primary neo-pressable"
             onClick={() => void refreshPreview()}
           >
-            Refresh
+            {t('refresh')}
           </button>
           <button
             type="button"
             className="neo-pressable"
             onClick={() => void loadChecksOnly()}
           >
-            Run Checks
-          </button>
-          <button
-            type="button"
-            className="neo-pressable"
-            onClick={() => void loadDraftHealth()}
-          >
-            Draft Health
-          </button>
-          <button
-            type="button"
-            className="neo-pressable"
-            onClick={() => void exportLatestPreview()}
-          >
-            Export JSON
-          </button>
-          <button
-            type="button"
-            className="neo-pressable"
-            onClick={() => void exportDiagnosticBundleJson()}
-          >
-            Bundle JSON
-          </button>
-          <button
-            type="button"
-            className="neo-pressable"
-            onClick={() => void exportDiagnosticBundleZip()}
-          >
-            Bundle ZIP
-          </button>
-          <select
-            value={compareBranch}
-            onChange={event => setCompareBranch(event.target.value)}
-          >
-            <option value="">Compare Branch</option>
-            {(context?.availableBranches || []).map(branch => (
-              <option key={branch} value={branch}>
-                {branch}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="neo-pressable"
-            onClick={() => void runComparison()}
-          >
-            Compare
-          </button>
-          <input
-            placeholder="snapshot id (optional)"
-            value={snapshotNameInput}
-            onChange={event => setSnapshotNameInput(event.target.value)}
-          />
-          <button
-            type="button"
-            className="neo-pressable"
-            onClick={() => void saveCurrentSnapshot()}
-          >
-            Save Snapshot
-          </button>
-          <select
-            value={selectedSnapshotId}
-            onChange={event => setSelectedSnapshotId(event.target.value)}
-          >
-            <option value="">Load Snapshot</option>
-            {filteredSnapshots.map(snapshot => (
-              <option key={snapshot.id} value={snapshot.id}>
-                {snapshot.id} ({snapshot.baseBranch}
-                {snapshot.compareBranch ? ` -> ${snapshot.compareBranch}` : ''})
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder="snapshot keyword filter"
-            value={snapshotFilterKeyword}
-            onChange={event => setSnapshotFilterKeyword(event.target.value)}
-          />
-          <select
-            value={snapshotFilterBranch}
-            onChange={event => setSnapshotFilterBranch(event.target.value)}
-          >
-            <option value="">Snapshot Branch Filter</option>
-            {(context?.availableBranches || []).map(branch => (
-              <option key={branch} value={branch}>
-                {branch}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="neo-pressable"
-            onClick={() => void loadSelectedSnapshot()}
-          >
-            Load Snapshot
-          </button>
-          <button
-            type="button"
-            className="neo-pressable"
-            onClick={() => void deleteSelectedSnapshot()}
-          >
-            Delete Snapshot
+            {t('runChecks')}
           </button>
         </div>
-        {loading ? <div className="meta">Running...</div> : null}
+        {loading ? <div className="meta">{t('running')}</div> : null}
         {liveEvent ? (
           <div className="meta">
-            LIVE: {liveEvent.kind} / {liveEvent.phase} / {liveEvent.message}
+            {t('livePrefix')}: {liveEvent.kind} / {liveEvent.phase} /{' '}
+            {liveEvent.message}
           </div>
         ) : null}
         {error ? <div className="error">{error}</div> : null}
       </section>
 
-      <SummaryCards preview={preview} riskCount={riskCount} />
-
       <section className="neo-border neo-shadow panel">
-        <h2>Version Plan</h2>
-        <VersionPlanTable preview={preview} />
+        <div className="controls">
+          <button
+            type="button"
+            className={`neo-pressable ${activeView === 'overview' ? 'primary' : ''}`}
+            onClick={() => setActiveView('overview')}
+          >
+            {t('viewOverview')}
+          </button>
+          <button
+            type="button"
+            className={`neo-pressable ${activeView === 'comparison' ? 'primary' : ''}`}
+            onClick={() => setActiveView('comparison')}
+          >
+            {t('viewComparison')}
+          </button>
+          <button
+            type="button"
+            className={`neo-pressable ${activeView === 'drafts' ? 'primary' : ''}`}
+            onClick={() => setActiveView('drafts')}
+          >
+            {t('viewDrafts')}
+          </button>
+          <button
+            type="button"
+            className={`neo-pressable ${activeView === 'dependencies' ? 'primary' : ''}`}
+            onClick={() => setActiveView('dependencies')}
+          >
+            {t('viewDependencies')}
+          </button>
+          <button
+            type="button"
+            className={`neo-pressable ${activeView === 'diagnostics' ? 'primary' : ''}`}
+            onClick={() => setActiveView('diagnostics')}
+          >
+            {t('viewDiagnostics')}
+          </button>
+        </div>
       </section>
 
-      <section className="neo-border neo-shadow panel">
-        <h2>Result Comparison</h2>
-        <ComparisonPanel
-          baseLabel={branchInput || context?.currentBranch || 'current'}
-          compareLabel={compareBranch || 'compare'}
-          basePreview={compareBasePreview}
-          comparePreview={compareTargetPreview}
-        />
-      </section>
-
-      <section className="neo-border neo-shadow panel">
-        <h2>Dependency Propagation</h2>
-        <DependencyPropagationPanel preview={preview} />
-      </section>
-
-      <section className="stack">
-        <article className="neo-border neo-shadow panel">
-          <h2>Pre-release Checks</h2>
-          {checks?.items?.length ? (
-            checks.items.map(item => (
-              <div className={`check ${item.level}`} key={item.id}>
-                <strong>{item.title}</strong>
-                <div>{item.message}</div>
+      {activeView === 'overview' ? (
+        <>
+          <SummaryCards preview={preview} riskCount={riskCount} t={t} />
+          <section className="neo-border neo-shadow panel">
+            <h2>{t('versionPlan')}</h2>
+            <VersionPlanTable preview={preview} t={t} />
+          </section>
+          <section className="stack">
+            <article className="neo-border neo-shadow panel">
+              <h2>{t('preReleaseChecks')}</h2>
+              {checks?.items?.length ? (
+                checks.items.map(item => (
+                  <div className={`check ${item.level}`} key={item.id}>
+                    <strong>{item.title}</strong>
+                    <div>{item.message}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="meta">{t('noCheckResultsYet')}</div>
+              )}
+              {checks ? (
+                <div className="meta-grid">
+                  <div>
+                    {t('gitSync')}: {checks.gitSync.ok ? t('ok') : t('risk')} |
+                    ahead=
+                    {checks.gitSync.ahead} behind={checks.gitSync.behind} dirty=
+                    {String(checks.gitSync.dirty)}
+                  </div>
+                  <div>
+                    {t('tagConflicts')}: {checks.tagConflicts.length}
+                  </div>
+                  <div>
+                    {t('registryConflicts')}: {checks.registryConflicts.length}
+                  </div>
+                </div>
+              ) : null}
+            </article>
+            <article className="neo-border neo-shadow panel">
+              <h2>{t('changelogPreview')}</h2>
+              <div className="controls" style={{ marginBottom: 10 }}>
+                <button
+                  type="button"
+                  className="neo-pressable"
+                  onClick={() => void exportLatestPreview()}
+                >
+                  {t('exportJson')}
+                </button>
               </div>
-            ))
-          ) : (
-            <div className="meta">No check results yet.</div>
-          )}
-          {checks ? (
-            <div className="meta-grid">
-              <div>
-                GIT SYNC: {checks.gitSync.ok ? 'OK' : 'RISK'} | ahead=
-                {checks.gitSync.ahead} behind={checks.gitSync.behind} dirty=
-                {String(checks.gitSync.dirty)}
-              </div>
-              <div>TAG CONFLICTS: {checks.tagConflicts.length}</div>
-              <div>REGISTRY CONFLICTS: {checks.registryConflicts.length}</div>
+              <ChangelogPreview preview={preview} t={t} />
+            </article>
+          </section>
+        </>
+      ) : null}
+
+      {activeView === 'comparison' ? (
+        <section className="stack">
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('resultComparison')}</h2>
+            <div className="controls" style={{ marginBottom: 10 }}>
+              <select
+                value={compareBranch}
+                onChange={event => setCompareBranch(event.target.value)}
+              >
+                <option value="">{t('compareBranch')}</option>
+                {(context?.availableBranches || []).map(branch => (
+                  <option key={branch} value={branch}>
+                    {branch}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void runComparison()}
+              >
+                {t('compare')}
+              </button>
             </div>
-          ) : null}
-        </article>
+            <ComparisonPanel
+              baseLabel={branchInput || context?.currentBranch || t('current')}
+              compareLabel={compareBranch || t('compareLabelDefault')}
+              basePreview={compareBasePreview}
+              comparePreview={compareTargetPreview}
+              t={t}
+            />
+          </article>
 
-        <article className="neo-border neo-shadow panel">
-          <h2>Changelog Preview</h2>
-          <ChangelogPreview preview={preview} />
-        </article>
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('saveSnapshot')}</h2>
+            <div className="controls">
+              <input
+                placeholder={t('snapshotIdOptional')}
+                value={snapshotNameInput}
+                onChange={event => setSnapshotNameInput(event.target.value)}
+              />
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void saveCurrentSnapshot()}
+              >
+                {t('saveSnapshot')}
+              </button>
+              <select
+                value={selectedSnapshotId}
+                onChange={event => setSelectedSnapshotId(event.target.value)}
+              >
+                <option value="">{t('loadSnapshot')}</option>
+                {filteredSnapshots.map(snapshot => (
+                  <option key={snapshot.id} value={snapshot.id}>
+                    {snapshot.id} ({snapshot.baseBranch}
+                    {snapshot.compareBranch
+                      ? ` -> ${snapshot.compareBranch}`
+                      : ''}
+                    )
+                  </option>
+                ))}
+              </select>
+              <input
+                placeholder={t('snapshotKeywordFilter')}
+                value={snapshotFilterKeyword}
+                onChange={event => setSnapshotFilterKeyword(event.target.value)}
+              />
+              <select
+                value={snapshotFilterBranch}
+                onChange={event => setSnapshotFilterBranch(event.target.value)}
+              >
+                <option value="">{t('snapshotBranchFilter')}</option>
+                {(context?.availableBranches || []).map(branch => (
+                  <option key={branch} value={branch}>
+                    {branch}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void loadSelectedSnapshot()}
+              >
+                {t('loadSnapshot')}
+              </button>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void deleteSelectedSnapshot()}
+              >
+                {t('deleteSnapshot')}
+              </button>
+            </div>
+          </article>
+        </section>
+      ) : null}
 
-        <article className="neo-border neo-shadow panel">
-          <h2>Draft Health</h2>
+      {activeView === 'drafts' ? (
+        <section className="neo-border neo-shadow panel">
+          <h2>{t('draftHealthPanel')}</h2>
           <div className="controls" style={{ marginBottom: 10 }}>
+            <button
+              type="button"
+              className="neo-pressable"
+              onClick={() => void loadDraftHealth()}
+            >
+              {t('draftHealth')}
+            </button>
             <button
               type="button"
               className="neo-pressable"
               onClick={() => void runDraftPrune(true)}
             >
-              Prune Dry Run
+              {t('pruneDryRun')}
             </button>
             <button
               type="button"
@@ -606,27 +669,72 @@ export function App() {
               disabled={!canExecutePrune}
               onClick={() => void runDraftPrune(false)}
             >
-              Prune Behind Drafts
+              {t('pruneBehindDrafts')}
             </button>
           </div>
           <div className="meta">
             {canExecutePrune
-              ? `Ready to prune ${currentPruneTarget}. Last dry-run affected ${lastDryRunAffectedCount} file(s).`
-              : 'Execute prune requires a dry-run for the same target version.'}
+              ? t('readyToPrune', {
+                  target: currentPruneTarget || '-',
+                  count: lastDryRunAffectedCount,
+                })
+              : t('requireDryRun')}
           </div>
-          <DraftHealthPanel draftHealth={draftHealth} />
+          <DraftHealthPanel draftHealth={draftHealth} t={t} />
           {pruneResult ? (
             <div className="meta-grid" style={{ marginTop: 10 }}>
-              <div>PRUNED: {pruneResult.prunedCount}</div>
-              <div>REMAINING: {pruneResult.remaining}</div>
-              <div>AFFECTED FILES: {pruneResult.affectedFiles.length}</div>
+              <div>
+                {t('pruned')}: {pruneResult.prunedCount}
+              </div>
+              <div>
+                {t('remaining')}: {pruneResult.remaining}
+              </div>
+              <div>
+                {t('affectedFiles')}: {pruneResult.affectedFiles.length}
+              </div>
               <pre style={{ marginTop: 6 }}>
                 {pruneResult.affectedFiles.slice(0, 20).join('\n') || '-'}
               </pre>
             </div>
           ) : null}
-        </article>
-      </section>
+        </section>
+      ) : null}
+
+      {activeView === 'dependencies' ? (
+        <section className="neo-border neo-shadow panel">
+          <h2>{t('dependencyPropagation')}</h2>
+          <DependencyPropagationPanel preview={preview} t={t} />
+        </section>
+      ) : null}
+
+      {activeView === 'diagnostics' ? (
+        <section className="neo-border neo-shadow panel">
+          <h2>{t('viewDiagnostics')}</h2>
+          <div className="controls">
+            <button
+              type="button"
+              className="neo-pressable"
+              onClick={() => void exportLatestPreview()}
+            >
+              {t('exportJson')}
+            </button>
+            <button
+              type="button"
+              className="neo-pressable"
+              onClick={() => void exportDiagnosticBundleJson()}
+            >
+              {t('bundleJson')}
+            </button>
+            <button
+              type="button"
+              className="neo-pressable"
+              onClick={() => void exportDiagnosticBundleZip()}
+            >
+              {t('bundleZip')}
+            </button>
+          </div>
+        </section>
+      ) : null}
     </div>
   )
 }

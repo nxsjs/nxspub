@@ -347,9 +347,9 @@ pnpm exec nxspub release --registry https://registry.npmjs.org
 pnpm exec nxspub release --cwd /path/to/repo --branch main
 ```
 
-### `nxspub preview`
+### `nxspub console`
 
-Preview release computation without writing version/tag/changelog files.
+Interactive release console. It includes all previous preview capabilities (read-only release computation + risk checks) and web/API mode.
 
 Options:
 
@@ -366,15 +366,15 @@ Options:
 
 Feature flag (rollout/rollback):
 
-- `NXSPUB_PREVIEW_WEB_ENABLED=false` disables `preview --web` startup globally (CLI `preview` remains available)
+- `NXSPUB_CONSOLE_WEB_ENABLED=false` disables `console --web` startup globally
 
 Examples:
 
 ```bash
-pnpm exec nxspub preview --json
-pnpm exec nxspub preview --branch alpha --json
-pnpm exec nxspub preview --web --open
-pnpm exec nxspub preview --web --api-only --port 4173
+pnpm exec nxspub console --json
+pnpm exec nxspub console --branch alpha --json
+pnpm exec nxspub console --web --open
+pnpm exec nxspub console --web --api-only --port 4173
 ```
 
 #### Preview Web Workflow
@@ -382,25 +382,31 @@ pnpm exec nxspub preview --web --api-only --port 4173
 Build frontend assets:
 
 ```bash
-pnpm run preview:web:build
+pnpm run console:web:build
 ```
 
 Run web preview server:
 
 ```bash
-pnpm exec nxspub preview --web --host 127.0.0.1 --port 4173
+pnpm exec nxspub console --web --host 127.0.0.1 --port 4173
 ```
+
+Preview web stack:
+
+- Server: Nitro HTTP layer (`h3`) hosted by `nxspub console --web`
+- Client: React + Vite with TailwindCSS styling
+- UI language: auto-detects browser language (`zh*` -> Chinese, otherwise English)
 
 Run API-only mode (for custom frontend or proxy):
 
 ```bash
-pnpm exec nxspub preview --web --api-only --host 127.0.0.1 --port 4173
+pnpm exec nxspub console --web --api-only --host 127.0.0.1 --port 4173
 ```
 
 All `/api/*` requests require header:
 
 ```txt
-x-nxspub-preview-token: <token from server startup>
+x-nxspub-console-token: <token from server startup>
 ```
 
 Diagnostic bundle export endpoints:

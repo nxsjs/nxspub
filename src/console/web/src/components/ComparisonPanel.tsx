@@ -1,13 +1,19 @@
 import type { PreviewResult } from '../types'
+import type { Translator } from '../i18n'
 
 interface ComparisonPanelProps {
   baseLabel: string
   compareLabel: string
   basePreview: PreviewResult | null
   comparePreview: PreviewResult | null
+  t: Translator
 }
 
-function renderWorkspaceDiff(base: PreviewResult, compare: PreviewResult) {
+function renderWorkspaceDiff(
+  base: PreviewResult,
+  compare: PreviewResult,
+  t: Translator,
+) {
   const basePackages = new Map(
     (base.packages || []).map(item => [item.name, item]),
   )
@@ -29,7 +35,7 @@ function renderWorkspaceDiff(base: PreviewResult, compare: PreviewResult) {
     })
     .filter(Boolean) as string[]
 
-  return rows.length > 0 ? rows.join('\n') : 'No package-level differences.'
+  return rows.length > 0 ? rows.join('\n') : t('noPackageDiff')
 }
 
 export function ComparisonPanel({
@@ -37,9 +43,10 @@ export function ComparisonPanel({
   compareLabel,
   basePreview,
   comparePreview,
+  t,
 }: ComparisonPanelProps) {
   if (!basePreview || !comparePreview) {
-    return <div className="meta">No comparison result yet.</div>
+    return <div className="meta">{t('noComparisonYet')}</div>
   }
 
   const baseVersion = basePreview.targetVersion || '-'
@@ -50,16 +57,24 @@ export function ComparisonPanel({
   return (
     <div className="meta-grid">
       <div>
-        TARGET VERSION: {baseLabel}={baseVersion} | {compareLabel}=
-        {compareVersion}
+        {t('targetVersionLine', {
+          baseLabel,
+          baseVersion,
+          compareLabel,
+          compareVersion,
+        })}
       </div>
       <div>
-        RELEASE PACKAGES: {baseLabel}={baseReleaseCount} | {compareLabel}=
-        {compareReleaseCount}
+        {t('releasePackagesLine', {
+          baseLabel,
+          baseCount: baseReleaseCount,
+          compareLabel,
+          compareCount: compareReleaseCount,
+        })}
       </div>
       <pre style={{ marginTop: 8 }}>
         {basePreview.mode === 'workspace' && comparePreview.mode === 'workspace'
-          ? renderWorkspaceDiff(basePreview, comparePreview)
+          ? renderWorkspaceDiff(basePreview, comparePreview, t)
           : `${baseLabel}: ${baseVersion}\n${compareLabel}: ${compareVersion}`}
       </pre>
     </div>

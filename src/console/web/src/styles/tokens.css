@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+:root {
+  --neo-accent: #ccff00;
+  --neo-black: #000;
+  --neo-white: #fff;
+  --neo-gray-100: #f6f6f6;
+  --neo-gray-600: #5b5b5b;
+  --neo-error: #b02500;
+}
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  body {
+    @apply m-0 bg-white text-black;
+    font-family: 'Public Sans', sans-serif;
+  }
+
+  input,
+  select,
+  button {
+    @apply rounded-[4px] border-[2px] border-black bg-white px-[10px] py-2 text-black;
+    font: inherit;
+  }
+
+  button {
+    @apply cursor-pointer font-extrabold uppercase;
+  }
+
+  button:disabled {
+    @apply cursor-not-allowed opacity-55;
+  }
+
+  table {
+    @apply w-full border-collapse text-[12px] uppercase;
+  }
+
+  th,
+  td {
+    @apply border-[2px] border-black p-2 align-top;
+  }
+
+  th {
+    @apply bg-[#f6f6f6] font-black;
+  }
+
+  pre {
+    @apply m-0 whitespace-pre-wrap break-words border-[2px] border-black bg-[#f6f6f6] p-3;
+  }
+}
+
+@layer components {
+  .app {
+    @apply mx-auto max-w-[1360px] p-5;
+  }
+
+  .neo-border {
+    @apply rounded-[4px] border-[2px] border-black;
+  }
+
+  .neo-shadow {
+    box-shadow: 4px 4px 0 0 var(--neo-black);
+  }
+
+  .neo-pressable:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 0 var(--neo-black);
+  }
+
+  .topbar {
+    @apply mb-4 flex items-center justify-between gap-3 px-4 py-3;
+  }
+
+  .brand {
+    @apply flex items-center gap-[10px] font-black uppercase tracking-[0.04em];
+  }
+
+  .brand img {
+    @apply h-[34px] w-[34px] border-[2px] border-black bg-white;
+  }
+
+  .panel {
+    @apply mt-4 p-3;
+  }
+
+  .panel h2 {
+    @apply mb-[10px] mt-0 text-[13px] font-black uppercase tracking-[0.06em];
+  }
+
+  .controls {
+    @apply flex flex-wrap gap-[10px];
+  }
+
+  .summary-grid {
+    @apply mt-4 grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5;
+  }
+
+  .card {
+    @apply p-3;
+  }
+
+  .card h3 {
+    @apply m-0 text-[11px] font-black uppercase tracking-[0.07em];
+  }
+
+  .card p {
+    @apply mb-0 mt-2 text-2xl font-black;
+  }
+
+  .stack {
+    @apply mt-4 grid gap-3;
+  }
+
+  .meta,
+  .meta-grid {
+    @apply text-[12px] font-bold uppercase tracking-[0.03em] text-[#5b5b5b];
+  }
+
+  .meta-grid {
+    @apply grid gap-[6px];
+  }
+
+  .error {
+    @apply mt-2 text-[12px] font-extrabold uppercase text-[#b02500];
+  }
+
+  .check {
+    @apply mb-2 border-[2px] border-black p-2;
+  }
+
+  .check.info {
+    @apply bg-[#f5ffe0];
+  }
+
+  .check.warn {
+    @apply bg-[#fff5cd];
+  }
+
+  .check.blocker {
+    @apply border-[#b02500] bg-[#ffd9cf];
+  }
+}
