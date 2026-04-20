@@ -1,3 +1,26 @@
+## [0.8.0](https://github.com/nxsjs/nxspub/compare/0.7.0...0.8.0) (2026-04-20)
+
+### Features
+
+* **preview:** complete web mvp and hardening ([242c5bb](https://github.com/nxsjs/nxspub/commit/242c5bbea0386f5d2a00a9a239c39d66c3398099))
+  > add snapshot delete endpoint and UI flow
+  
+  > enforce readonly-strict on all write endpoints
+  
+  > add preview-web feature flag rollback switch
+  
+  > add web tsconfig + css side-effect type declaration
+  
+  > extend integration tests for prune/snapshot/port fallback
+  
+  > update README and preview-web-design docs
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.7.0](https://github.com/nxsjs/nxspub/compare/0.6.4...0.7.0) (2026-04-19)
 
 ### Features
