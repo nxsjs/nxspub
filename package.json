@@ -1,6 +1,6 @@
 {
   "name": "nxspub",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Automated release tool tailored for modern multi-branch workflows.",
   "engines": {
     "node": ">=20.0.0",

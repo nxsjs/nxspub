@@ -1,3 +1,17 @@
+## [0.8.1](https://github.com/nxsjs/nxspub/compare/0.8.0...0.8.1) (2026-04-20)
+
+### Refactors
+
+* transition `preview` command to `console` ([ccac790](https://github.com/nxsjs/nxspub/commit/ccac790ec7e2265e9eb5f19bf2e50f4801b05162))
+  > [WARNING] 'preview' is deprecated and will be removed in future versions. Please use 'console' instead.
+* rename `preview` command to `console` ([142e7c0](https://github.com/nxsjs/nxspub/commit/142e7c0c8a6d539562265946beff87147db72d72))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.8.0](https://github.com/nxsjs/nxspub/compare/0.7.0...0.8.0) (2026-04-20)
 
 ### Features
