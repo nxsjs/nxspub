@@ -1,9 +1,9 @@
 import { cac } from 'cac'
 import pkg from '../package.json'
+import { consoleCommand } from './commands/console'
 import { draftDoctorCommand } from './commands/draft-doctor'
 import { gitHooksCommand } from './commands/git-hooks'
 import { lintCommand } from './commands/lint'
-import { consoleCommand } from './commands/console'
 import { releaseCommand } from './commands/release'
 import type {
   ConsoleOptions,
@@ -74,6 +74,7 @@ cli
 
 cli
   .command('console', 'Interactive release console with preview capabilities')
+  .alias('preview')
   .option('--cwd <cwd>', 'Specify the working directory', {
     default: process.cwd(),
   })
