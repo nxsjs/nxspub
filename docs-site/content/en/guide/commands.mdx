@@ -4,9 +4,10 @@ title: Commands
 
 # Commands
 
-All commands support `--cwd <path>`.
+All commands support `--cwd <path>`.  
+If this is your first time, read in this order: `version -> release -> deploy -> console`.
 
-## Version
+## version (Start Here)
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -35,13 +36,13 @@ yarn dlx nxspub version --dry
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-Notes:
+What it does:
 
-- updates version, changelog, commit and tag in one flow
-- checks branch policy before applying bump
-- supports workspace mode automatically
+- computes next version
+- updates changelog
+- creates git commit and tag
 
-## Release
+## release (Publish the Version)
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -70,13 +71,13 @@ yarn dlx nxspub release --dry
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-Notes:
+What it does:
 
-- publishes version that already exists in `package.json`
-- supports `--registry`, `--tag`, `--provenance`, `--access`
-- use `--skipBuild` only when build is already guaranteed
+- publishes the version currently in `package.json`
+- usually run `--dry` first
+- prerelease branches commonly use `--tag alpha` or `--tag beta`
 
-## Deploy
+## deploy (Ship to Runtime Environment)
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -108,13 +109,13 @@ yarn dlx nxspub deploy --rollback --to <deploymentId>
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-Notes:
+What it does:
 
 - `--plan` only computes and validates plan
 - runtime deploy requires `deploy.provider` config
 - rollback requires `--rollback --to <deploymentId>`
 
-## Console
+## console (Visual Control Surface)
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -140,13 +141,13 @@ yarn dlx nxspub console --web
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-Notes:
+What it does:
 
-- terminal mode: preview summary and checks
 - web mode: `nxspub console --web --open`
-- strict read-only mode: `--readonly-strict`
+- strict read-only auditing: `--readonly-strict`
+- gives teams a clear view of what will happen before applying changes
 
-## Draft Doctor
+## draft-doctor (Draft Repair Tool)
 
 ```bash
 nxspub draft-doctor
@@ -154,7 +155,7 @@ nxspub draft-doctor --target 1.3.0
 nxspub draft-doctor --target 1.3.0 --prune
 ```
 
-## Git Hooks
+## git-hooks / lint (Commit-Time Validation)
 
 ```bash
 nxspub git-hooks

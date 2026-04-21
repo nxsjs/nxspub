@@ -4,18 +4,16 @@ title: Provider 指南
 
 # Provider 指南
 
-本章逐个提供以下 provider 的配置示例：
+这页给的是“新手能直接照抄”的 provider 接入模板。
 
-- `vercel`
-- `cloudflare`
-- `onepanel`
-- `btpanel`
-- `ssh`
-- `rancher`
-- `k8s`
-- `custom`
+## 推荐接入顺序（不要跳步）
 
-所有 provider 都复用同一个配置结构：
+1. 先用 `custom` 跑通
+2. 跑通 `nxspub deploy --plan`
+3. 跑通 `nxspub deploy --dry`
+4. 最后切换到真实 provider
+
+## 统一配置入口
 
 ```ts
 deploy: {
@@ -34,9 +32,36 @@ deploy: {
 }
 ```
 
+## 每个 provider 都先做这 3 个检查
+
+1. 先执行 `nxspub deploy --plan`
+2. 再执行 `nxspub deploy --dry`
+3. 最后再执行真实 `nxspub deploy --env ...`
+
+## custom（建议第一个使用）
+
+用途：验证 nxspub 部署流程是否可用，不依赖云平台。
+
+```ts
+deploy: {
+  provider: {
+    name: 'custom',
+    config: {
+      requiredEnv: ['DEPLOY_TOKEN'],
+      commands: {
+        plan: 'echo [plan] $NXSPUB_DEPLOY_ENV',
+        execute: 'echo [execute] $NXSPUB_DEPLOY_ENV',
+        rollback:
+          'echo [rollback] $NXSPUB_DEPLOY_ROLLBACK_TO',
+      },
+    },
+  },
+}
+```
+
 ## `vercel`
 
-默认必需环境变量：
+先准备：
 
 - `VERCEL_TOKEN`
 
@@ -62,7 +87,7 @@ deploy: {
 
 ## `cloudflare`
 
-默认必需环境变量：
+先准备：
 
 - `CLOUDFLARE_API_TOKEN`
 
@@ -85,12 +110,12 @@ deploy: {
 }
 ```
 
-## `onepanel`
+## `onepanel`（1Panel）
 
-必需项：
+先准备：
 
 - `config.baseUrl`
-- `ONEPANEL_API_KEY`（默认变量名）
+- `ONEPANEL_API_KEY`
 
 ```ts
 deploy: {
@@ -110,12 +135,12 @@ deploy: {
 }
 ```
 
-## `btpanel`
+## `btpanel`（宝塔）
 
-必需项：
+先准备：
 
 - `config.baseUrl`
-- `BT_API_KEY`（默认变量名）
+- `BT_API_KEY`
 
 ```ts
 deploy: {
@@ -137,7 +162,7 @@ deploy: {
 
 ## `ssh`
 
-必需项：
+先准备：
 
 - `privateKeyPath` 或 `passwordEnv` 二选一
 
@@ -161,10 +186,10 @@ deploy: {
 
 ## `rancher`
 
-必需项：
+先准备：
 
 - `config.serverUrl`
-- `RANCHER_TOKEN`（默认变量名）
+- `RANCHER_TOKEN`
 
 ```ts
 deploy: {
@@ -186,7 +211,9 @@ deploy: {
 
 ## `k8s`
 
-内置无强制变量，通常通过环境提供 kube context。
+先准备：
+
+- `KUBECONFIG`
 
 ```ts
 deploy: {
@@ -205,31 +232,7 @@ deploy: {
 }
 ```
 
-## `custom`
-
-当你要完全接入自定义发布平台时使用。
-
-```ts
-deploy: {
-  provider: {
-    name: 'custom',
-    config: {
-      requiredEnv: ['DEPLOY_TOKEN'],
-      env: {
-        DEPLOY_API_BASE: 'https://deploy.internal',
-      },
-      commands: {
-        validate: 'node scripts/deploy/validate.mjs',
-        plan: 'node scripts/deploy/plan.mjs',
-        execute: 'node scripts/deploy/execute.mjs',
-        rollback: 'node scripts/deploy/rollback.mjs',
-      },
-    },
-  },
-}
-```
-
-## 命令可用运行时变量
+## 命令里可用的内置变量
 
 nxspub 会向 provider 命令注入以下变量：
 

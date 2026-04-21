@@ -4,13 +4,15 @@ title: Quick Start Workflows
 
 # Quick Start Workflows
 
-## Single Package Stable Release
+This page covers 3 practical flows you can run directly.
+
+## Scenario A: Single Package Stable Release (main)
 
 1. Configure branch policy:
 ```ts
 branches: { main: 'latest' }
 ```
-2. Commit with Conventional Commit style:
+2. Use a valid commit message:
 ```bash
 feat: add xxx
 fix: correct yyy
@@ -24,7 +26,7 @@ nxspub version
 nxspub release
 ```
 
-## Pre-release Flow (`alpha`)
+## Scenario B: Prerelease Flow (alpha)
 
 1. Configure branch policy:
 ```ts
@@ -38,13 +40,13 @@ branches: {
 nxspub version
 nxspub release --tag alpha
 ```
-3. Merge to `main`, then run stable bump:
+3. Merge to `main`, then run stable release:
 ```bash
 nxspub version
 nxspub release
 ```
 
-## Workspace Flow
+## Scenario C: Workspace Multi-Package Release
 
 1. Configure workspace mode:
 ```ts
@@ -59,7 +61,7 @@ nxspub version
 nxspub release
 ```
 
-## Safe Preview Before Mutations
+## Common Safety Commands
 
 ```bash
 nxspub console

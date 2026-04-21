@@ -4,13 +4,15 @@ title: 快速工作流
 
 # 快速工作流
 
-## 单包稳定发布
+这页只讲“照做就能跑通”的 3 条常用流程。
+
+## 场景 A：单包稳定发布（main）
 
 1. 配置分支策略：
 ```ts
 branches: { main: 'latest' }
 ```
-2. 提交信息使用 Conventional Commit：
+2. 提交信息使用规范格式：
 ```bash
 feat: add xxx
 fix: correct yyy
@@ -24,7 +26,7 @@ nxspub version
 nxspub release
 ```
 
-## 预发布流程（`alpha`）
+## 场景 B：预发布流程（alpha）
 
 1. 配置分支策略：
 ```ts
@@ -44,7 +46,7 @@ nxspub version
 nxspub release
 ```
 
-## Workspace 流程
+## 场景 C：workspace 多包发布
 
 1. 配置 workspace：
 ```ts
@@ -56,7 +58,7 @@ nxspub version
 nxspub release
 ```
 
-## 变更前先预览
+## 开发者常用安全命令
 
 ```bash
 nxspub console

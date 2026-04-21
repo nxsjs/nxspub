@@ -4,13 +4,15 @@ title: 快速开始
 
 # 快速开始
 
-## 环境要求
+这页目标：让你在 10 分钟内跑通第一次 `version + release`。
+
+## 1. 准备环境
 
 - Node.js `>=20`
 - Git 仓库
 - 推荐使用 `pnpm`（也支持 npm/yarn）
 
-## 安装
+## 2. 安装
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -36,7 +38,7 @@ yarn add -D nxspub
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-## 基础配置
+## 3. 创建配置文件
 
 创建 `nxspub.config.ts`：
 
@@ -55,16 +57,35 @@ const config: NxspubConfig = {
 export default config
 ```
 
-## 首次执行建议
+## 4. 先做安全预览（不会改文件）
 
 ```bash
 nxspub version --dry
-nxspub console
 ```
 
-确认预览结果正确后，再执行：
+你会看到目标版本和 changelog 预览。确认没问题再继续。
+
+## 5. 执行真实版本升级
 
 ```bash
 nxspub version
-nxspub release --dry
 ```
+
+执行后会自动完成：
+
+- 更新 `package.json` 版本号
+- 更新 `CHANGELOG.md`
+- Git 提交与打 tag
+
+## 6. 执行发布（建议先 dry）
+
+```bash
+nxspub release --dry
+nxspub release
+```
+
+## 7. 失败时怎么处理
+
+- 如果提示分支不允许发布，先检查 `branches` 配置。
+- 如果提示 tag 已存在，说明这个版本可能已经发过，先换版本策略再重试。
+- 如果只是想看结果，不想改文件，统一加 `--dry`。

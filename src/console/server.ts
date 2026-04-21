@@ -252,18 +252,22 @@ async function tryServeLogo(
 ): Promise<boolean> {
   if (pathname !== '/logo.svg') return false
   const logoPath = path.join(cwd, 'logo.svg')
+  const fallbackLogoSvg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="NXSPUB">
+  <rect width="128" height="128" fill="#ffffff"/>
+  <rect x="6" y="6" width="116" height="116" fill="#ccff00" stroke="#000000" stroke-width="8"/>
+  <path d="M34 88V40h10l30 32V40h20v48H84L54 56v32H34z" fill="#000000"/>
+</svg>
+`
   try {
     const content = await fs.readFile(logoPath)
     response.statusCode = 200
     response.setHeader('content-type', 'image/svg+xml; charset=utf-8')
     response.end(content)
   } catch {
-    writeError(
-      response,
-      404,
-      'NOT_FOUND',
-      'logo.svg not found in workspace root.',
-    )
+    response.statusCode = 200
+    response.setHeader('content-type', 'image/svg+xml; charset=utf-8')
+    response.end(fallbackLogoSvg)
   }
   return true
 }

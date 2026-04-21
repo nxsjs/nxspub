@@ -4,9 +4,19 @@ title: Deploy
 
 # Deploy
 
-`nxspub deploy` computes plan, executes deployment, and supports rollback with records.
+`nxspub deploy` does three things:
 
-## Minimal Config
+- preview deployment plan (safe, no mutation)
+- execute deployment
+- rollback to a previous deployment record
+
+## Beginner First Path (Recommended)
+
+Use `custom` provider first to verify flow, then switch to a real provider (vercel/cloudflare/ssh/etc.).
+
+If you are new to deployment, run steps in this page in order and do not skip.
+
+## Step 1: Minimal Config
 
 ```ts
 deploy: {
@@ -33,15 +43,59 @@ deploy: {
 }
 ```
 
-## Commands
+### What This Config Means (Beginner Version)
+
+- `strategy`:
+  - `rolling`: replace instances gradually; safer, slightly slower. Best default for beginners.
+  - `canary`: send small traffic first, then expand if healthy. Good for production.
+  - `blue-green`: prepare a full new environment and switch traffic at once. Fast rollback, higher cost.
+- `environments`:
+  - `staging` is your validation environment.
+  - `production` is your live user environment.
+  - `staging: rolling` + `production: canary` means safe validation first, controlled production rollout next.
+- `requiredEnv: ['DEPLOY_TOKEN']`:
+  - deployment is blocked unless this environment variable exists.
+  - this prevents accidental deploys without credentials.
+- `commands.plan / execute / rollback`:
+  - `plan`: preview only, no runtime changes.
+  - `execute`: real deployment.
+  - `rollback`: revert to a previous deployment.
+  - `echo ...` commands are placeholders; replace them with your real scripts later.
+
+## Step 2: Plan First (Safe)
 
 ```bash
 nxspub deploy --plan
+```
+
+If plan output is valid, your environment mapping and provider wiring are likely correct.
+
+## Step 3: Execute and Rollback
+
+```bash
 nxspub deploy --env production --strategy canary
 nxspub deploy --rollback --to <deploymentId>
 ```
 
-## Provider Names
+## Parameter Quick Guide
+
+- `--plan`: preview only, no runtime mutation
+- `--env`: target environment
+- `--strategy`: rollout strategy (`rolling`/`canary`/`blue-green`)
+- `--rollback --to`: rollback to a specific deployment id
+- `--dry`: rehearsal mode
+
+## Shortest Working Deploy Path
+
+```bash
+nxspub deploy --plan
+nxspub deploy --dry
+nxspub deploy --env staging
+```
+
+Make sure these three commands pass before production deploy.
+
+## Supported Providers
 
 - `vercel`
 - `cloudflare`
@@ -52,11 +106,10 @@ nxspub deploy --rollback --to <deploymentId>
 - `k8s`
 - `custom`
 
-Provider-by-provider examples:
-
+Per-provider setup and examples:
 - [Deploy Providers](./deploy-providers)
 
-## Promotion Guard
+## Production Safety Guard
 
 For production, nxspub can enforce artifact consistency against source env:
 

@@ -4,18 +4,16 @@ title: Deploy Providers
 
 # Deploy Providers
 
-This page provides per-provider examples for:
+This page provides beginner-friendly provider templates you can copy and adapt.
 
-- `vercel`
-- `cloudflare`
-- `onepanel`
-- `btpanel`
-- `ssh`
-- `rancher`
-- `k8s`
-- `custom`
+## Recommended Onboarding Order
 
-All providers use the same `deploy.provider` shape:
+1. Start with `custom`
+2. Run `nxspub deploy --plan`
+3. Run `nxspub deploy --dry`
+4. Switch to your target provider
+
+## Shared Config Shape
 
 ```ts
 deploy: {
@@ -34,9 +32,36 @@ deploy: {
 }
 ```
 
+## Run These 3 Checks for Every Provider
+
+1. `nxspub deploy --plan`
+2. `nxspub deploy --dry`
+3. `nxspub deploy --env ...` (real run)
+
+## `custom` (Use This First)
+
+Best for validating the nxspub deploy flow itself.
+
+```ts
+deploy: {
+  provider: {
+    name: 'custom',
+    config: {
+      requiredEnv: ['DEPLOY_TOKEN'],
+      commands: {
+        plan: 'echo [plan] $NXSPUB_DEPLOY_ENV',
+        execute: 'echo [execute] $NXSPUB_DEPLOY_ENV',
+        rollback:
+          'echo [rollback] $NXSPUB_DEPLOY_ROLLBACK_TO',
+      },
+    },
+  },
+}
+```
+
 ## `vercel`
 
-Required env by default:
+Prepare first:
 
 - `VERCEL_TOKEN`
 
@@ -62,7 +87,7 @@ deploy: {
 
 ## `cloudflare`
 
-Required env by default:
+Prepare first:
 
 - `CLOUDFLARE_API_TOKEN`
 
@@ -87,10 +112,10 @@ deploy: {
 
 ## `onepanel`
 
-Required fields:
+Prepare first:
 
 - `config.baseUrl`
-- `ONEPANEL_API_KEY` (default key name)
+- `ONEPANEL_API_KEY`
 
 ```ts
 deploy: {
@@ -112,10 +137,10 @@ deploy: {
 
 ## `btpanel`
 
-Required fields:
+Prepare first:
 
 - `config.baseUrl`
-- `BT_API_KEY` (default key name)
+- `BT_API_KEY`
 
 ```ts
 deploy: {
@@ -137,7 +162,7 @@ deploy: {
 
 ## `ssh`
 
-Required:
+Prepare first:
 
 - `privateKeyPath` or `passwordEnv`
 
@@ -161,10 +186,10 @@ deploy: {
 
 ## `rancher`
 
-Required fields:
+Prepare first:
 
 - `config.serverUrl`
-- `RANCHER_TOKEN` (default key name)
+- `RANCHER_TOKEN`
 
 ```ts
 deploy: {
@@ -186,7 +211,9 @@ deploy: {
 
 ## `k8s`
 
-No built-in required env. You usually provide kube context via environment.
+Prepare first:
+
+- `KUBECONFIG`
 
 ```ts
 deploy: {
@@ -205,31 +232,7 @@ deploy: {
 }
 ```
 
-## `custom`
-
-Use this when you own the entire deployment pipeline.
-
-```ts
-deploy: {
-  provider: {
-    name: 'custom',
-    config: {
-      requiredEnv: ['DEPLOY_TOKEN'],
-      env: {
-        DEPLOY_API_BASE: 'https://deploy.internal',
-      },
-      commands: {
-        validate: 'node scripts/deploy/validate.mjs',
-        plan: 'node scripts/deploy/plan.mjs',
-        execute: 'node scripts/deploy/execute.mjs',
-        rollback: 'node scripts/deploy/rollback.mjs',
-      },
-    },
-  },
-}
-```
-
-## Runtime Variables Passed to Commands
+## Runtime Variables Available in Commands
 
 nxspub injects runtime variables to provider commands:
 

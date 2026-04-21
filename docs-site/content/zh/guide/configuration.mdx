@@ -4,9 +4,30 @@ title: 配置
 
 # 配置
 
-在仓库根目录创建 `nxspub.config.ts`。
+在仓库根目录创建 `nxspub.config.ts`。如果你是新手，先用“最小配置”跑通，再加高级项。
 
-## 完整示例
+## 新手最小配置（推荐先用）
+
+```ts
+import type { NxspubConfig } from 'nxspub'
+
+const config: NxspubConfig = {
+  branches: {
+    main: 'latest',
+  },
+}
+
+export default config
+```
+
+只靠上面这段配置，你就可以执行：
+
+```bash
+nxspub version
+nxspub release
+```
+
+## 团队常用完整示例
 
 ```ts
 import type { NxspubConfig } from 'nxspub'
@@ -84,13 +105,35 @@ const config: NxspubConfig = {
 export default config
 ```
 
-## 分支策略建议
+## 部署配置里最容易看不懂的 4 个点
+
+- `environments.staging.strategy` / `environments.production.strategy`
+  - 这是“这个环境用什么发布方式”。
+  - 新手推荐：`staging` 用 `rolling`，`production` 用 `canary`。
+- `requiredEnv`
+  - 这是“必填环境变量名单”。
+  - 例如 `['DEPLOY_TOKEN']`，表示没有这个变量就不允许部署。
+- `commands.plan / execute / rollback`
+  - 分别对应“看计划 / 真部署 / 回滚”三个阶段。
+  - 可以先用 `echo` 占位，跑通后再换成脚本。
+- `--strategy` 参数
+  - 命令行临时覆盖策略，比如：
+  - `nxspub deploy --env production --strategy canary`
+  - 这会优先使用命令行的 `canary`，而不是配置文件里的默认值。
+
+## 最重要的 3 个配置块
+
+- `branches`：决定每个分支允许什么版本升级策略。
+- `changelog.writeOnBranches`：决定哪些分支可以直接写 `CHANGELOG.md`。
+- `lint['commit-msg']`：约束 commit message，避免错误触发版本升级。
+
+## 分支策略建议（实战）
 
 - `latest` 只给稳定分支（如 `main`/`master`）。
 - 预发布分支（如 `alpha`、`beta`）使用 `pre*` 策略。
 - `hotfix` 分支建议设为 `patch`，可阻止 `feat`/`breaking` 类型提交。
 
-## Changelog 写入策略
+## Changelog 写入建议
 
 - `changelog.writeOnBranches` 用于限制哪些分支允许写 `CHANGELOG.md`。
 - 非白名单分支会把内容写入 `.nxspub/changelog-drafts/*` 草稿文件。

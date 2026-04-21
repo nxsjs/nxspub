@@ -4,9 +4,30 @@ title: Configuration
 
 # Configuration
 
-Create `nxspub.config.ts` in repository root.
+Create `nxspub.config.ts` in your repository root. If you are new, start with minimal config, then add advanced blocks.
 
-## Full Example
+## Minimal Config for Beginners
+
+```ts
+import type { NxspubConfig } from 'nxspub'
+
+const config: NxspubConfig = {
+  branches: {
+    main: 'latest',
+  },
+}
+
+export default config
+```
+
+With only this config, you can already run:
+
+```bash
+nxspub version
+nxspub release
+```
+
+## Full Example for Teams
 
 ```ts
 import type { NxspubConfig } from 'nxspub'
@@ -84,7 +105,29 @@ const config: NxspubConfig = {
 export default config
 ```
 
-## Branch Policy Tips
+## 4 Deploy Fields Beginners Usually Find Confusing
+
+- `environments.staging.strategy` / `environments.production.strategy`
+  - this is the rollout method per environment.
+  - beginner-friendly default: `staging = rolling`, `production = canary`.
+- `requiredEnv`
+  - list of required environment variables.
+  - example: `['DEPLOY_TOKEN']` means deploy is denied if token is missing.
+- `commands.plan / execute / rollback`
+  - three phases: preview / deploy / rollback.
+  - start with `echo` placeholders, replace with real scripts after flow is verified.
+- `--strategy` CLI flag
+  - temporary override for one run, for example:
+  - `nxspub deploy --env production --strategy canary`
+  - this takes precedence over default strategy in config for that command execution.
+
+## 3 Most Important Config Blocks
+
+- `branches`: controls allowed versioning policy per branch.
+- `changelog.writeOnBranches`: controls where `CHANGELOG.md` can be written directly.
+- `lint['commit-msg']`: prevents bad commit messages from triggering wrong bumps.
+
+## Branch Policy Tips (Practical)
 
 - Use `latest` only for stable branches (`main`/`master`).
 - Use `pre*` policies for prerelease branches (`alpha`, `beta`).

@@ -4,9 +4,10 @@ title: 命令
 
 # 命令
 
-所有命令都支持 `--cwd <path>`。
+所有命令都支持 `--cwd <path>`。  
+如果你是第一次用，按顺序看：`version -> release -> deploy -> console`。
 
-## Version
+## version（先用它）
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -35,13 +36,13 @@ yarn dlx nxspub version --dry
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-说明：
+作用：
 
-- 在一条流程内完成版本计算、changelog、提交、打 tag
-- 会先校验分支策略，再决定是否允许升级
-- 自动识别 workspace 单包/多包模式
+- 自动计算版本号
+- 更新 changelog
+- Git 提交 + 打 tag
 
-## Release
+## release（把刚才的版本真正发布出去）
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -70,13 +71,13 @@ yarn dlx nxspub release --dry
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-说明：
+作用：
 
-- 发布的是当前 `package.json` 中的版本
-- 支持 `--registry`、`--tag`、`--provenance`、`--access`
-- `--skipBuild` 仅建议在你已确保构建产物正确时使用
+- 发布当前 `package.json` 的版本到 registry
+- 常用先跑 `--dry` 预演
+- 预发布分支常配合 `--tag alpha` 或 `--tag beta`
 
-## Deploy
+## deploy（部署到运行环境）
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -108,13 +109,13 @@ yarn dlx nxspub deploy --rollback --to <deploymentId>
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-说明：
+作用：
 
 - `--plan` 只做计划与门禁检查，不执行真实部署
-- 真实部署依赖 `deploy.provider` 配置
+- 真实部署依赖 `deploy.provider` 配置（vercel/cloudflare/ssh 等）
 - 回滚必须带 `--rollback --to <deploymentId>`
 
-## Console
+## console（可视化控制台）
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -140,13 +141,13 @@ yarn dlx nxspub console --web
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-说明：
+作用：
 
-- 终端模式：输出发布预览与风险检查
 - Web 模式：`nxspub console --web --open`
-- 严格只读：`--readonly-strict`
+- 严格只读审阅：`--readonly-strict`
+- 用来给团队成员看清“将要发生什么”
 
-## Draft Doctor
+## draft-doctor（草稿修复工具）
 
 ```bash
 nxspub draft-doctor
@@ -154,7 +155,7 @@ nxspub draft-doctor --target 1.3.0
 nxspub draft-doctor --target 1.3.0 --prune
 ```
 
-## Git Hooks
+## git-hooks / lint（提交前自动检查）
 
 ```bash
 nxspub git-hooks

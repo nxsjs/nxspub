@@ -4,13 +4,15 @@ title: Getting Started
 
 # Getting Started
 
-## Requirements
+Goal of this page: run your first `version + release` flow in about 10 minutes.
+
+## 1. Prerequisites
 
 - Node.js `>=20`
 - Git repository
 - `pnpm` recommended (npm/yarn also supported)
 
-## Install
+## 2. Install
 
 <PackageManagerTabs>
   <PackageManagerTabs.Tab>
@@ -36,7 +38,7 @@ yarn add -D nxspub
   </PackageManagerTabs.Tab>
 </PackageManagerTabs>
 
-## Basic Config
+## 3. Create Config File
 
 Create `nxspub.config.ts`:
 
@@ -55,16 +57,35 @@ const config: NxspubConfig = {
 export default config
 ```
 
-## First Run
+## 4. Run Safe Preview First (No File Changes)
 
 ```bash
 nxspub version --dry
-nxspub console
 ```
 
-If preview looks correct:
+You should see target version and changelog preview. If they look right, continue.
+
+## 5. Run Real Versioning
 
 ```bash
 nxspub version
-nxspub release --dry
 ```
+
+This updates:
+
+- `package.json` version
+- `CHANGELOG.md`
+- git commit and tag
+
+## 6. Publish (Dry Run First)
+
+```bash
+nxspub release --dry
+nxspub release
+```
+
+## 7. If Something Fails
+
+- If branch is denied, check `branches` policy in config.
+- If tag already exists, verify release state and choose next version properly.
+- If you only want to inspect behavior, use `--dry`.

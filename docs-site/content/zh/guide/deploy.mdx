@@ -4,44 +4,110 @@ title: 部署
 
 # 部署
 
-`nxspub deploy` 提供部署计划、执行和回滚，并持久化部署记录。
+`nxspub deploy` 用来做三件事：
 
-## 最小配置
+- 先看部署计划（不会改线上）
+- 执行部署
+- 出问题时回滚到某次成功记录
+
+## 新手先跑通（推荐）
+
+先用 `custom` provider 跑通一遍流程，再换成真实平台（vercel/cloudflare/ssh 等）。
+
+如果你刚接触部署，只按本页顺序执行，不要跳步骤。
+
+### 第 1 步：写最小配置
 
 ```ts
-deploy: {
-  enabled: true,
-  defaultEnvironment: 'staging',
-  branchEnvironmentMap: {
-    main: 'production',
-    alpha: 'staging',
-  },
-  provider: {
-    name: 'custom',
-    config: {
-      requiredEnv: ['DEPLOY_TOKEN'],
-      commands: {
-        execute: 'scripts/deploy.sh',
-        rollback: 'scripts/rollback.sh',
+import type { NxspubConfig } from 'nxspub'
+
+const config: NxspubConfig = {
+  deploy: {
+    enabled: true,
+    defaultEnvironment: 'staging',
+    branchEnvironmentMap: {
+      main: 'production',
+      alpha: 'staging',
+    },
+    provider: {
+      name: 'custom',
+      config: {
+        requiredEnv: ['DEPLOY_TOKEN'],
+        commands: {
+          plan: 'echo [plan] $NXSPUB_DEPLOY_ENV',
+          execute: 'echo [execute] $NXSPUB_DEPLOY_ENV',
+          rollback: 'echo [rollback] $NXSPUB_DEPLOY_ROLLBACK_TO',
+        },
       },
     },
-  },
-  environments: {
-    staging: { strategy: 'rolling' },
-    production: { strategy: 'canary' },
+    environments: {
+      staging: { strategy: 'rolling' },
+      production: { strategy: 'canary' },
+    },
   },
 }
+
+export default config
 ```
 
-## 常用命令
+### 这段配置到底是什么意思（小白版）
+
+- `strategy`：
+  - `rolling`：一台一台替换，风险小，速度中等。新手默认选这个。
+  - `canary`：先放一小部分流量试运行，没问题再全量。适合生产。
+  - `blue-green`：准备一整套新环境，切换瞬间完成。成本高但回滚快。
+- `environments`：
+  - `staging` 是测试环境，给团队先验收。
+  - `production` 是线上环境，给真实用户用。
+  - 示例里 `staging: rolling`、`production: canary` 的意思是：测试环境稳妥部署，线上先小流量验证。
+- `requiredEnv: ['DEPLOY_TOKEN']`：
+  - 表示“部署前必须有这个环境变量”，否则直接报错中止。
+  - 防止你忘记配置密钥还误触发部署。
+- `commands.plan / execute / rollback`：
+  - `plan`：只打印部署计划，不改线上。
+  - `execute`：真正执行部署。
+  - `rollback`：回滚到指定部署记录。
+  - 你看到的 `echo ...` 只是演示用占位命令，后续换成你的真实脚本即可。
+
+### 第 2 步：先看计划（安全）
 
 ```bash
 nxspub deploy --plan
+```
+
+只要计划能正常输出，就说明：
+
+- 环境映射正确
+- provider 配置被识别
+- 门禁检查大体通过
+
+### 第 3 步：执行与回滚
+
+```bash
+nxspub deploy --env staging
 nxspub deploy --env production --strategy canary
 nxspub deploy --rollback --to <deploymentId>
 ```
 
-## 支持的 Provider
+## 参数怎么理解（给小白）
+
+- `--plan`：只预览，不会改线上
+- `--env`：指定部署到哪个环境
+- `--strategy`：部署策略（rolling/canary/blue-green）
+- `--rollback --to`：回滚到某一次成功部署
+- `--dry`：演练模式（不做真实变更）
+
+## 一条最短可用部署路径
+
+```bash
+nxspub deploy --plan
+nxspub deploy --dry
+nxspub deploy --env staging
+```
+
+先保证上面 3 条都成功，再做生产部署。
+
+## 支持哪些 Provider
 
 - `vercel`
 - `cloudflare`
@@ -52,13 +118,13 @@ nxspub deploy --rollback --to <deploymentId>
 - `k8s`
 - `custom`
 
-逐个 provider 的完整示例见：
+每个 provider 的“开箱示例 + 必需变量”见：
 
 - [Provider 指南](./deploy-providers)
 
-## 晋级一致性校验
+## 生产环境保护（建议开启）
 
-生产环境可开启“来源环境一致性约束”：
+避免“staging 和 production 用了不同产物”：
 
 ```ts
 deploy: {
@@ -69,7 +135,7 @@ deploy: {
 }
 ```
 
-## 记录与回滚
+## 部署记录在哪里
 
 部署记录存放在 `.nxspub/deploy-records`。
 

@@ -5,51 +5,52 @@ description: Branch-aware versioning, release, deploy, and console docs.
 
 # nxspub Documentation
 
-`nxspub` is a release automation toolkit for multi-branch and workspace repositories.
+If you are new to release tooling, this documentation is written so you can go from zero to a working pipeline.
 
-It focuses on three things:
+`nxspub` helps you do 4 things:
 
-- predictable versioning from commit history
-- branch-policy-driven release safety
-- practical deploy orchestration with records and rollback
+- compute versions from commit history
+- generate changelogs
+- publish packages (`release`)
+- deploy and rollback (`deploy`)
 
 ## Start Here
 
-### New user
+### Step 1 (Must Read)
 
 - [Getting Started](./guide/getting-started)
 - [Quick Start Workflows](./guide/quick-start-workflows)
 
-### Team setup
+### Step 2 (Team Setup)
 
 - [Configuration](./guide/configuration)
+- [Commands](./guide/commands)
 - [Git Hooks](./guide/git-hooks)
 
-### Workspace and multi-branch
+### Step 3 (Workspace and Multi-Branch)
 
 - [Workspace Releases](./guide/workspace-releases)
 - [Branch Strategy](./guide/branch-strategy)
 - [Changelog Drafts](./guide/changelog-drafts)
 
-### Operations
+### Step 4 (Console and Deploy)
 
 - [Console](./guide/console)
 - [Deploy](./guide/deploy)
 - [Troubleshooting](./guide/troubleshooting)
 
-## Command Surface
+## Shortest Working Release Path
 
 ```bash
 nxspub version
 nxspub release
-nxspub deploy --plan
-nxspub console --web
-nxspub draft-doctor
-nxspub git-hooks
-nxspub lint --edit .git/COMMIT_EDITMSG
 ```
 
-## Reference
+The two commands above are enough to complete version bump + package publish.
+
+If you are not deploying yet, you can skip `deploy` for now.
+
+## Advanced Reference
 
 - [CLI Reference](./reference/cli-reference)
 - [Config Schema](./reference/config-schema)
