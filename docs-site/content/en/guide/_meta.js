@@ -1,0 +1,15 @@
+export default {
+  'getting-started': 'Getting Started',
+  'quick-start-workflows': 'Quick Start Workflows',
+  configuration: 'Configuration',
+  commands: 'Commands',
+  'workspace-releases': 'Workspace Releases',
+  'branch-strategy': 'Branch Strategy',
+  'changelog-drafts': 'Changelog Drafts',
+  console: 'Console',
+  deploy: 'Deploy',
+  'deploy-providers': 'Deploy Providers',
+  'git-hooks': 'Git Hooks',
+  troubleshooting: 'Troubleshooting',
+  faq: 'FAQ',
+}

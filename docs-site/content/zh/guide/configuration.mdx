@@ -1,0 +1,97 @@
+---
+title: 配置
+---
+
+# 配置
+
+在仓库根目录创建 `nxspub.config.ts`。
+
+## 完整示例
+
+```ts
+import type { NxspubConfig } from 'nxspub'
+
+const config: NxspubConfig = {
+  workspace: {
+    mode: 'independent',
+    passive: 'follow',
+  },
+  branches: {
+    main: 'latest',
+    alpha: 'preminor',
+    beta: 'preminor',
+    hotfix: 'patch',
+  },
+  versioning: {
+    major: [/BREAKING CHANGE:/],
+    minor: [/^feat(\(.+\))?:/],
+    patch: [/^fix(\(.+\))?:/, /^perf(\(.+\))?:/],
+  },
+  changelog: {
+    labels: {
+      feat: 'Features',
+      fix: 'Bug Fixes',
+      perf: 'Performance',
+      refactor: 'Refactors',
+    },
+    writeOnBranches: ['main', 'master'],
+  },
+  lint: {
+    'commit-msg': {
+      pattern:
+        /^(revert: )?(feat|fix|docs|dx|style|refactor|perf|test|workflow|build|ci|chore|types|wip|release)(\([^)]+\))?(!)?: .{1,50}/,
+      message: 'Invalid commit message format.',
+    },
+  },
+  'git-hooks': {
+    'pre-commit': 'pnpm lint-staged && pnpm check',
+    'commit-msg': 'npx nxspub lint --edit "$1"',
+  },
+  scripts: {
+    releaseBuild: 'pnpm -r build',
+  },
+  deploy: {
+    enabled: true,
+    defaultEnvironment: 'staging',
+    branchEnvironmentMap: {
+      main: 'production',
+      alpha: 'staging',
+      beta: 'staging',
+    },
+    provider: {
+      name: 'custom',
+      config: {
+        requiredEnv: ['DEPLOY_TOKEN'],
+        commands: {
+          validate: 'echo validate',
+          plan: 'echo plan',
+          execute: 'echo deploy',
+          rollback: 'echo rollback',
+        },
+      },
+    },
+    environments: {
+      staging: { strategy: 'rolling' },
+      production: { strategy: 'canary' },
+    },
+    promotion: {
+      requireSameArtifactDigest: true,
+      sourceEnvironment: 'staging',
+    },
+  },
+}
+
+export default config
+```
+
+## 分支策略建议
+
+- `latest` 只给稳定分支（如 `main`/`master`）。
+- 预发布分支（如 `alpha`、`beta`）使用 `pre*` 策略。
+- `hotfix` 分支建议设为 `patch`，可阻止 `feat`/`breaking` 类型提交。
+
+## Changelog 写入策略
+
+- `changelog.writeOnBranches` 用于限制哪些分支允许写 `CHANGELOG.md`。
+- 非白名单分支会把内容写入 `.nxspub/changelog-drafts/*` 草稿文件。
+- 稳定分支执行 version 时可自动导入草稿。

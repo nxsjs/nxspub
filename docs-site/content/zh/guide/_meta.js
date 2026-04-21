@@ -1,0 +1,15 @@
+export default {
+  'getting-started': '快速开始',
+  'quick-start-workflows': '快速工作流',
+  configuration: '配置',
+  commands: '命令',
+  'workspace-releases': 'Workspace 发布',
+  'branch-strategy': '分支策略',
+  'changelog-drafts': 'Changelog 草稿',
+  console: 'Console 控制台',
+  deploy: '部署',
+  'deploy-providers': 'Provider 指南',
+  'git-hooks': 'Git Hooks',
+  troubleshooting: '故障排查',
+  faq: '常见问题',
+}

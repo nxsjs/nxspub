@@ -1,0 +1,47 @@
+---
+title: CLI Reference
+---
+
+# CLI Reference
+
+## `nxspub version`
+
+```text
+nxspub version [--cwd <cwd>] [--dry]
+```
+
+## `nxspub release`
+
+```text
+nxspub release [--cwd <cwd>] [--dry] [--provenance] [--registry <url>] [--access <public|restricted>] [--tag <tag>] [--branch <branch>] [--skipBuild] [--skipSync]
+```
+
+## `nxspub deploy`
+
+```text
+nxspub deploy [--cwd <cwd>] [--env <env>] [--strategy <rolling|canary|blue-green>] [--branch <branch>] [--plan] [--dry] [--rollback] [--to <deploymentId>] [--skipChecks] [--concurrency <n>] [--json]
+```
+
+## `nxspub console`
+
+```text
+nxspub console [--cwd <cwd>] [--json] [--branch <branch>] [--web] [--host <host>] [--port <port>] [--open] [--readonly-strict] [--allow-remote] [--api-only]
+```
+
+## `nxspub draft-doctor`
+
+```text
+nxspub draft-doctor [--cwd <cwd>] [--target <x.y.z>] [--prune]
+```
+
+## `nxspub git-hooks`
+
+```text
+nxspub git-hooks [--cwd <cwd>] [--dry]
+```
+
+## `nxspub lint`
+
+```text
+nxspub lint [--cwd <cwd>] --edit <path>
+```

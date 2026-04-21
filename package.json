@@ -26,6 +26,9 @@
     "build": "tsdown && pnpm console:web:build",
     "console:web:dev": "vite --config src/console/web/vite.config.mjs",
     "console:web:build": "vite build --config src/console/web/vite.config.mjs",
+    "docs:dev": "pnpm --dir docs-site dev",
+    "docs:dev:fast": "pnpm --dir docs-site dev:fast",
+    "docs:build": "pnpm --dir docs-site build",
     "test": "tsdown && vitest",
     "check": "tsc --incremental --noEmit",
     "lint": "eslint --cache .",
@@ -34,6 +37,7 @@
     "preinstall": "npx only-allow pnpm",
     "postinstall": "node ./postinstall.mjs",
     "console": "pnpm console:web:build && pnpm run start console --web --open",
+    "changelog": "tsx scripts/changelog.ts",
     "version": "pnpm run start version",
     "release": "pnpm run start release"
   },

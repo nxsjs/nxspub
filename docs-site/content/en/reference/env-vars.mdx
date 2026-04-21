@@ -1,0 +1,29 @@
+---
+title: Environment Variables
+---
+
+# Environment Variables
+
+## `NXSPUB_CONSOLE_WEB_ENABLED`
+
+- default: enabled
+- set to `0`, `false`, `off`, or `no` to disable `nxspub console --web`
+
+## Deploy Provider Environment Variables
+
+Depends on your deploy provider config:
+
+- `VERCEL_TOKEN` (`vercel`)
+- `CLOUDFLARE_API_TOKEN` (`cloudflare`)
+- `ONEPANEL_API_KEY` (`onepanel`)
+- `BT_API_KEY` (`btpanel`)
+- `RANCHER_TOKEN` (`rancher`)
+- custom values from `deploy.provider.config.requiredEnv`
+
+## API Token Header (Console Web/API)
+
+When using console web API write endpoints:
+
+```text
+x-nxspub-console-token: <token>
+```

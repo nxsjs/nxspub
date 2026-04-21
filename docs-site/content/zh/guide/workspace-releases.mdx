@@ -1,0 +1,43 @@
+---
+title: Workspace 发布
+---
+
+# Workspace 发布
+
+## 模式
+
+- `locked`：所有包共用同一版本号。
+- `independent`：每个包独立计算下一版本。
+
+## 被动升级传播
+
+`workspace.passive` 用于控制“依赖变更导致的被动升级”：
+
+- `patch`：依赖方统一补丁升级。
+- `follow`：依赖方跟随依赖中最高升级级别。
+- `none`：不做被动升级。
+
+## nxspub 在 Workspace 的计算流程
+
+1. 扫描工作区包和依赖图。
+2. 收集自上次发布以来的包级提交。
+3. 计算每个包的 bump（`major`/`minor`/`patch`）。
+4. 应用被动升级策略。
+5. 按 workspace 模式得出最终版本。
+6. 回写版本、changelog、提交和 tag。
+
+## Workspace 根 Changelog
+
+- 子包更新会聚合到根目录 `CHANGELOG.md`。
+- 子包标题格式为：`package-name@x.y.z`。
+
+## 推荐默认值
+
+```ts
+workspace: {
+  mode: 'independent',
+  passive: 'follow',
+}
+```
+
+只有在所有包必须“强绑定同版发布”时，才建议使用 `locked`。

@@ -1,0 +1,70 @@
+---
+title: Getting Started
+---
+
+# Getting Started
+
+## Requirements
+
+- Node.js `>=20`
+- Git repository
+- `pnpm` recommended (npm/yarn also supported)
+
+## Install
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm add -D nxspub
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npm install -D nxspub
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn add -D nxspub
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+## Basic Config
+
+Create `nxspub.config.ts`:
+
+```ts
+import type { NxspubConfig } from 'nxspub'
+
+const config: NxspubConfig = {
+  branches: {
+    main: 'latest',
+    alpha: 'preminor',
+    beta: 'preminor',
+    hotfix: 'patch',
+  },
+}
+
+export default config
+```
+
+## First Run
+
+```bash
+nxspub version --dry
+nxspub console
+```
+
+If preview looks correct:
+
+```bash
+nxspub version
+nxspub release --dry
+```

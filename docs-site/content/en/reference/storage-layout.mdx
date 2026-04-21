@@ -1,0 +1,32 @@
+---
+title: Storage Layout
+---
+
+# Storage Layout
+
+nxspub stores runtime states under `.nxspub`.
+
+## Release State
+
+```text
+.nxspub/release-state/*.json
+```
+
+Used to keep stable branch baselines for root/package versions.
+
+## Changelog Drafts
+
+```text
+.nxspub/changelog-drafts/<branch-hash>/<version>.json
+```
+
+Used when changelog writing is disabled on current branch.
+
+## Deploy Records
+
+```text
+.nxspub/deploy-records/index.json
+.nxspub/deploy-records/<deploymentId>.json
+```
+
+Used for deploy history and rollback target lookup.

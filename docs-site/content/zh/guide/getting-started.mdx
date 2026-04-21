@@ -1,0 +1,70 @@
+---
+title: 快速开始
+---
+
+# 快速开始
+
+## 环境要求
+
+- Node.js `>=20`
+- Git 仓库
+- 推荐使用 `pnpm`（也支持 npm/yarn）
+
+## 安装
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm add -D nxspub
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npm install -D nxspub
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn add -D nxspub
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+## 基础配置
+
+创建 `nxspub.config.ts`：
+
+```ts
+import type { NxspubConfig } from 'nxspub'
+
+const config: NxspubConfig = {
+  branches: {
+    main: 'latest',
+    alpha: 'preminor',
+    beta: 'preminor',
+    hotfix: 'patch',
+  },
+}
+
+export default config
+```
+
+## 首次执行建议
+
+```bash
+nxspub version --dry
+nxspub console
+```
+
+确认预览结果正确后，再执行：
+
+```bash
+nxspub version
+nxspub release --dry
+```

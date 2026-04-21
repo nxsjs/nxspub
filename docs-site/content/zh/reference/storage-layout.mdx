@@ -1,0 +1,32 @@
+---
+title: 状态文件布局
+---
+
+# 状态文件布局
+
+nxspub 会将运行状态写入 `.nxspub` 目录。
+
+## 发布状态
+
+```text
+.nxspub/release-state/*.json
+```
+
+用于记录稳定分支的根版本/子包版本基线。
+
+## Changelog 草稿
+
+```text
+.nxspub/changelog-drafts/<branch-hash>/<version>.json
+```
+
+用于非 changelog 写入分支的草稿暂存。
+
+## 部署记录
+
+```text
+.nxspub/deploy-records/index.json
+.nxspub/deploy-records/<deploymentId>.json
+```
+
+用于查询部署历史和回滚目标。

@@ -1,0 +1,163 @@
+---
+title: Commands
+---
+
+# Commands
+
+All commands support `--cwd <path>`.
+
+## Version
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm dlx nxspub version
+pnpm dlx nxspub version --dry
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npx nxspub version
+npx nxspub version --dry
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn dlx nxspub version
+yarn dlx nxspub version --dry
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+Notes:
+
+- updates version, changelog, commit and tag in one flow
+- checks branch policy before applying bump
+- supports workspace mode automatically
+
+## Release
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm dlx nxspub release
+pnpm dlx nxspub release --dry
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npx nxspub release
+npx nxspub release --dry
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn dlx nxspub release
+yarn dlx nxspub release --dry
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+Notes:
+
+- publishes version that already exists in `package.json`
+- supports `--registry`, `--tag`, `--provenance`, `--access`
+- use `--skipBuild` only when build is already guaranteed
+
+## Deploy
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm dlx nxspub deploy --plan
+pnpm dlx nxspub deploy --env production --strategy canary
+pnpm dlx nxspub deploy --rollback --to <deploymentId>
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npx nxspub deploy --plan
+npx nxspub deploy --env production --strategy canary
+npx nxspub deploy --rollback --to <deploymentId>
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn dlx nxspub deploy --plan
+yarn dlx nxspub deploy --env production --strategy canary
+yarn dlx nxspub deploy --rollback --to <deploymentId>
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+Notes:
+
+- `--plan` only computes and validates plan
+- runtime deploy requires `deploy.provider` config
+- rollback requires `--rollback --to <deploymentId>`
+
+## Console
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm dlx nxspub console --web
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npx nxspub console --web
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn dlx nxspub console --web
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+Notes:
+
+- terminal mode: preview summary and checks
+- web mode: `nxspub console --web --open`
+- strict read-only mode: `--readonly-strict`
+
+## Draft Doctor
+
+```bash
+nxspub draft-doctor
+nxspub draft-doctor --target 1.3.0
+nxspub draft-doctor --target 1.3.0 --prune
+```
+
+## Git Hooks
+
+```bash
+nxspub git-hooks
+nxspub git-hooks --dry
+nxspub lint --edit .git/COMMIT_EDITMSG
+```

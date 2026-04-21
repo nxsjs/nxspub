@@ -1,0 +1,50 @@
+---
+title: Console
+---
+
+# Console
+
+`nxspub console` is a release cockpit for previewing version/release/deploy context.
+
+## Terminal Mode
+
+```bash
+nxspub console
+nxspub console --json
+nxspub console --branch alpha
+```
+
+Output includes:
+
+- branch policy status
+- current/target version
+- commit count and package plan
+- draft health summary
+- pre-release risk checks
+
+## Web Mode
+
+```bash
+nxspub console --web --open
+```
+
+Useful options:
+
+- `--host 127.0.0.1` (default)
+- `--port 4173` (default)
+- `--readonly-strict` disables mutating APIs
+- `--api-only` runs only API service
+- `--allow-remote` required when host is `0.0.0.0`
+
+## API Token
+
+In web/api mode, mutating endpoints require header:
+
+```text
+x-nxspub-console-token: <token>
+```
+
+## Security Recommendation
+
+- keep default host (`127.0.0.1`) for local use
+- use `--readonly-strict` for demo or audit sessions

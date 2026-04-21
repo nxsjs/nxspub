@@ -1,0 +1,163 @@
+---
+title: 命令
+---
+
+# 命令
+
+所有命令都支持 `--cwd <path>`。
+
+## Version
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm dlx nxspub version
+pnpm dlx nxspub version --dry
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npx nxspub version
+npx nxspub version --dry
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn dlx nxspub version
+yarn dlx nxspub version --dry
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+说明：
+
+- 在一条流程内完成版本计算、changelog、提交、打 tag
+- 会先校验分支策略，再决定是否允许升级
+- 自动识别 workspace 单包/多包模式
+
+## Release
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm dlx nxspub release
+pnpm dlx nxspub release --dry
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npx nxspub release
+npx nxspub release --dry
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn dlx nxspub release
+yarn dlx nxspub release --dry
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+说明：
+
+- 发布的是当前 `package.json` 中的版本
+- 支持 `--registry`、`--tag`、`--provenance`、`--access`
+- `--skipBuild` 仅建议在你已确保构建产物正确时使用
+
+## Deploy
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm dlx nxspub deploy --plan
+pnpm dlx nxspub deploy --env production --strategy canary
+pnpm dlx nxspub deploy --rollback --to <deploymentId>
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npx nxspub deploy --plan
+npx nxspub deploy --env production --strategy canary
+npx nxspub deploy --rollback --to <deploymentId>
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn dlx nxspub deploy --plan
+yarn dlx nxspub deploy --env production --strategy canary
+yarn dlx nxspub deploy --rollback --to <deploymentId>
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+说明：
+
+- `--plan` 只做计划与门禁检查，不执行真实部署
+- 真实部署依赖 `deploy.provider` 配置
+- 回滚必须带 `--rollback --to <deploymentId>`
+
+## Console
+
+<PackageManagerTabs>
+  <PackageManagerTabs.Tab>
+
+```bash
+pnpm dlx nxspub console --web
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+npx nxspub console --web
+```
+
+  </PackageManagerTabs.Tab>
+  <PackageManagerTabs.Tab>
+
+```bash
+yarn dlx nxspub console --web
+```
+
+  </PackageManagerTabs.Tab>
+</PackageManagerTabs>
+
+说明：
+
+- 终端模式：输出发布预览与风险检查
+- Web 模式：`nxspub console --web --open`
+- 严格只读：`--readonly-strict`
+
+## Draft Doctor
+
+```bash
+nxspub draft-doctor
+nxspub draft-doctor --target 1.3.0
+nxspub draft-doctor --target 1.3.0 --prune
+```
+
+## Git Hooks
+
+```bash
+nxspub git-hooks
+nxspub git-hooks --dry
+nxspub lint --edit .git/COMMIT_EDITMSG
+```

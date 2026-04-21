@@ -1,0 +1,77 @@
+---
+title: 部署
+---
+
+# 部署
+
+`nxspub deploy` 提供部署计划、执行和回滚，并持久化部署记录。
+
+## 最小配置
+
+```ts
+deploy: {
+  enabled: true,
+  defaultEnvironment: 'staging',
+  branchEnvironmentMap: {
+    main: 'production',
+    alpha: 'staging',
+  },
+  provider: {
+    name: 'custom',
+    config: {
+      requiredEnv: ['DEPLOY_TOKEN'],
+      commands: {
+        execute: 'scripts/deploy.sh',
+        rollback: 'scripts/rollback.sh',
+      },
+    },
+  },
+  environments: {
+    staging: { strategy: 'rolling' },
+    production: { strategy: 'canary' },
+  },
+}
+```
+
+## 常用命令
+
+```bash
+nxspub deploy --plan
+nxspub deploy --env production --strategy canary
+nxspub deploy --rollback --to <deploymentId>
+```
+
+## 支持的 Provider
+
+- `vercel`
+- `cloudflare`
+- `onepanel`
+- `btpanel`
+- `ssh`
+- `rancher`
+- `k8s`
+- `custom`
+
+逐个 provider 的完整示例见：
+
+- [Provider 指南](./deploy-providers)
+
+## 晋级一致性校验
+
+生产环境可开启“来源环境一致性约束”：
+
+```ts
+deploy: {
+  promotion: {
+    requireSameArtifactDigest: true,
+    sourceEnvironment: 'staging',
+  },
+}
+```
+
+## 记录与回滚
+
+部署记录存放在 `.nxspub/deploy-records`。
+
+- `index.json`：部署摘要索引
+- `<deploymentId>.json`：完整结果与时间线

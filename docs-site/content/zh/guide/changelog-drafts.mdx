@@ -1,0 +1,46 @@
+---
+title: Changelog 草稿
+---
+
+# Changelog 草稿
+
+## 解决的问题
+
+多分支开发时，如果每个分支都直接写 `CHANGELOG.md`，非常容易产生合并冲突。
+
+`nxspub` 提供了：
+
+- 仅在白名单分支写正式 changelog
+- 非白名单分支写草稿文件
+- 后续在稳定分支自动导入草稿
+
+## 配置
+
+```ts
+changelog: {
+  writeOnBranches: ['main', 'master'],
+}
+```
+
+## 草稿存储位置
+
+```text
+.nxspub/changelog-drafts/<branch-hash>/<version>.json
+```
+
+## 导入机制
+
+在白名单分支执行 `nxspub version` 时：
+
+- 自动导入匹配版本的草稿
+- 已导入草稿文件会自动删除
+- 对过期/超前/非法草稿给出提示
+
+## 健康检查与清理
+
+```bash
+nxspub draft-doctor --target 1.3.0
+nxspub draft-doctor --target 1.3.0 --prune
+```
+
+`--prune` 建议在确认草稿确实不再需要后再执行。

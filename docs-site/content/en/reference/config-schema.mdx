@@ -1,0 +1,78 @@
+---
+title: Config Schema
+---
+
+# Config Schema
+
+Main type: `NxspubConfig`.
+
+## Top-Level Fields
+
+- `workspace`: workspace release behavior
+- `branches`: branch-to-policy map
+- `versioning`: regex rules for bump detection
+- `changelog`: labels and write branch allowlist
+- `lint`: commit message lint rules
+- `git-hooks`: hook script map
+- `scripts.releaseBuild`: release build command
+- `scripts.beforeVersionCommit`: command executed after changelog generation and before version commit
+- `deploy`: deploy orchestration config
+
+## `workspace`
+
+```ts
+workspace?: {
+  mode: 'locked' | 'independent'
+  passive?: 'patch' | 'follow' | 'none'
+}
+```
+
+## `branches`
+
+```ts
+branches?: Record<
+  string,
+  | 'major'
+  | 'minor'
+  | 'patch'
+  | 'latest'
+  | 'premajor'
+  | 'preminor'
+  | 'prepatch'
+>
+```
+
+## `changelog`
+
+```ts
+changelog?: {
+  labels?: Record<string, string>
+  writeOnBranches?: string[]
+}
+```
+
+## `deploy`
+
+```ts
+deploy?: {
+  enabled?: boolean
+  defaultEnvironment?: string
+  branchEnvironmentMap?: Record<string, string>
+  provider?: {
+    name?: 'vercel' | 'cloudflare' | 'onepanel' | 'btpanel' | 'ssh' | 'rancher' | 'k8s' | 'custom'
+    config?: Record<string, unknown>
+  }
+  environments?: Record<
+    string,
+    {
+      strategy?: 'rolling' | 'canary' | 'blue-green'
+      verify?: { healthEndpoint?: string; timeoutMs?: number; successThreshold?: number }
+      approval?: { required?: boolean; channel?: string }
+    }
+  >
+  promotion?: {
+    requireSameArtifactDigest?: boolean
+    sourceEnvironment?: string
+  }
+}
+```

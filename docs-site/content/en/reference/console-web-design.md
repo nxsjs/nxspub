@@ -154,79 +154,9 @@ Panels:
 
 ## 4.9 Page Visual Style Specification (Neo-Brutalism)
 
-Goal: use a Neo-Brutalism visual language with strong contrast, hard borders, hard shadows, and dense information hierarchy. Avoid rounded "soft-tech" styles and glassmorphism.
+This style specification has been extracted into a standalone document:
 
-### Visual Principles
-
-- Strong contrast: black/white as the base, fluorescent lime as primary accent.
-- Hard outlines: all core cards, buttons, and inputs use thick borders.
-- Hard shadows: use offset hard shadows, not soft blur shadows.
-- Strong hierarchy: headings and key metrics use extra-heavy weight, uppercase, and tight spacing.
-- Minimal visual grammar: consistent primitive style, no component style drift.
-
-### Color and Theme
-
-- Primary background: `#FFFFFF`
-- Primary text: `#000000`
-- Primary accent: `#CCFF00`
-- Neutrals: `#F6F6F6` / `#E2E2E2` / `#5B5B5B`
-- Semantic colors:
-  - Success: keep accent color family
-  - Warning: highlighted yellow background + black text
-  - Error: `#B02500` / `#F95630`
-
-### Typography
-
-- Primary font: `Public Sans`
-- Headings: `font-weight: 800~900`, uppercase, tight letter spacing
-- Body: `font-weight: 400~500`
-- Labels/status text: `font-weight: 700`, small-size uppercase
-
-### Shape, Border, and Shadow
-
-- Border radius: small radius only (`4px`), avoid large rounded corners
-- Standard border: `2px solid #000`
-- Standard shadow (Neo Shadow): `4px 4px 0 0 #000`
-- Accent shadow: `4px 4px 0 0 #CCFF00`
-- Pressed state: shrink shadow to `2px 2px` with `translate(2px, 2px)`
-
-### Component Style Baseline
-
-- Buttons: black border + hard shadow + uppercase bold text; hover may switch background to accent.
-- Cards: white background with black border; key cards may use black background + accent text.
-- Inputs: black hard frame; low-contrast gray placeholder text.
-- Tabs/Filters: active state must use obvious block background or underline emphasis.
-- Tables: compact row height, uppercase bold header, high contrast for key columns.
-- Status badges: small uppercase blocks, solid fills only, no gradients.
-
-### Logo and Brand Asset
-
-- Top navigation must use repository-root `logo.svg`.
-- Recommended composition:
-  - left logo icon + right text `NXSPUB CONSOLE`
-  - keep black/white + accent compatibility, no heavy filters
-- Asset path rule: runtime static assets can expose repository-root `logo.svg` via bundling copy or server mapping.
-
-### Motion
-
-- Motion style: short and direct (`100~150ms`)
-- Disallow: soft easing, blur transitions, complex spring animations
-- Suggested: hover color switch, press translation, lightweight panel fade-in
-
-### Responsive Rules
-
-- Desktop (`>=1280`): left navigation + two-column main content
-- Tablet (`>=768`): partially collapsed sidebar, main panel prioritized
-- Mobile (`<768`): single-column stack, control panel becomes drawer/collapse
-- Keep hard-border and hard-shadow style on mobile; do not degrade to default system style
-
-### Implementation Suggestions (Frontend)
-
-- Define design tokens in `src/console/web/styles/tokens.css`:
-  - `--neo-accent`, `--neo-border`, `--neo-shadow`, `--neo-shadow-accent`
-- Build reusable utility classes:
-  - `.neo-border`, `.neo-shadow`, `.neo-shadow-accent`, `.neo-pressable`
-- Do not introduce default component themes that conflict with Neo-Brutalism (for example, rounded-card defaults).
+- `/docs/neo-brutalism-style.md`
 
 ---
 

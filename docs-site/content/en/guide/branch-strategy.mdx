@@ -1,0 +1,42 @@
+---
+title: Branch Strategy
+---
+
+# Branch Strategy
+
+## Why It Matters
+
+`nxspub` maps branch names to release policies.  
+If a branch is not configured, version/release is blocked.
+
+## Typical Policy Map
+
+```ts
+branches: {
+  main: 'latest',
+  alpha: 'preminor',
+  beta: 'preminor',
+  hotfix: 'patch',
+}
+```
+
+## Policy Enforcement
+
+- `latest` branch cannot release prerelease versions.
+- `pre*` branches require prerelease versions (`x.y.z-<channel>.n`).
+- stricter branch policy blocks higher bump commits.
+
+Example:
+
+- branch policy is `patch`
+- commit message implies `minor` (`feat:`)
+- commit lint fails with policy violation
+
+## Commit Message + Branch Policy
+
+`nxspub lint` checks both:
+
+- regex pattern (`lint['commit-msg'].pattern`)
+- semantic bump compatibility with current branch policy
+
+This prevents invalid commit types on restricted branches.

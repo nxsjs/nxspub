@@ -1,0 +1,70 @@
+---
+title: Quick Start Workflows
+---
+
+# Quick Start Workflows
+
+## Single Package Stable Release
+
+1. Configure branch policy:
+```ts
+branches: { main: 'latest' }
+```
+2. Commit with Conventional Commit style:
+```bash
+feat: add xxx
+fix: correct yyy
+```
+3. Run version flow:
+```bash
+nxspub version
+```
+4. Publish:
+```bash
+nxspub release
+```
+
+## Pre-release Flow (`alpha`)
+
+1. Configure branch policy:
+```ts
+branches: {
+  main: 'latest',
+  alpha: 'preminor',
+}
+```
+2. On `alpha`, run:
+```bash
+nxspub version
+nxspub release --tag alpha
+```
+3. Merge to `main`, then run stable bump:
+```bash
+nxspub version
+nxspub release
+```
+
+## Workspace Flow
+
+1. Configure workspace mode:
+```ts
+workspace: { mode: 'independent', passive: 'follow' }
+```
+2. Run version in repo root:
+```bash
+nxspub version
+```
+3. Run release in repo root:
+```bash
+nxspub release
+```
+
+## Safe Preview Before Mutations
+
+```bash
+nxspub console
+nxspub console --web --open
+nxspub version --dry
+nxspub release --dry
+nxspub deploy --plan
+```

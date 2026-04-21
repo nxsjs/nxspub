@@ -1,0 +1,50 @@
+---
+title: Console 控制台
+---
+
+# Console 控制台
+
+`nxspub console` 是发布驾驶舱，用于预览 version/release/deploy 的上下文信息。
+
+## 终端模式
+
+```bash
+nxspub console
+nxspub console --json
+nxspub console --branch alpha
+```
+
+输出内容包括：
+
+- 分支策略状态
+- 当前版本与目标版本
+- 提交数量与包升级计划
+- 草稿健康状态
+- 发布前风险检查
+
+## Web 模式
+
+```bash
+nxspub console --web --open
+```
+
+常用参数：
+
+- `--host 127.0.0.1`（默认）
+- `--port 4173`（默认）
+- `--readonly-strict`：禁用写入型 API
+- `--api-only`：仅启动 API 服务
+- `--allow-remote`：当 host 为 `0.0.0.0` 时必须开启
+
+## API Token
+
+Web/API 模式下，写操作接口需要请求头：
+
+```text
+x-nxspub-console-token: <token>
+```
+
+## 安全建议
+
+- 本地使用保持默认 `127.0.0.1`
+- 演示或审计建议开启 `--readonly-strict`

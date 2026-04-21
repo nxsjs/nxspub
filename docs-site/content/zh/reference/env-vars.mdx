@@ -1,0 +1,29 @@
+---
+title: 环境变量
+---
+
+# 环境变量
+
+## `NXSPUB_CONSOLE_WEB_ENABLED`
+
+- 默认启用
+- 设置为 `0`、`false`、`off`、`no` 可禁用 `nxspub console --web`
+
+## Deploy Provider 相关变量
+
+取决于 provider 配置：
+
+- `VERCEL_TOKEN`（`vercel`）
+- `CLOUDFLARE_API_TOKEN`（`cloudflare`）
+- `ONEPANEL_API_KEY`（`onepanel`）
+- `BT_API_KEY`（`btpanel`）
+- `RANCHER_TOKEN`（`rancher`）
+- 来自 `deploy.provider.config.requiredEnv` 的自定义变量
+
+## Console Web/API 请求头 Token
+
+使用 console web 写接口时需带：
+
+```text
+x-nxspub-console-token: <token>
+```

@@ -1,0 +1,67 @@
+---
+title: 快速工作流
+---
+
+# 快速工作流
+
+## 单包稳定发布
+
+1. 配置分支策略：
+```ts
+branches: { main: 'latest' }
+```
+2. 提交信息使用 Conventional Commit：
+```bash
+feat: add xxx
+fix: correct yyy
+```
+3. 执行版本流程：
+```bash
+nxspub version
+```
+4. 执行发布：
+```bash
+nxspub release
+```
+
+## 预发布流程（`alpha`）
+
+1. 配置分支策略：
+```ts
+branches: {
+  main: 'latest',
+  alpha: 'preminor',
+}
+```
+2. 在 `alpha` 上执行：
+```bash
+nxspub version
+nxspub release --tag alpha
+```
+3. 合并到 `main` 后执行稳定发布：
+```bash
+nxspub version
+nxspub release
+```
+
+## Workspace 流程
+
+1. 配置 workspace：
+```ts
+workspace: { mode: 'independent', passive: 'follow' }
+```
+2. 在仓库根目录执行：
+```bash
+nxspub version
+nxspub release
+```
+
+## 变更前先预览
+
+```bash
+nxspub console
+nxspub console --web --open
+nxspub version --dry
+nxspub release --dry
+nxspub deploy --plan
+```

@@ -1,0 +1,63 @@
+---
+title: 故障排查
+---
+
+# 故障排查
+
+## 分支未配置
+
+报错：
+
+```text
+Admission Denied: Branch "xxx" not configured.
+```
+
+处理：
+
+- 在 `branches` 中补充分支映射
+- 或切换到允许分支执行
+
+## 工作区有未提交改动
+
+`nxspub version` 在非 dry 模式会阻止脏工作区。
+
+处理：
+
+- 先提交或 stash
+- 仅预览可用 `nxspub version --dry`
+
+## 目标 Tag 已存在
+
+目标版本的本地或远端 tag 已存在时，version 会中止。
+
+处理：
+
+- 先确认是否已发布
+- 根据实际情况调整目标版本
+
+## 没有写入 Changelog
+
+通常是分支不在 `changelog.writeOnBranches` 白名单里。
+
+处理：
+
+- 这是预期行为，内容会写入 `.nxspub/changelog-drafts`
+- 在稳定分支执行 version 可自动导入草稿
+
+## 预发布策略冲突
+
+若分支策略是 `latest`，则不能发布预发布版本。
+
+处理：
+
+- `latest` 分支使用稳定版本
+- 预发布请在 `pre*` 策略分支执行
+
+## 部署被晋级门禁阻断
+
+生产部署可能因与来源环境产物 digest/version 不一致而被阻断。
+
+处理：
+
+- 先在来源环境部署同一批产物
+- 仅在流程允许时再放宽该校验

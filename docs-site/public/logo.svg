@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <g transform="translate(0, 4)">
+    <path d="M6 26V6c0-2.2 1.8-4 4-4h4.5l7 10V6c0-2.2 1.8-4 4-4H30v20c0 2.2-1.8 4-4 4h-4.5l-7-10v6c0 2.2-1.8 4-4 4H6z" fill="#000">
+        <animateTransform attributeName="transform" type="translate" values="0 0;-0.5 -0.5;0 0" dur="3s" repeatCount="indefinite"></animateTransform>
+    </path>
+  </g>
+  <g transform="translate(-2, 2)">
+    <path d="M6 26V6c0-2.2 1.8-4 4-4h4.5l7 10V6c0-2.2 1.8-4 4-4H30v20c0 2.2-1.8 4-4 4h-4.5l-7-10v6c0 2.2-1.8 4-4 4H6z" fill="#CCFF00" stroke="#000" stroke-width="2.5" stroke-linejoin="miter">
+        <animateTransform attributeName="transform" type="translate" values="0 0;0.5 0.5;0 0" dur="3s" repeatCount="indefinite"></animateTransform>
+    </path>
+  </g>
+</svg>

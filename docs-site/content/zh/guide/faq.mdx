@@ -1,0 +1,32 @@
+---
+title: 常见问题
+---
+
+# 常见问题
+
+## nxspub 支持 npm 和 yarn 吗？
+
+支持。命令执行与文档示例均支持 `pnpm`、`npm`、`yarn`。
+
+## 为什么预发布分支会出现 `1.3.0-alpha.3` 这种版本？
+
+因为该分支策略是 `pre*`，nxspub 会在同预发布通道持续递增序号。
+
+## 如何避免多分支 changelog 冲突？
+
+使用 `changelog.writeOnBranches` + 草稿导入机制即可。
+
+## monorepo 能用吗？
+
+能。配置 `workspace.mode`：
+
+- `locked`：统一版本列车
+- `independent`：每包独立版本
+
+## 可以接入自定义部署脚本吗？
+
+可以。使用 `deploy.provider.name = 'custom'`，并在 `deploy.provider.config.commands` 中配置脚本命令。
+
+## 不开 console web 能正常发布吗？
+
+可以。`version/release/deploy` 全部支持纯 CLI 模式。

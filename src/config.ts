@@ -198,6 +198,12 @@ export interface NxspubConfig {
      * @zh 发布前执行的项目构建命令。如果提供，将覆盖默认的 "pnpm run build"。
      */
     releaseBuild?: string
+
+    /**
+     * @en Command executed after changelog generation and before git commit in `nxspub version`.
+     * @zh 在 `nxspub version` 中，changelog 生成后、git commit 前执行的命令。
+     */
+    beforeVersionCommit?: string
   }
 
   /**

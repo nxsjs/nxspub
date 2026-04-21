@@ -1,0 +1,77 @@
+---
+title: Deploy
+---
+
+# Deploy
+
+`nxspub deploy` computes plan, executes deployment, and supports rollback with records.
+
+## Minimal Config
+
+```ts
+deploy: {
+  enabled: true,
+  defaultEnvironment: 'staging',
+  branchEnvironmentMap: {
+    main: 'production',
+    alpha: 'staging',
+  },
+  provider: {
+    name: 'custom',
+    config: {
+      requiredEnv: ['DEPLOY_TOKEN'],
+      commands: {
+        execute: 'scripts/deploy.sh',
+        rollback: 'scripts/rollback.sh',
+      },
+    },
+  },
+  environments: {
+    staging: { strategy: 'rolling' },
+    production: { strategy: 'canary' },
+  },
+}
+```
+
+## Commands
+
+```bash
+nxspub deploy --plan
+nxspub deploy --env production --strategy canary
+nxspub deploy --rollback --to <deploymentId>
+```
+
+## Provider Names
+
+- `vercel`
+- `cloudflare`
+- `onepanel`
+- `btpanel`
+- `ssh`
+- `rancher`
+- `k8s`
+- `custom`
+
+Provider-by-provider examples:
+
+- [Deploy Providers](./deploy-providers)
+
+## Promotion Guard
+
+For production, nxspub can enforce artifact consistency against source env:
+
+```ts
+deploy: {
+  promotion: {
+    requireSameArtifactDigest: true,
+    sourceEnvironment: 'staging',
+  },
+}
+```
+
+## Records and Rollback
+
+Deploy records are persisted under `.nxspub/deploy-records`.
+
+- `index.json`: deployment summary index
+- `<deploymentId>.json`: full result and timeline

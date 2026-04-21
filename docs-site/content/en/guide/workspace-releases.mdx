@@ -1,0 +1,44 @@
+---
+title: Workspace Releases
+---
+
+# Workspace Releases
+
+## Modes
+
+- `locked`: all packages share one version.
+- `independent`: each package computes its own next version.
+
+## Passive Propagation
+
+`workspace.passive` controls how dependency-only changes propagate:
+
+- `patch`: dependent package gets patch bump.
+- `follow`: dependent package follows highest dependency bump.
+- `none`: no passive bump.
+
+## How nxspub Computes Workspace Version
+
+1. Scan workspace packages and dependency graph.
+2. Collect package commits since last release marker.
+3. Detect bump (`major`/`minor`/`patch`) per package.
+4. Apply passive propagation.
+5. Resolve final versions by workspace mode.
+6. Update package files, changelog, commit and tag.
+
+## Root Changelog in Workspace
+
+- package changelog sections are aggregated into root `CHANGELOG.md`
+- section header format uses:
+- `package-name@x.y.z`
+
+## Recommended Defaults
+
+```ts
+workspace: {
+  mode: 'independent',
+  passive: 'follow',
+}
+```
+
+Use `locked` only if your packages must always release together.

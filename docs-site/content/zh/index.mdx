@@ -1,0 +1,57 @@
+---
+title: nxspub 文档
+description: 分支感知版本管理、发布、部署与控制台文档。
+---
+
+# nxspub 文档
+
+`nxspub` 是面向多分支与 workspace 仓库的发布自动化工具。
+
+它核心解决三件事：
+
+- 基于提交历史自动计算版本
+- 用分支策略约束错误发布
+- 提供可回滚、可审计的部署流程
+
+## 从这里开始
+
+### 新手上手
+
+- [快速开始](./guide/getting-started)
+- [快速工作流](./guide/quick-start-workflows)
+
+### 团队落地
+
+- [配置](./guide/configuration)
+- [Git Hooks](./guide/git-hooks)
+
+### Workspace 与多分支
+
+- [Workspace 发布](./guide/workspace-releases)
+- [分支策略](./guide/branch-strategy)
+- [Changelog 草稿](./guide/changelog-drafts)
+
+### 运维与可视化
+
+- [Console 控制台](./guide/console)
+- [部署](./guide/deploy)
+- [故障排查](./guide/troubleshooting)
+
+## 核心命令
+
+```bash
+nxspub version
+nxspub release
+nxspub deploy --plan
+nxspub console --web
+nxspub draft-doctor
+nxspub git-hooks
+nxspub lint --edit .git/COMMIT_EDITMSG
+```
+
+## 参考
+
+- [CLI 参考](./reference/cli-reference)
+- [配置字段参考](./reference/config-schema)
+- [环境变量](./reference/env-vars)
+- [状态文件布局](./reference/storage-layout)

@@ -1,0 +1,17 @@
+{
+  "name": "nxspub-docs",
+  "private": true,
+  "scripts": {
+    "dev": "next build && next dev",
+    "dev:fast": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^15.5.6",
+    "nextra": "^4.2.18",
+    "nextra-theme-docs": "^4.2.18",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  }
+}

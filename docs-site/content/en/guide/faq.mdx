@@ -1,0 +1,32 @@
+---
+title: FAQ
+---
+
+# FAQ
+
+## Does nxspub support npm and yarn users?
+
+Yes. Runtime command generation supports `pnpm`, `npm`, and `yarn`.
+
+## Why does my prerelease branch produce `1.3.0-alpha.3` style versions?
+
+Because branch policy is `pre*` and nxspub increments prerelease sequence in that channel.
+
+## Can I avoid changelog merge conflicts across branches?
+
+Yes. Use `changelog.writeOnBranches` and draft import flow.
+
+## Can I use nxspub in monorepo?
+
+Yes. Configure `workspace.mode`:
+
+- `locked` for one-version train
+- `independent` for per-package versioning
+
+## Can I use custom deploy scripts?
+
+Yes. Use `deploy.provider.name = 'custom'` and provide shell commands in `deploy.provider.config.commands`.
+
+## Is console web required for normal release?
+
+No. `version/release/deploy` can run fully in CLI mode.

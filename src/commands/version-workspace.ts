@@ -2,7 +2,6 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as semver from 'semver-es'
 import type { BranchType, NxspubConfig, WorkspaceMode } from '../config'
-import { abort } from '../utils/errors'
 import {
   analyzeDraftsForTargetVersion,
   applyContributorsToChangelog,
@@ -16,25 +15,21 @@ import {
   writeChangelogDraft,
 } from '../utils/changelog'
 import { formatDate } from '../utils/date'
+import { abort } from '../utils/errors'
 import {
   createLinkProvider,
   ensureGitSync,
-  hasLocalTag,
-  hasRemoteTag,
-  resolveBranchPolicy,
   getCurrentBranch,
   getLastReleaseCommit,
   getPackageCommits,
   getRepoUrl,
+  hasLocalTag,
+  hasRemoteTag,
+  resolveBranchPolicy,
   run,
   runSafe,
 } from '../utils/git'
 import { cliLogger } from '../utils/logger'
-import {
-  chooseStableBaselineVersion,
-  loadReleaseState,
-  updateStableBranchState,
-} from '../utils/release-state'
 import {
   loadPackageJSON,
   readJSON,
@@ -44,12 +39,17 @@ import {
   writeJSON,
   type PackageTask,
 } from '../utils/packages'
-import type { VersionOptions } from './types'
+import {
+  chooseStableBaselineVersion,
+  loadReleaseState,
+  updateStableBranchState,
+} from '../utils/release-state'
 import {
   determineBumpType,
   getHighestBumpType,
   getMaxBumpType,
 } from '../utils/versions'
+import type { VersionOptions } from './types'
 
 /**
  * @en Compute and apply versions/changelogs for all workspace packages.
@@ -330,6 +330,13 @@ export async function versionWorkspace(
       lastRelease?.version,
       globalNextVersion,
     )
+  }
+
+  const beforeVersionCommitCommand = config.scripts?.beforeVersionCommit?.trim()
+  if (beforeVersionCommitCommand) {
+    cliLogger.step('Running before-version-commit script...')
+    cliLogger.item(`Run: ${cliLogger.highlight(beforeVersionCommitCommand)}`)
+    await run(beforeVersionCommitCommand, [], { cwd, shell: true })
   }
 
   if (branchReleasePolicy === 'latest' && currentBranch) {

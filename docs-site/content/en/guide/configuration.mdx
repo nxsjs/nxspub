@@ -1,0 +1,97 @@
+---
+title: Configuration
+---
+
+# Configuration
+
+Create `nxspub.config.ts` in repository root.
+
+## Full Example
+
+```ts
+import type { NxspubConfig } from 'nxspub'
+
+const config: NxspubConfig = {
+  workspace: {
+    mode: 'independent',
+    passive: 'follow',
+  },
+  branches: {
+    main: 'latest',
+    alpha: 'preminor',
+    beta: 'preminor',
+    hotfix: 'patch',
+  },
+  versioning: {
+    major: [/BREAKING CHANGE:/],
+    minor: [/^feat(\(.+\))?:/],
+    patch: [/^fix(\(.+\))?:/, /^perf(\(.+\))?:/],
+  },
+  changelog: {
+    labels: {
+      feat: 'Features',
+      fix: 'Bug Fixes',
+      perf: 'Performance',
+      refactor: 'Refactors',
+    },
+    writeOnBranches: ['main', 'master'],
+  },
+  lint: {
+    'commit-msg': {
+      pattern:
+        /^(revert: )?(feat|fix|docs|dx|style|refactor|perf|test|workflow|build|ci|chore|types|wip|release)(\([^)]+\))?(!)?: .{1,50}/,
+      message: 'Invalid commit message format.',
+    },
+  },
+  'git-hooks': {
+    'pre-commit': 'pnpm lint-staged && pnpm check',
+    'commit-msg': 'npx nxspub lint --edit "$1"',
+  },
+  scripts: {
+    releaseBuild: 'pnpm -r build',
+  },
+  deploy: {
+    enabled: true,
+    defaultEnvironment: 'staging',
+    branchEnvironmentMap: {
+      main: 'production',
+      alpha: 'staging',
+      beta: 'staging',
+    },
+    provider: {
+      name: 'custom',
+      config: {
+        requiredEnv: ['DEPLOY_TOKEN'],
+        commands: {
+          validate: 'echo validate',
+          plan: 'echo plan',
+          execute: 'echo deploy',
+          rollback: 'echo rollback',
+        },
+      },
+    },
+    environments: {
+      staging: { strategy: 'rolling' },
+      production: { strategy: 'canary' },
+    },
+    promotion: {
+      requireSameArtifactDigest: true,
+      sourceEnvironment: 'staging',
+    },
+  },
+}
+
+export default config
+```
+
+## Branch Policy Tips
+
+- Use `latest` only for stable branches (`main`/`master`).
+- Use `pre*` policies for prerelease branches (`alpha`, `beta`).
+- Use `patch` for hotfix branch if you want to block `feat`/`breaking` commits.
+
+## Changelog Write Strategy
+
+- `changelog.writeOnBranches` limits where `CHANGELOG.md` is written.
+- On non-allowlisted branches, nxspub stores draft files under `.nxspub/changelog-drafts/*`.
+- Stable branch run can import those drafts automatically.

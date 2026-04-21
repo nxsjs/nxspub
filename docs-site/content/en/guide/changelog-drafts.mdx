@@ -1,0 +1,48 @@
+---
+title: Changelog Drafts
+---
+
+# Changelog Drafts
+
+## Problem It Solves
+
+In multi-branch flow, writing `CHANGELOG.md` on every branch causes frequent merge conflicts.
+
+`nxspub` supports:
+
+- write changelog only on allowlisted branches
+- store non-allowlisted branch output as draft files
+- import drafts later on stable branch
+
+## Config
+
+```ts
+changelog: {
+  writeOnBranches: ['main', 'master'],
+}
+```
+
+## Draft Storage
+
+Drafts are persisted under:
+
+```text
+.nxspub/changelog-drafts/<branch-hash>/<version>.json
+```
+
+## Import Behavior
+
+When running `nxspub version` on allowlisted branch:
+
+- matching drafts are imported into changelog
+- imported draft files are removed
+- stale/ahead/invalid drafts are reported
+
+## Draft Health and Cleanup
+
+```bash
+nxspub draft-doctor --target 1.3.0
+nxspub draft-doctor --target 1.3.0 --prune
+```
+
+Use `--prune` only after confirming stale drafts are no longer needed.

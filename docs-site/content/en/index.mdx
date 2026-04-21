@@ -1,0 +1,57 @@
+---
+title: nxspub Documentation
+description: Branch-aware versioning, release, deploy, and console docs.
+---
+
+# nxspub Documentation
+
+`nxspub` is a release automation toolkit for multi-branch and workspace repositories.
+
+It focuses on three things:
+
+- predictable versioning from commit history
+- branch-policy-driven release safety
+- practical deploy orchestration with records and rollback
+
+## Start Here
+
+### New user
+
+- [Getting Started](./guide/getting-started)
+- [Quick Start Workflows](./guide/quick-start-workflows)
+
+### Team setup
+
+- [Configuration](./guide/configuration)
+- [Git Hooks](./guide/git-hooks)
+
+### Workspace and multi-branch
+
+- [Workspace Releases](./guide/workspace-releases)
+- [Branch Strategy](./guide/branch-strategy)
+- [Changelog Drafts](./guide/changelog-drafts)
+
+### Operations
+
+- [Console](./guide/console)
+- [Deploy](./guide/deploy)
+- [Troubleshooting](./guide/troubleshooting)
+
+## Command Surface
+
+```bash
+nxspub version
+nxspub release
+nxspub deploy --plan
+nxspub console --web
+nxspub draft-doctor
+nxspub git-hooks
+nxspub lint --edit .git/COMMIT_EDITMSG
+```
+
+## Reference
+
+- [CLI Reference](./reference/cli-reference)
+- [Config Schema](./reference/config-schema)
+- [Environment Variables](./reference/env-vars)
+- [Storage Layout](./reference/storage-layout)

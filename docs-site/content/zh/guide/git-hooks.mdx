@@ -1,0 +1,41 @@
+---
+title: Git Hooks
+---
+
+# Git Hooks
+
+`nxspub git-hooks` 会根据 `nxspub.config.ts` 安装可执行 Git Hook。
+
+## 示例
+
+```ts
+'git-hooks': {
+  'pre-commit': 'pnpm lint-staged && pnpm check',
+  'commit-msg': 'npx nxspub lint --edit "$1"',
+}
+```
+
+## 安装
+
+```bash
+nxspub git-hooks
+nxspub git-hooks --dry
+```
+
+如果你没有配置 `commit-msg`，nxspub 会自动注入默认值。
+
+## 提交信息校验
+
+```bash
+nxspub lint --edit .git/COMMIT_EDITMSG
+```
+
+校验内容包括：
+
+- 提交格式正则
+- 分支策略兼容性（如 `patch` 分支不能提交 `feat`）
+
+## 团队建议
+
+- 项目初始化时执行一次 `nxspub git-hooks`
+- 将统一的 lint 策略沉淀在 `nxspub.config.ts`

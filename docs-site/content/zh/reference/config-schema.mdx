@@ -1,0 +1,78 @@
+---
+title: 配置字段参考
+---
+
+# 配置字段参考
+
+主配置类型：`NxspubConfig`。
+
+## 顶层字段
+
+- `workspace`：workspace 发布行为
+- `branches`：分支到策略映射
+- `versioning`：基于正则的 bump 规则
+- `changelog`：标签映射与写入白名单
+- `lint`：提交信息校验规则
+- `git-hooks`：Git Hook 脚本映射
+- `scripts.releaseBuild`：发布构建命令
+- `scripts.beforeVersionCommit`：changelog 生成后、version 提交前执行命令
+- `deploy`：部署编排配置
+
+## `workspace`
+
+```ts
+workspace?: {
+  mode: 'locked' | 'independent'
+  passive?: 'patch' | 'follow' | 'none'
+}
+```
+
+## `branches`
+
+```ts
+branches?: Record<
+  string,
+  | 'major'
+  | 'minor'
+  | 'patch'
+  | 'latest'
+  | 'premajor'
+  | 'preminor'
+  | 'prepatch'
+>
+```
+
+## `changelog`
+
+```ts
+changelog?: {
+  labels?: Record<string, string>
+  writeOnBranches?: string[]
+}
+```
+
+## `deploy`
+
+```ts
+deploy?: {
+  enabled?: boolean
+  defaultEnvironment?: string
+  branchEnvironmentMap?: Record<string, string>
+  provider?: {
+    name?: 'vercel' | 'cloudflare' | 'onepanel' | 'btpanel' | 'ssh' | 'rancher' | 'k8s' | 'custom'
+    config?: Record<string, unknown>
+  }
+  environments?: Record<
+    string,
+    {
+      strategy?: 'rolling' | 'canary' | 'blue-green'
+      verify?: { healthEndpoint?: string; timeoutMs?: number; successThreshold?: number }
+      approval?: { required?: boolean; channel?: string }
+    }
+  >
+  promotion?: {
+    requireSameArtifactDigest?: boolean
+    sourceEnvironment?: string
+  }
+}
+```

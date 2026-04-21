@@ -1,0 +1,42 @@
+---
+title: 分支策略
+---
+
+# 分支策略
+
+## 为什么重要
+
+`nxspub` 会把分支名映射到发布策略。  
+分支未配置时，`version/release` 会被直接阻断。
+
+## 常见策略映射
+
+```ts
+branches: {
+  main: 'latest',
+  alpha: 'preminor',
+  beta: 'preminor',
+  hotfix: 'patch',
+}
+```
+
+## 策略约束行为
+
+- `latest` 分支不能发布预发布版本。
+- `pre*` 分支必须发布预发布版本（`x.y.z-<channel>.n`）。
+- 严格分支策略会阻断超范围的 bump 类型。
+
+示例：
+
+- 分支策略是 `patch`
+- 提交是 `feat:`（对应 `minor`）
+- commit lint 会报策略违规并阻止提交
+
+## 提交规范 + 分支策略双重校验
+
+`nxspub lint` 会同时检查：
+
+- 正则格式（`lint['commit-msg'].pattern`）
+- 当前分支策略与提交 bump 级别是否兼容
+
+这能防止受限分支出现错误提交类型。

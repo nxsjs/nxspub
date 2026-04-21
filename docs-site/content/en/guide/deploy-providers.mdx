@@ -1,0 +1,241 @@
+---
+title: Deploy Providers
+---
+
+# Deploy Providers
+
+This page provides per-provider examples for:
+
+- `vercel`
+- `cloudflare`
+- `onepanel`
+- `btpanel`
+- `ssh`
+- `rancher`
+- `k8s`
+- `custom`
+
+All providers use the same `deploy.provider` shape:
+
+```ts
+deploy: {
+  provider: {
+    name: 'custom',
+    config: {
+      requiredEnv: [],
+      commands: {
+        validate: 'echo validate',
+        plan: 'echo plan',
+        execute: 'echo execute',
+        rollback: 'echo rollback',
+      },
+    },
+  },
+}
+```
+
+## `vercel`
+
+Required env by default:
+
+- `VERCEL_TOKEN`
+
+```ts
+deploy: {
+  provider: {
+    name: 'vercel',
+    config: {
+      env: {
+        VERCEL_PROJECT_ID: 'your-project-id',
+        VERCEL_ORG_ID: 'your-org-id',
+      },
+      commands: {
+        execute:
+          'vercel deploy --prod --token "$VERCEL_TOKEN" --yes',
+        rollback:
+          'vercel rollback "$NXSPUB_DEPLOY_ROLLBACK_TO" --token "$VERCEL_TOKEN" --yes',
+      },
+    },
+  },
+}
+```
+
+## `cloudflare`
+
+Required env by default:
+
+- `CLOUDFLARE_API_TOKEN`
+
+```ts
+deploy: {
+  provider: {
+    name: 'cloudflare',
+    config: {
+      env: {
+        CLOUDFLARE_ACCOUNT_ID: 'your-account-id',
+      },
+      commands: {
+        execute:
+          'wrangler deploy --env "$NXSPUB_DEPLOY_ENV"',
+        rollback:
+          'wrangler deployments rollback "$NXSPUB_DEPLOY_ROLLBACK_TO" --env "$NXSPUB_DEPLOY_ENV"',
+      },
+    },
+  },
+}
+```
+
+## `onepanel`
+
+Required fields:
+
+- `config.baseUrl`
+- `ONEPANEL_API_KEY` (default key name)
+
+```ts
+deploy: {
+  provider: {
+    name: 'onepanel',
+    config: {
+      baseUrl: 'https://onepanel.example.com',
+      apiKeyEnv: 'ONEPANEL_API_KEY',
+      commands: {
+        execute:
+          'bash scripts/deploy-onepanel.sh "$NXSPUB_DEPLOY_ENV"',
+        rollback:
+          'bash scripts/rollback-onepanel.sh "$NXSPUB_DEPLOY_ROLLBACK_TO"',
+      },
+    },
+  },
+}
+```
+
+## `btpanel`
+
+Required fields:
+
+- `config.baseUrl`
+- `BT_API_KEY` (default key name)
+
+```ts
+deploy: {
+  provider: {
+    name: 'btpanel',
+    config: {
+      baseUrl: 'https://bt.example.com',
+      apiKeyEnv: 'BT_API_KEY',
+      commands: {
+        execute:
+          'bash scripts/deploy-btpanel.sh "$NXSPUB_DEPLOY_ENV"',
+        rollback:
+          'bash scripts/rollback-btpanel.sh "$NXSPUB_DEPLOY_ROLLBACK_TO"',
+      },
+    },
+  },
+}
+```
+
+## `ssh`
+
+Required:
+
+- `privateKeyPath` or `passwordEnv`
+
+```ts
+deploy: {
+  provider: {
+    name: 'ssh',
+    config: {
+      privateKeyPath: '/home/ci/.ssh/id_rsa',
+      requiredEnv: ['SSH_HOST', 'SSH_USER'],
+      commands: {
+        execute:
+          'ssh -i /home/ci/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "bash -s" < scripts/deploy-ssh.sh',
+        rollback:
+          'ssh "$SSH_USER@$SSH_HOST" "bash scripts/rollback-ssh.sh $NXSPUB_DEPLOY_ROLLBACK_TO"',
+      },
+    },
+  },
+}
+```
+
+## `rancher`
+
+Required fields:
+
+- `config.serverUrl`
+- `RANCHER_TOKEN` (default key name)
+
+```ts
+deploy: {
+  provider: {
+    name: 'rancher',
+    config: {
+      serverUrl: 'https://rancher.example.com',
+      tokenEnv: 'RANCHER_TOKEN',
+      commands: {
+        execute:
+          'bash scripts/deploy-rancher.sh "$NXSPUB_DEPLOY_ENV"',
+        rollback:
+          'bash scripts/rollback-rancher.sh "$NXSPUB_DEPLOY_ROLLBACK_TO"',
+      },
+    },
+  },
+}
+```
+
+## `k8s`
+
+No built-in required env. You usually provide kube context via environment.
+
+```ts
+deploy: {
+  provider: {
+    name: 'k8s',
+    config: {
+      requiredEnv: ['KUBECONFIG'],
+      commands: {
+        execute:
+          'kubectl --context "$KUBE_CONTEXT" apply -f k8s/"$NXSPUB_DEPLOY_ENV"',
+        rollback:
+          'kubectl --context "$KUBE_CONTEXT" rollout undo deploy/my-app',
+      },
+    },
+  },
+}
+```
+
+## `custom`
+
+Use this when you own the entire deployment pipeline.
+
+```ts
+deploy: {
+  provider: {
+    name: 'custom',
+    config: {
+      requiredEnv: ['DEPLOY_TOKEN'],
+      env: {
+        DEPLOY_API_BASE: 'https://deploy.internal',
+      },
+      commands: {
+        validate: 'node scripts/deploy/validate.mjs',
+        plan: 'node scripts/deploy/plan.mjs',
+        execute: 'node scripts/deploy/execute.mjs',
+        rollback: 'node scripts/deploy/rollback.mjs',
+      },
+    },
+  },
+}
+```
+
+## Runtime Variables Passed to Commands
+
+nxspub injects runtime variables to provider commands:
+
+- `NXSPUB_DEPLOY_ENV`
+- `NXSPUB_DEPLOY_DEPLOYMENT_ID`
+- `NXSPUB_DEPLOY_STRATEGY`
+- `NXSPUB_DEPLOY_BRANCH`
+- `NXSPUB_DEPLOY_ARTIFACTS_JSON`
+- `NXSPUB_DEPLOY_ROLLBACK_TO` (rollback only)

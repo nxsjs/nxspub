@@ -1,0 +1,41 @@
+---
+title: Git Hooks
+---
+
+# Git Hooks
+
+`nxspub git-hooks` installs executable hooks from `nxspub.config.ts`.
+
+## Example
+
+```ts
+'git-hooks': {
+  'pre-commit': 'pnpm lint-staged && pnpm check',
+  'commit-msg': 'npx nxspub lint --edit "$1"',
+}
+```
+
+## Install
+
+```bash
+nxspub git-hooks
+nxspub git-hooks --dry
+```
+
+If `commit-msg` is not defined, nxspub auto-injects one.
+
+## Commit Message Lint
+
+```bash
+nxspub lint --edit .git/COMMIT_EDITMSG
+```
+
+Checks include:
+
+- commit pattern regex
+- branch policy compatibility (`patch` branch cannot accept `feat`, etc.)
+
+## Team Recommendation
+
+- run `nxspub git-hooks` during project bootstrap
+- commit your `nxspub.config.ts` with shared lint policy

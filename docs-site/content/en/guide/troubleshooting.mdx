@@ -1,0 +1,63 @@
+---
+title: Troubleshooting
+---
+
+# Troubleshooting
+
+## Branch Not Configured
+
+Error:
+
+```text
+Admission Denied: Branch "xxx" not configured.
+```
+
+Fix:
+
+- add branch to `branches` in config
+- or run command on allowed branch
+
+## Working Tree Dirty
+
+`nxspub version` blocks if there are uncommitted changes (non-dry mode).
+
+Fix:
+
+- commit/stash first
+- or run `nxspub version --dry` for preview
+
+## Tag Already Exists
+
+If local/remote tag exists for target version, version flow stops.
+
+Fix:
+
+- verify if release already happened
+- choose correct next version
+
+## Changelog Not Written
+
+Likely branch not in `changelog.writeOnBranches`.
+
+Fix:
+
+- expected behavior: check `.nxspub/changelog-drafts`
+- run stable branch version to import drafts
+
+## Release Denied by Prerelease Policy
+
+If branch policy is `latest`, prerelease version cannot be released.
+
+Fix:
+
+- use stable version on `latest` branch
+- or release prerelease on `pre*` branch
+
+## Deploy Blocked by Promotion Guard
+
+Production deploy can be blocked when artifact digest/version differs from source env.
+
+Fix:
+
+- deploy same artifact set to source env first
+- disable strict guard only if your process allows it
