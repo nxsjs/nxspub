@@ -113,7 +113,7 @@ export interface PreviewSseEvent {
   timestamp: string
 }
 
-export type ExecutionTaskKind = 'version' | 'release'
+export type ExecutionTaskKind = 'version' | 'release' | 'deploy' | 'rollback'
 
 export interface ExecutionLogItem {
   level: 'info' | 'warn' | 'error'
@@ -147,6 +147,90 @@ export interface ReleaseRunResult {
   published: Array<{ name: string; version: string }>
   skipped: Array<{ name: string; version: string; reason: string }>
   logs: ExecutionLogItem[]
+}
+
+export interface DeployPlanResult {
+  env: string
+  strategy: 'rolling' | 'canary' | 'blue-green'
+  mode: 'single' | 'workspace'
+  branch: string
+  artifacts: Array<{
+    name: string
+    version: string
+    tag?: string
+    digest?: string
+    image?: string
+    source: 'release-session' | 'deploy-record' | 'registry' | 'manual'
+  }>
+  checks: Array<{
+    id: string
+    ok: boolean
+    level: 'blocker' | 'warn' | 'info'
+    message: string
+  }>
+}
+
+export interface DeployRunResult {
+  deploymentId: string
+  status: 'success' | 'failed' | 'partial'
+  deployed: Array<{ name: string; version: string }>
+  skipped: Array<{ name: string; version: string; reason: string }>
+  failed: Array<{ name: string; version: string; reason: string }>
+  timeline: Array<{
+    step: string
+    status: 'pending' | 'running' | 'success' | 'error'
+    at: string
+    message?: string
+  }>
+}
+
+export interface DeployRollbackResult {
+  deploymentId: string
+  rollbackTo: string
+  status: 'success' | 'failed'
+  timeline: Array<{
+    step: string
+    status: 'pending' | 'running' | 'success' | 'error'
+    at: string
+    message?: string
+  }>
+}
+
+export interface DeployRecordSummary {
+  deploymentId: string
+  env: string
+  strategy: string
+  branch: string
+  status: string
+  finishedAt: string
+  rollbackTo?: string
+}
+
+export interface DeployRecordDetail {
+  deploymentId: string
+  env: string
+  strategy: 'rolling' | 'canary' | 'blue-green'
+  branch: string
+  status: 'success' | 'failed' | 'partial'
+  startedAt: string
+  finishedAt: string
+  commitSha?: string
+  artifacts: Array<{
+    name: string
+    version: string
+    tag?: string
+    digest?: string
+    image?: string
+    source: 'release-session' | 'deploy-record' | 'registry' | 'manual'
+  }>
+  timeline: Array<{
+    step: string
+    status: 'pending' | 'running' | 'success' | 'error'
+    at: string
+    message?: string
+  }>
+  rollbackTo?: string
+  result: unknown
 }
 
 export interface PreviewResult {

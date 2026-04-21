@@ -12,8 +12,13 @@ import {
   fetchDraftHealth,
   fetchExportJson,
   fetchPreview,
+  listDeployRecords,
+  loadDeployRecord,
   pruneDrafts,
   parsePreviewSseEvent,
+  runDeployExecute,
+  runDeployPlan,
+  runDeployRollback,
   runReleaseCommand,
   runVersionCommand,
   saveSnapshot,
@@ -27,6 +32,11 @@ import { VersionPlanTable } from './components/VersionPlanTable'
 import { createTranslator } from './i18n'
 import type { PreviewLocale, Translator } from './i18n'
 import type {
+  DeployPlanResult,
+  DeployRecordDetail,
+  DeployRecordSummary,
+  DeployRollbackResult,
+  DeployRunResult,
   DraftPruneResult,
   ExecutionLogItem,
   ExecutionStatusPayload,
@@ -68,6 +78,7 @@ type ViewMode =
   | 'dependencies'
   | 'diagnostics'
   | 'execution'
+  | 'deploy'
 
 export function App({ locale }: AppProps) {
   const t: Translator = createTranslator(locale)
@@ -110,6 +121,25 @@ export function App({ locale }: AppProps) {
   const [releaseProvenance, setReleaseProvenance] = useState(false)
   const [releaseSkipBuild, setReleaseSkipBuild] = useState(false)
   const [releaseSkipSync, setReleaseSkipSync] = useState(false)
+  const [deployEnv, setDeployEnv] = useState('')
+  const [deployStrategy, setDeployStrategy] = useState<
+    'rolling' | 'canary' | 'blue-green'
+  >('rolling')
+  const [deployConcurrency, setDeployConcurrency] = useState(1)
+  const [deployPlanResult, setDeployPlanResult] =
+    useState<DeployPlanResult | null>(null)
+  const [deployRunResult, setDeployRunResult] =
+    useState<DeployRunResult | null>(null)
+  const [deployRollbackResult, setDeployRollbackResult] =
+    useState<DeployRollbackResult | null>(null)
+  const [deployRollbackTarget, setDeployRollbackTarget] = useState('')
+  const [deployRecords, setDeployRecords] = useState<DeployRecordSummary[]>([])
+  const [selectedDeployRecordId, setSelectedDeployRecordId] = useState('')
+  const [selectedDeployRecordDetail, setSelectedDeployRecordDetail] =
+    useState<DeployRecordDetail | null>(null)
+  const [selectedFailedDeployNames, setSelectedFailedDeployNames] = useState<
+    string[]
+  >([])
   const previewAbortRef = useRef<AbortController | null>(null)
   const requestSerialRef = useRef(0)
   const currentPruneTarget = preview?.targetVersion?.split('-')[0] || null
@@ -226,10 +256,14 @@ export function App({ locale }: AppProps) {
     void (async () => {
       try {
         const nextContext = await fetchContext()
-        const snapshots = await listSnapshots()
+        const [snapshots, records] = await Promise.all([
+          listSnapshots(),
+          listDeployRecords(),
+        ])
         if (!cancelled) {
           setContext(nextContext)
           setSavedSnapshots(snapshots)
+          setDeployRecords(records)
         }
       } catch (err) {
         if (!cancelled) {
@@ -547,6 +581,128 @@ export function App({ locale }: AppProps) {
     }
   }
 
+  async function refreshDeployRecords() {
+    const records = await listDeployRecords()
+    setDeployRecords(records)
+  }
+
+  async function runDeployPlanAction() {
+    setLoading(true)
+    setError('')
+    try {
+      const result = await runDeployPlan({
+        env: deployEnv || undefined,
+        strategy: deployStrategy,
+        branch: branchInput || undefined,
+        dry: true,
+      })
+      setDeployPlanResult(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function runDeployExecuteAction(
+    dry: boolean,
+    artifactNames?: string[],
+  ) {
+    setLoading(true)
+    setError('')
+    try {
+      const status = await refreshExecutionStatus()
+      if (status?.running) {
+        throw new Error(t('errExecutionBusy'))
+      }
+      if (!dry) {
+        const confirmed = window.confirm(t('confirmDeployApply'))
+        if (!confirmed) return
+      }
+      const result = await runDeployExecute({
+        env: deployEnv || undefined,
+        strategy: deployStrategy,
+        branch: branchInput || undefined,
+        dry,
+        concurrency: deployConcurrency,
+        artifactNames,
+      })
+      setDeployRunResult(result)
+      setSelectedFailedDeployNames([])
+      setExecutionLogs(
+        result.timeline.map(item => ({
+          level: item.status === 'error' ? 'error' : 'info',
+          message: `${item.step}: ${item.message || item.status}`,
+          at: item.at,
+        })),
+      )
+      await Promise.all([refreshExecutionStatus(), refreshDeployRecords()])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function toggleFailedDeployName(name: string, selected: boolean) {
+    setSelectedFailedDeployNames(prev => {
+      if (selected) {
+        return prev.includes(name) ? prev : [...prev, name]
+      }
+      return prev.filter(item => item !== name)
+    })
+  }
+
+  async function runDeployRollbackAction() {
+    setLoading(true)
+    setError('')
+    try {
+      if (!deployRollbackTarget.trim()) {
+        throw new Error(t('errSelectSnapshotFirst'))
+      }
+      const confirmed = window.confirm(
+        t('confirmDeployRollback', { id: deployRollbackTarget.trim() }),
+      )
+      if (!confirmed) return
+      const result = await runDeployRollback({
+        to: deployRollbackTarget.trim(),
+        env: deployEnv || undefined,
+        branch: branchInput || undefined,
+      })
+      setDeployRollbackResult(result)
+      setExecutionLogs(
+        result.timeline.map(item => ({
+          level: item.status === 'error' ? 'error' : 'info',
+          message: `${item.step}: ${item.message || item.status}`,
+          at: item.at,
+        })),
+      )
+      await Promise.all([refreshExecutionStatus(), refreshDeployRecords()])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadSelectedDeployRecord(deploymentId?: string) {
+    setLoading(true)
+    setError('')
+    try {
+      const targetId = (deploymentId || selectedDeployRecordId).trim()
+      if (!targetId) {
+        throw new Error(t('noDeployRecordDetail'))
+      }
+      const detail = await loadDeployRecord(targetId)
+      setSelectedDeployRecordId(targetId)
+      setSelectedDeployRecordDetail(detail)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="app">
       <header className="neo-border neo-shadow topbar">
@@ -649,6 +805,17 @@ export function App({ locale }: AppProps) {
             }}
           >
             {t('viewExecution')}
+          </button>
+          <button
+            type="button"
+            className={`neo-pressable ${activeView === 'deploy' ? 'primary' : ''}`}
+            onClick={() => {
+              setActiveView('deploy')
+              void refreshExecutionStatus()
+              void refreshDeployRecords()
+            }}
+          >
+            {t('viewDeploy')}
           </button>
         </div>
       </section>
@@ -1080,6 +1247,384 @@ export function App({ locale }: AppProps) {
                     <span className="meta">{toLocalTimestamp(item.at)}</span>
                   </div>
                 ))}
+              </div>
+            ) : (
+              <div className="meta">{t('noExecutionLogs')}</div>
+            )}
+          </article>
+        </section>
+      ) : null}
+
+      {activeView === 'deploy' ? (
+        <section className="stack">
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('deployWorkspace')}</h2>
+            <div className="controls">
+              <input
+                placeholder={t('deployEnv')}
+                value={deployEnv}
+                onChange={event => setDeployEnv(event.target.value)}
+              />
+              <select
+                value={deployStrategy}
+                onChange={event =>
+                  setDeployStrategy(
+                    event.target.value as 'rolling' | 'canary' | 'blue-green',
+                  )
+                }
+              >
+                <option value="rolling">rolling</option>
+                <option value="canary">canary</option>
+                <option value="blue-green">blue-green</option>
+              </select>
+              <input
+                type="number"
+                min={1}
+                placeholder={t('deployConcurrency')}
+                value={deployConcurrency}
+                onChange={event =>
+                  setDeployConcurrency(Math.max(1, Number(event.target.value)))
+                }
+              />
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void runDeployPlanAction()}
+              >
+                {t('deployPlan')}
+              </button>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void runDeployExecuteAction(true)}
+              >
+                {t('deployDry')}
+              </button>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void runDeployExecuteAction(false)}
+              >
+                {t('deployApply')}
+              </button>
+            </div>
+          </article>
+
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('deployRecords')}</h2>
+            <div className="controls">
+              <select
+                value={deployRollbackTarget}
+                onChange={event => setDeployRollbackTarget(event.target.value)}
+              >
+                <option value="">{t('rollbackToId')}</option>
+                {deployRecords.map(item => (
+                  <option key={item.deploymentId} value={item.deploymentId}>
+                    {item.deploymentId} ({item.env} / {item.status})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void runDeployRollbackAction()}
+              >
+                {t('deployRollback')}
+              </button>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void refreshDeployRecords()}
+              >
+                {t('refreshDeployRecords')}
+              </button>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() =>
+                  void loadSelectedDeployRecord(deployRollbackTarget)
+                }
+              >
+                {t('loadDeployRecord')}
+              </button>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => {
+                  if (selectedDeployRecordDetail?.deploymentId) {
+                    setDeployRollbackTarget(
+                      selectedDeployRecordDetail.deploymentId,
+                    )
+                  }
+                }}
+              >
+                {t('applyRollbackFromRecord')}
+              </button>
+            </div>
+            {deployRecords.length ? (
+              <div className="timeline-list" style={{ marginTop: 10 }}>
+                {deployRecords.map(item => (
+                  <div key={item.deploymentId} className="log-item">
+                    <strong>{item.deploymentId}</strong>
+                    <span>
+                      {item.env} / {item.strategy} / {item.status}
+                    </span>
+                    <span className="meta">
+                      {toLocalTimestamp(item.finishedAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="meta">{t('noDeployRecords')}</div>
+            )}
+          </article>
+
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('deployRecordDetail')}</h2>
+            {selectedDeployRecordDetail ? (
+              <>
+                <div className="execution-grid" style={{ marginBottom: 10 }}>
+                  <div className="execution-kv">
+                    <strong>Deployment ID</strong>
+                    <span>{selectedDeployRecordDetail.deploymentId}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('status')}</strong>
+                    <span>{selectedDeployRecordDetail.status}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('deployEnv')}</strong>
+                    <span>{selectedDeployRecordDetail.env}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('deployStrategy')}</strong>
+                    <span>{selectedDeployRecordDetail.strategy}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('currentBranch')}</strong>
+                    <span>{selectedDeployRecordDetail.branch}</span>
+                  </div>
+                </div>
+                <div className="timeline-list">
+                  {selectedDeployRecordDetail.timeline.map((item, index) => (
+                    <div
+                      key={`${item.at}-${index}`}
+                      className={`timeline-item ${item.status}`}
+                    >
+                      <strong>{item.step}</strong>
+                      <span>
+                        {item.status} {item.message ? `| ${item.message}` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="meta">{t('noDeployRecordDetail')}</div>
+            )}
+          </article>
+
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('deployPlanResult')}</h2>
+            {deployPlanResult ? (
+              <>
+                <div className="execution-grid">
+                  <div className="execution-kv">
+                    <strong>{t('deployEnv')}</strong>
+                    <span>{deployPlanResult.env}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('deployStrategy')}</strong>
+                    <span>{deployPlanResult.strategy}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('mode')}</strong>
+                    <span>{deployPlanResult.mode}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('currentBranch')}</strong>
+                    <span>{deployPlanResult.branch}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('releasePackages')}</strong>
+                    <span>{deployPlanResult.artifacts.length}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('risks')}</strong>
+                    <span>
+                      {deployPlanResult.checks.filter(item => !item.ok).length}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <strong>{t('deployPlanChecks')}</strong>
+                  {deployPlanResult.checks.length ? (
+                    <div style={{ marginTop: 8 }}>
+                      {deployPlanResult.checks.map(item => (
+                        <div className={`check ${item.level}`} key={item.id}>
+                          <strong>{item.id}</strong>
+                          <div>{item.message}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="meta" style={{ marginTop: 8 }}>
+                      {t('noDeployPlanChecks')}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="meta">{t('noPreviewResultYet')}</div>
+            )}
+          </article>
+
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('deployRunResult')}</h2>
+            {deployRunResult ? (
+              <>
+                <div className="execution-grid">
+                  <div className="execution-kv">
+                    <strong>Deployment ID</strong>
+                    <span>{deployRunResult.deploymentId}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('status')}</strong>
+                    <span>{deployRunResult.status}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>Deployed</strong>
+                    <span>{deployRunResult.deployed.length}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>{t('skipped')}</strong>
+                    <span>{deployRunResult.skipped.length}</span>
+                  </div>
+                  <div className="execution-kv">
+                    <strong>Failed</strong>
+                    <span>{deployRunResult.failed.length}</span>
+                  </div>
+                </div>
+                <div className="controls" style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    className="neo-pressable"
+                    onClick={() => void runDeployExecuteAction(true)}
+                  >
+                    {t('retryDeployDry')}
+                  </button>
+                  <button
+                    type="button"
+                    className="neo-pressable"
+                    onClick={() => void runDeployExecuteAction(false)}
+                  >
+                    {t('retryDeployApply')}
+                  </button>
+                  <button
+                    type="button"
+                    className="neo-pressable"
+                    disabled={selectedFailedDeployNames.length === 0}
+                    onClick={() =>
+                      void runDeployExecuteAction(
+                        true,
+                        selectedFailedDeployNames,
+                      )
+                    }
+                  >
+                    {t('retrySelectedDry')}
+                  </button>
+                  <button
+                    type="button"
+                    className="neo-pressable"
+                    disabled={selectedFailedDeployNames.length === 0}
+                    onClick={() =>
+                      void runDeployExecuteAction(
+                        false,
+                        selectedFailedDeployNames,
+                      )
+                    }
+                  >
+                    {t('retrySelectedApply')}
+                  </button>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <strong>{t('deployFailedItems')}</strong>
+                  {deployRunResult.failed.length ? (
+                    <div style={{ marginTop: 8 }}>
+                      <div className="controls" style={{ marginBottom: 8 }}>
+                        <button
+                          type="button"
+                          className="neo-pressable"
+                          onClick={() =>
+                            setSelectedFailedDeployNames(
+                              deployRunResult.failed.map(item => item.name),
+                            )
+                          }
+                        >
+                          {t('selectAllFailed')}
+                        </button>
+                      </div>
+                      {deployRunResult.failed.map(item => (
+                        <div
+                          className="check blocker"
+                          key={item.name + item.version}
+                        >
+                          <label
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              alignItems: 'center',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedFailedDeployNames.includes(
+                                item.name,
+                              )}
+                              onChange={event =>
+                                toggleFailedDeployName(
+                                  item.name,
+                                  event.target.checked,
+                                )
+                              }
+                            />
+                            <strong>
+                              {item.name}@{item.version}
+                            </strong>
+                          </label>
+                          <div>{item.reason}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="meta" style={{ marginTop: 8 }}>
+                      {t('noDeployFailedItems')}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="meta">{t('noExecutionLogs')}</div>
+            )}
+          </article>
+
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('deployRollbackResult')}</h2>
+            {deployRollbackResult ? (
+              <div className="execution-grid">
+                <div className="execution-kv">
+                  <strong>Deployment ID</strong>
+                  <span>{deployRollbackResult.deploymentId}</span>
+                </div>
+                <div className="execution-kv">
+                  <strong>{t('rollbackToId')}</strong>
+                  <span>{deployRollbackResult.rollbackTo}</span>
+                </div>
+                <div className="execution-kv">
+                  <strong>{t('status')}</strong>
+                  <span>{deployRollbackResult.status}</span>
+                </div>
               </div>
             ) : (
               <div className="meta">{t('noExecutionLogs')}</div>

@@ -1,6 +1,11 @@
 import type {
   ApiError,
   ApiSuccess,
+  DeployPlanResult,
+  DeployRecordDetail,
+  DeployRecordSummary,
+  DeployRollbackResult,
+  DeployRunResult,
   DraftPruneResult,
   ExecutionStatusPayload,
   PreviewDiagnosticBundle,
@@ -54,6 +59,63 @@ async function request<T>(
 
 export async function fetchContext(): Promise<PreviewContext> {
   const result = await request<PreviewContext>('/api/context')
+  return result.data
+}
+
+export async function runDeployPlan(params: {
+  env?: string
+  strategy?: 'rolling' | 'canary' | 'blue-green'
+  branch?: string
+  dry?: boolean
+}): Promise<DeployPlanResult> {
+  const result = await request<DeployPlanResult>('/api/deploy/plan', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+  return result.data
+}
+
+export async function runDeployExecute(params: {
+  env?: string
+  strategy?: 'rolling' | 'canary' | 'blue-green'
+  branch?: string
+  dry?: boolean
+  skipChecks?: boolean
+  concurrency?: number
+  artifactNames?: string[]
+}): Promise<DeployRunResult> {
+  const result = await request<DeployRunResult>('/api/deploy/run', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+  return result.data
+}
+
+export async function runDeployRollback(params: {
+  to: string
+  env?: string
+  branch?: string
+}): Promise<DeployRollbackResult> {
+  const result = await request<DeployRollbackResult>('/api/deploy/rollback', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+  return result.data
+}
+
+export async function listDeployRecords(): Promise<DeployRecordSummary[]> {
+  const result = await request<{ items: DeployRecordSummary[] }>(
+    '/api/deploy/records',
+  )
+  return result.data.items || []
+}
+
+export async function loadDeployRecord(
+  deploymentId: string,
+): Promise<DeployRecordDetail> {
+  const result = await request<DeployRecordDetail>(
+    `/api/deploy/records/${encodeURIComponent(deploymentId)}`,
+  )
   return result.data
 }
 

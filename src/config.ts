@@ -73,6 +73,20 @@ export type WorkspaceMode = 'locked' | 'independent'
 export type WorkspacePassive = 'patch' | 'follow' | 'none'
 
 /**
+ * @en Supported deploy provider names in config.
+ * @zh 配置中支持的 deploy provider 名称。
+ */
+export type DeployProviderName =
+  | 'vercel'
+  | 'cloudflare'
+  | 'onepanel'
+  | 'btpanel'
+  | 'ssh'
+  | 'rancher'
+  | 'k8s'
+  | 'custom'
+
+/**
  * @en Main configuration interface for nxspub.
  * @zh nxspub 的核心配置接口。
  */
@@ -184,6 +198,93 @@ export interface NxspubConfig {
      * @zh 发布前执行的项目构建命令。如果提供，将覆盖默认的 "pnpm run build"。
      */
     releaseBuild?: string
+  }
+
+  /**
+   * @en Deployment orchestration configuration.
+   * @zh 部署编排配置。
+   */
+  deploy?: {
+    /**
+     * @en Enable/disable deploy command.
+     * @zh 启用/禁用 deploy 命令。
+     */
+    enabled?: boolean
+    /**
+     * @en Default target environment.
+     * @zh 默认目标环境。
+     */
+    defaultEnvironment?: string
+    /**
+     * @en Branch-to-environment mapping.
+     * @zh 分支到环境映射。
+     */
+    branchEnvironmentMap?: Record<string, string>
+    /**
+     * @en Deploy provider configuration.
+     * @zh 部署 provider 配置。
+     */
+    provider?: {
+      /**
+       * @en Provider name.
+       * @zh Provider 名称。
+       */
+      name?: DeployProviderName
+      /**
+       * @en Provider custom config payload.
+       * @zh Provider 自定义配置载荷。
+       */
+      config?: Record<string, unknown>
+    }
+    /**
+     * @en Environment-specific deploy settings.
+     * @zh 环境级部署设置。
+     */
+    environments?: Record<
+      string,
+      {
+        /**
+         * @en Default strategy for the environment.
+         * @zh 环境默认部署策略。
+         */
+        strategy?: 'rolling' | 'canary' | 'blue-green'
+        /**
+         * @en Verification settings.
+         * @zh 校验设置。
+         */
+        verify?: {
+          healthEndpoint?: string
+          timeoutMs?: number
+          successThreshold?: number
+        }
+        /**
+         * @en Approval settings.
+         * @zh 审批设置。
+         */
+        approval?: {
+          required?: boolean
+          channel?: string
+        }
+      }
+    >
+    /**
+     * @en Promotion constraints between environments.
+     * @zh 环境晋级约束。
+     */
+    promotion?: {
+      /**
+       * @en Require production deploy to match digest from source environment.
+       * @zh 要求 production 部署与来源环境的 digest 完全一致。
+       * @default true
+       */
+      requireSameArtifactDigest?: boolean
+      /**
+       * @en Source environment used for promotion verification.
+       * @zh 用于晋级校验的来源环境。
+       * @default staging
+       */
+      sourceEnvironment?: string
+    }
   }
 }
 

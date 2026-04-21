@@ -384,6 +384,447 @@ describe('preview web server APIs', () => {
     }
   })
 
+  it('returns deploy plan from /api/deploy/plan', async () => {
+    const buildDeployPlan = vi.fn().mockResolvedValue({
+      env: 'staging',
+      strategy: 'rolling',
+      mode: 'single',
+      branch: 'main',
+      artifacts: [{ name: 'demo', version: '1.0.0', source: 'registry' }],
+      checks: [],
+    })
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/deploy/core', () => ({
+      buildDeployPlan,
+      runDeploy: vi.fn(),
+      runDeployRollback: vi.fn(),
+    }))
+    vi.doMock('../src/deploy/records', () => ({
+      readDeployRecordIndex: vi.fn().mockResolvedValue({ items: [] }),
+      readDeployRecord: vi.fn().mockResolvedValue(null),
+      saveDeployRecord: vi.fn(),
+      getDeployRecordDir: vi
+        .fn()
+        .mockReturnValue('/repo/.nxspub/deploy-records'),
+    }))
+    vi.doMock('../src/utils/load-config', () => ({
+      loadConfig: vi.fn().mockResolvedValue({}),
+    }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+    })
+
+    try {
+      const response = await fetch(`${handle.url}/api/deploy/plan`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ env: 'staging' }),
+      })
+      expect(response.status).toBe(200)
+      const payload = (await response.json()) as {
+        data: { env: string; strategy: string }
+      }
+      expect(payload.data.env).toBe('staging')
+      expect(payload.data.strategy).toBe('rolling')
+      expect(buildDeployPlan).toHaveBeenCalledTimes(1)
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('returns 403 for deploy run endpoint in readonly-strict mode', async () => {
+    const runDeploy = vi.fn()
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/deploy/core', () => ({
+      buildDeployPlan: vi.fn(),
+      runDeploy,
+      runDeployRollback: vi.fn(),
+    }))
+    vi.doMock('../src/deploy/records', () => ({
+      readDeployRecordIndex: vi.fn().mockResolvedValue({ items: [] }),
+      readDeployRecord: vi.fn().mockResolvedValue(null),
+      saveDeployRecord: vi.fn(),
+      getDeployRecordDir: vi
+        .fn()
+        .mockReturnValue('/repo/.nxspub/deploy-records'),
+    }))
+    vi.doMock('../src/utils/load-config', () => ({
+      loadConfig: vi.fn().mockResolvedValue({}),
+    }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: true,
+    })
+
+    try {
+      const response = await fetch(`${handle.url}/api/deploy/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ env: 'staging', dry: true }),
+      })
+      expect(response.status).toBe(403)
+      expect(runDeploy).not.toHaveBeenCalled()
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('returns 403 for deploy rollback endpoint in readonly-strict mode', async () => {
+    const runDeployRollback = vi.fn()
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/deploy/core', () => ({
+      buildDeployPlan: vi.fn(),
+      runDeploy: vi.fn(),
+      runDeployRollback,
+    }))
+    vi.doMock('../src/deploy/records', () => ({
+      readDeployRecordIndex: vi.fn().mockResolvedValue({ items: [] }),
+      readDeployRecord: vi.fn().mockResolvedValue(null),
+      saveDeployRecord: vi.fn(),
+      getDeployRecordDir: vi
+        .fn()
+        .mockReturnValue('/repo/.nxspub/deploy-records'),
+    }))
+    vi.doMock('../src/utils/load-config', () => ({
+      loadConfig: vi.fn().mockResolvedValue({}),
+    }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: true,
+    })
+
+    try {
+      const response = await fetch(`${handle.url}/api/deploy/rollback`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ to: 'deploy-1' }),
+      })
+      expect(response.status).toBe(403)
+      expect(runDeployRollback).not.toHaveBeenCalled()
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('returns 404 for missing deploy record detail endpoint', async () => {
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/deploy/core', () => ({
+      buildDeployPlan: vi.fn(),
+      runDeploy: vi.fn(),
+      runDeployRollback: vi.fn(),
+    }))
+    vi.doMock('../src/deploy/records', () => ({
+      readDeployRecordIndex: vi.fn().mockResolvedValue({ items: [] }),
+      readDeployRecord: vi.fn().mockResolvedValue(null),
+      saveDeployRecord: vi.fn(),
+      getDeployRecordDir: vi
+        .fn()
+        .mockReturnValue('/repo/.nxspub/deploy-records'),
+    }))
+    vi.doMock('../src/utils/load-config', () => ({
+      loadConfig: vi.fn().mockResolvedValue({}),
+    }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: false,
+    })
+
+    try {
+      const response = await fetch(
+        `${handle.url}/api/deploy/records/not-existing`,
+        {
+          method: 'GET',
+          headers: {
+            'x-nxspub-console-token': handle.token,
+          },
+        },
+      )
+      expect(response.status).toBe(404)
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('returns 409 when deploy run is already in-flight', async () => {
+    let resolveFirstDeployExecution: (() => void) | undefined
+    const runDeploy = vi.fn().mockImplementation(async () => {
+      await new Promise<void>(resolve => {
+        resolveFirstDeployExecution = resolve
+      })
+      return {
+        deploymentId: 'deploy-1',
+        status: 'success',
+        deployed: [],
+        skipped: [],
+        failed: [],
+        timeline: [],
+      }
+    })
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/deploy/core', () => ({
+      buildDeployPlan: vi.fn(),
+      runDeploy,
+      runDeployRollback: vi.fn(),
+    }))
+    vi.doMock('../src/deploy/records', () => ({
+      readDeployRecordIndex: vi.fn().mockResolvedValue({ items: [] }),
+      readDeployRecord: vi.fn().mockResolvedValue(null),
+      saveDeployRecord: vi.fn(),
+      getDeployRecordDir: vi
+        .fn()
+        .mockReturnValue('/repo/.nxspub/deploy-records'),
+    }))
+    vi.doMock('../src/utils/load-config', () => ({
+      loadConfig: vi.fn().mockResolvedValue({}),
+    }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: false,
+    })
+
+    try {
+      const firstRun = fetch(`${handle.url}/api/deploy/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ env: 'staging', dry: true }),
+      })
+      await new Promise(resolve => setTimeout(resolve, 20))
+
+      const secondResponse = await fetch(`${handle.url}/api/deploy/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ env: 'staging', dry: true }),
+      })
+      expect(secondResponse.status).toBe(409)
+
+      resolveFirstDeployExecution?.()
+      const firstResponse = await firstRun
+      expect(firstResponse.status).toBe(200)
+      expect(runDeploy).toHaveBeenCalledTimes(1)
+    } finally {
+      await handle.close()
+    }
+  })
+
   it('blocks version run when branch policy check fails', async () => {
     const versionCommand = vi.fn()
 

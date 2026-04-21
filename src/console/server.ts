@@ -11,8 +11,12 @@ import path from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import { releaseCommand } from '../commands/release'
 import { versionCommand } from '../commands/version'
+import { buildDeployPlan, runDeploy, runDeployRollback } from '../deploy/core'
+import { readDeployRecord, readDeployRecordIndex } from '../deploy/records'
 import { NxspubError, toErrorMessage } from '../utils/errors'
+import { loadConfig } from '../utils/load-config'
 import { cliLogger } from '../utils/logger'
+import { withDeployLock } from '../utils/deploy-lock'
 import {
   buildPreviewChecksReport,
   buildPreviewResult,
@@ -96,7 +100,7 @@ class PreviewRequestTimeoutError extends Error {
   }
 }
 
-type ExecutionTaskKind = 'version' | 'release'
+type ExecutionTaskKind = 'version' | 'release' | 'deploy' | 'rollback'
 
 interface ExecutionTaskState {
   kind: ExecutionTaskKind
@@ -781,6 +785,225 @@ export async function startConsoleWebServer(
           running: executionInFlight !== null,
           currentTask: executionInFlight || undefined,
         })
+        return
+      }
+
+      if (pathname === '/api/deploy/plan' && method === 'POST') {
+        const body = await readJsonBody<{
+          env?: string
+          strategy?: 'rolling' | 'canary' | 'blue-green'
+          branch?: string
+          dry?: boolean
+        }>(request)
+        const config = await withRequestTimeout(
+          loadConfig(cwd),
+          requestTimeoutMs,
+          'Request timed out while loading deploy config.',
+        )
+        const plan = await withRequestTimeout(
+          buildDeployPlan(
+            {
+              cwd,
+              env: body.env,
+              strategy: body.strategy,
+              branch: body.branch,
+              dry: body.dry,
+              plan: true,
+            },
+            config,
+          ),
+          requestTimeoutMs,
+          'Request timed out while computing deploy plan.',
+        )
+        writeSuccess(response, plan)
+        return
+      }
+
+      if (pathname === '/api/deploy/run' && method === 'POST') {
+        if (!requireWritableMode(response, readonlyStrict, 'Deploy run')) {
+          return
+        }
+        if (executionInFlight) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            `Another execution task is running: ${executionInFlight.kind}.`,
+          )
+          return
+        }
+
+        const body = await readJsonBody<{
+          env?: string
+          strategy?: 'rolling' | 'canary' | 'blue-green'
+          branch?: string
+          dry?: boolean
+          skipChecks?: boolean
+          concurrency?: number
+          artifactNames?: string[]
+        }>(request)
+        const config = await withRequestTimeout(
+          loadConfig(cwd),
+          requestTimeoutMs,
+          'Request timed out while loading deploy config.',
+        )
+        const executionRequestId = createRequestId(
+          `${Date.now()}:deploy:${Math.random()}`,
+        )
+        executionInFlight = {
+          kind: 'deploy',
+          startedAt: new Date().toISOString(),
+          requestId: executionRequestId,
+        }
+        emitEvent({
+          kind: 'deploy',
+          phase: 'start',
+          message: `Running deploy (${body.dry !== false ? 'dry-run' : 'apply'}).`,
+          timestamp: new Date().toISOString(),
+        })
+
+        try {
+          const deployResult = await withRequestTimeout(
+            withDeployLock(cwd, async () =>
+              runDeploy(
+                {
+                  cwd,
+                  env: body.env,
+                  strategy: body.strategy,
+                  branch: body.branch,
+                  dry: body.dry,
+                  skipChecks: body.skipChecks,
+                  concurrency: body.concurrency,
+                  artifactNames: body.artifactNames,
+                },
+                config,
+              ),
+            ),
+            requestTimeoutMs,
+            'Request timed out while running deploy.',
+          )
+          writeSuccess(response, deployResult)
+          emitEvent({
+            kind: 'deploy',
+            phase: 'success',
+            message: 'Deploy run completed.',
+            timestamp: new Date().toISOString(),
+          })
+        } catch (error) {
+          writeError(response, 500, 'INTERNAL', toErrorMessage(error))
+          emitEvent({
+            kind: 'deploy',
+            phase: 'error',
+            message: toErrorMessage(error),
+            timestamp: new Date().toISOString(),
+          })
+        } finally {
+          executionInFlight = null
+        }
+        return
+      }
+
+      if (pathname === '/api/deploy/rollback' && method === 'POST') {
+        if (!requireWritableMode(response, readonlyStrict, 'Deploy rollback')) {
+          return
+        }
+        if (executionInFlight) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            `Another execution task is running: ${executionInFlight.kind}.`,
+          )
+          return
+        }
+
+        const body = await readJsonBody<{
+          to?: string
+          env?: string
+          branch?: string
+        }>(request)
+        const config = await withRequestTimeout(
+          loadConfig(cwd),
+          requestTimeoutMs,
+          'Request timed out while loading deploy config.',
+        )
+        const executionRequestId = createRequestId(
+          `${Date.now()}:rollback:${Math.random()}`,
+        )
+        executionInFlight = {
+          kind: 'rollback',
+          startedAt: new Date().toISOString(),
+          requestId: executionRequestId,
+        }
+        emitEvent({
+          kind: 'deploy-rollback',
+          phase: 'start',
+          message: 'Running deploy rollback.',
+          timestamp: new Date().toISOString(),
+        })
+
+        try {
+          const rollbackResult = await withRequestTimeout(
+            withDeployLock(cwd, async () =>
+              runDeployRollback(
+                {
+                  cwd,
+                  rollback: true,
+                  to: body.to,
+                  env: body.env,
+                  branch: body.branch,
+                },
+                config,
+              ),
+            ),
+            requestTimeoutMs,
+            'Request timed out while running deploy rollback.',
+          )
+          writeSuccess(response, rollbackResult)
+          emitEvent({
+            kind: 'deploy-rollback',
+            phase: 'success',
+            message: 'Deploy rollback completed.',
+            timestamp: new Date().toISOString(),
+          })
+        } catch (error) {
+          writeError(response, 500, 'INTERNAL', toErrorMessage(error))
+          emitEvent({
+            kind: 'deploy-rollback',
+            phase: 'error',
+            message: toErrorMessage(error),
+            timestamp: new Date().toISOString(),
+          })
+        } finally {
+          executionInFlight = null
+        }
+        return
+      }
+
+      if (pathname === '/api/deploy/records' && method === 'GET') {
+        const index = await withRequestTimeout(
+          readDeployRecordIndex(cwd),
+          requestTimeoutMs,
+          'Request timed out while loading deploy record index.',
+        )
+        writeSuccess(response, index)
+        return
+      }
+
+      if (pathname.startsWith('/api/deploy/records/') && method === 'GET') {
+        const recordId = decodeURIComponent(
+          pathname.replace('/api/deploy/records/', ''),
+        )
+        const record = await withRequestTimeout(
+          readDeployRecord(cwd, recordId),
+          requestTimeoutMs,
+          'Request timed out while loading deploy record.',
+        )
+        if (!record) {
+          writeError(response, 404, 'NOT_FOUND', 'Deploy record not found.')
+          return
+        }
+        writeSuccess(response, record)
         return
       }
 

@@ -864,3 +864,6 @@ End-to-end (optional for MVP):
 - [x] Static hosting and cache policy match documentation
 - [x] Recovery paths (`401/timeout/cancel`) are verifiable
 - [x] Rollout/rollback switch is configurable (`NXSPUB_CONSOLE_WEB_ENABLED`)
+- [x] Deploy workspace APIs wired (`/api/deploy/plan`, `/api/deploy/run`, `/api/deploy/rollback`, `/api/deploy/records`, `/api/deploy/records/:id`)
+- [x] Deploy endpoint guards covered (`readonly-strict: 403`, in-flight conflict: `409`, missing record detail: `404`)
+- [x] Shared execution lock model applies to `version` / `release` / `deploy` / `rollback`

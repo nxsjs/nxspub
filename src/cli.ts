@@ -1,6 +1,7 @@
 import { cac } from 'cac'
 import pkg from '../package.json'
 import { consoleCommand } from './commands/console'
+import { deployCommand } from './commands/deploy'
 import { draftDoctorCommand } from './commands/draft-doctor'
 import { gitHooksCommand } from './commands/git-hooks'
 import { lintCommand } from './commands/lint'
@@ -8,6 +9,7 @@ import { releaseCommand } from './commands/release'
 import type {
   ConsoleOptions,
   CwdOptions,
+  DeployOptions,
   GitHooksOptions,
   LintOptions,
   ReleaseOptions,
@@ -96,6 +98,34 @@ cli
     withCliErrorHandling(async options => {
       const typedOptions = options as ConsoleOptions
       await consoleCommand(typedOptions)
+    }),
+  )
+
+cli
+  .command('deploy', 'Deploy released artifacts to runtime environments')
+  .option('--cwd <cwd>', 'Specify the working directory', {
+    default: process.cwd(),
+  })
+  .option('--env <env>', 'Target deployment environment')
+  .option(
+    '--strategy <strategy>',
+    'Deploy strategy: rolling | canary | blue-green',
+  )
+  .option(
+    '--branch <branch>',
+    'Override branch used for environment resolution',
+  )
+  .option('--plan', 'Compute deploy plan only', { default: false })
+  .option('--dry', 'Run deploy in dry-run mode', { default: false })
+  .option('--rollback', 'Run rollback mode', { default: false })
+  .option('--to <deploymentId>', 'Rollback target deployment id')
+  .option('--skipChecks', 'Skip non-critical checks', { default: false })
+  .option('--concurrency <n>', 'Workspace deploy concurrency', { default: 1 })
+  .option('--json', 'Output machine-readable JSON', { default: false })
+  .action(
+    withCliErrorHandling(async options => {
+      const typedOptions = options as DeployOptions
+      await deployCommand(typedOptions)
     }),
   )
 

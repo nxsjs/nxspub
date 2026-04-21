@@ -82,3 +82,28 @@ export interface ReleaseOptions extends DryRunOptions {
   /** @en Skip git synchronization check. @zh 跳过 Git 同步检查。 */
   skipSync?: boolean
 }
+
+/**
+ * @en Command options for deploy command.
+ * @zh deploy 命令参数。
+ */
+export interface DeployOptions extends DryRunOptions {
+  /** @en Target deploy environment. @zh 目标部署环境。 */
+  env?: string
+  /** @en Deploy strategy override. @zh 部署策略覆盖值。 */
+  strategy?: 'rolling' | 'canary' | 'blue-green'
+  /** @en Branch override for environment resolution. @zh 用于环境解析的分支覆盖值。 */
+  branch?: string
+  /** @en Run in plan-only mode. @zh 仅输出部署计划。 */
+  plan?: boolean
+  /** @en Enable rollback mode. @zh 启用回滚模式。 */
+  rollback?: boolean
+  /** @en Rollback target deployment id. @zh 回滚目标部署 ID。 */
+  to?: string
+  /** @en Skip non-critical checks. @zh 跳过非关键检查。 */
+  skipChecks?: boolean
+  /** @en Workspace deploy concurrency limit. @zh 工作区部署并发上限。 */
+  concurrency?: number
+  /** @en Output machine-readable JSON. @zh 输出机器可读 JSON。 */
+  json?: boolean
+}
