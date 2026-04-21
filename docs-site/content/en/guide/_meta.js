@@ -3,6 +3,8 @@ export default {
   'quick-start-workflows': 'Quick Start Workflows',
   configuration: 'Configuration',
   commands: 'Commands',
+  skills: 'Skills',
+  mcp: 'MCP Server',
   'workspace-releases': 'Workspace Releases',
   'branch-strategy': 'Branch Strategy',
   'changelog-drafts': 'Changelog Drafts',

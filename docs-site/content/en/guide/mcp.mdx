@@ -1,0 +1,140 @@
+---
+title: MCP Server
+---
+
+# MCP Server
+
+`nxspub` exposes an MCP server so AI clients can inspect and run release workflows safely.
+
+If you are new to MCP, treat it as a bridge:
+- Your AI client sends structured requests.
+- `nxspub` returns release/deploy context and plans.
+- Write operations stay guarded by dry-run and confirmation gates.
+
+## What MCP Helps You Do
+
+- Read repository release context (`mode`, `branch`, policy, package manager).
+- Preview next version/changelog before writing anything.
+- Check changelog draft health for target stable version.
+- Build deploy plans from `nxspub.config.ts`.
+- Execute `version`, `release`, and `deploy` with explicit confirmation.
+
+## Quick Start (Recommended)
+
+1. Initialize client config in your repo:
+
+```bash
+nxspub mcp init --client codex
+```
+
+2. Restart your AI client.
+3. Ask for safe preview-first execution:
+
+```text
+Show nxspub preview for current branch, then run dry version and dry release.
+```
+
+Supported clients:
+- `claude`
+- `cursor`
+- `vscode`
+- `codex`
+- `opencode`
+
+## Manual Configuration
+
+Use this only when you do not want `nxspub mcp init`.
+
+### Codex (`~/.codex/config.toml`)
+
+```toml
+[mcp_servers.nxspub]
+command = "npx"
+args = ["nxspub@latest", "mcp"]
+```
+
+### Claude Code (`.mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "nxspub": {
+      "command": "npx",
+      "args": ["nxspub@latest", "mcp"]
+    }
+  }
+}
+```
+
+### Cursor (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "nxspub": {
+      "command": "npx",
+      "args": ["nxspub@latest", "mcp"]
+    }
+  }
+}
+```
+
+### VS Code (`.vscode/mcp.json`)
+
+```json
+{
+  "servers": {
+    "nxspub": {
+      "command": "npx",
+      "args": ["nxspub@latest", "mcp"]
+    }
+  }
+}
+```
+
+## Tool Reference
+
+- `nxspub_get_context`: Read current release context.
+- `nxspub_preview`: Build version/changelog preview.
+- `nxspub_draft_health`: Validate draft health.
+- `nxspub_deploy_plan`: Build deploy plan.
+- `nxspub_validate_config`: Validate config quickly.
+- `nxspub_version`: Run version flow.
+- `nxspub_release`: Run release flow.
+- `nxspub_deploy_execute`: Execute deploy/rollback.
+
+## Safety Model (Must Know)
+
+- `nxspub_version` and `nxspub_release` default to `dry=true`.
+- `nxspub_deploy_execute` defaults to `dry=true` for standard deploy.
+- Any non-dry write requires `confirm: "YES"`.
+- Rollback requires both `confirm: "YES"` and `to`.
+
+This means accidental writes are blocked unless explicitly approved.
+
+## Prompt Examples
+
+- `Show nxspub preview for this branch.`
+- `Run nxspub version in dry mode and summarize file changes.`
+- `Run nxspub release dry with tag alpha.`
+- `Execute real release now, confirm YES.`
+- `Plan production canary deploy first, then wait for my approval.`
+- `Rollback deploy to <deploymentId> with confirm YES.`
+
+## Troubleshooting
+
+- MCP not visible in client:
+  - Restart the client after config changes.
+  - Check config file path and key name (`nxspub`).
+- Server starts but tools fail:
+  - Run `nxspub mcp` locally to inspect startup errors.
+  - Verify `nxspub.config.ts` is valid.
+- Unexpected write behavior:
+  - Confirm `dry` value.
+  - Confirm whether `confirm: "YES"` was sent.
+
+## Operational Recommendation
+
+- Keep CI/CD as production source of truth.
+- Use MCP for planning, inspection, and controlled execution.
+- Re-run `nxspub mcp init` safely when client config drifts (idempotent update).

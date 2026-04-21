@@ -3,6 +3,8 @@ export default {
   'quick-start-workflows': '快速工作流',
   configuration: '配置',
   commands: '命令',
+  skills: 'Skills',
+  mcp: 'MCP Server',
   'workspace-releases': 'Workspace 发布',
   'branch-strategy': '分支策略',
   'changelog-drafts': 'Changelog 草稿',

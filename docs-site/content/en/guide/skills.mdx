@@ -1,0 +1,97 @@
+---
+title: Skills
+---
+
+# Skills
+
+`nxspub` supports AI workflow alignment through Skills and MCP.
+
+Skills and MCP are complementary:
+
+- MCP provides external executable capabilities (tools and data access).
+- Skills provide project-specific workflow rules and best practices.
+
+## Important
+
+- Skills are consumed by AI clients (Codex, Claude Code, Cursor, etc.) through the external Skills ecosystem.
+- In this repository, the built-in skill file is at `skills/nxspub/SKILL.md`.
+
+## Why Skills Matter
+
+MCP tells the assistant what it can call.  
+Skills tell the assistant how to execute your release process safely and consistently.
+
+Practical split:
+
+- MCP: capability layer (read/plan/execute tools).
+- Skills: policy layer (order, approval gates, failure behavior, report format).
+
+## Quick Start (Beginner Friendly)
+
+1. Install skill from npm/GitHub:
+
+```bash
+npx skills add nxsjs/nxspub --skill nxspub
+```
+
+2. Restart your AI client so it reloads skills.
+3. Ask with explicit policy:
+
+```text
+Run nxspub release workflow for this repo, dry-run first, then wait for my approval.
+```
+
+4. Verify expected order:
+- `version --dry`
+- `release --dry`
+- `deploy --plan`
+
+## Install from Local Repository (No Network)
+
+If you already cloned this repository, install from local path:
+
+```bash
+npx skills add ./skills --skill nxspub
+```
+
+## What the nxspub Skill Enforces
+
+- Preview first, execute later.
+- Explicit approval for non-dry writes.
+- Stop-on-failure between `version -> release -> deploy`.
+- Rollback requires a concrete deployment target.
+- Structured summary after each execution step.
+
+## MCP + Skills Together
+
+- Use MCP for capabilities: preview, plan, execute.
+- Use Skills for policy: order, safety checks, and reporting style.
+- Best practice: keep both enabled in team environments.
+
+## Open Skills Ecosystem (skills.sh)
+
+Browse skills and leaderboard:
+
+- https://skills.sh
+
+## Security and Telemetry Notes
+
+- The `skills` CLI ecosystem uses anonymous aggregated install telemetry for ranking.
+- Telemetry does not include personal identity or detailed usage traces.
+- Always review skill source before installing third-party packages.
+
+## Troubleshooting
+
+- Skill not loaded:
+  - Verify the installed skill name is `nxspub`.
+  - Restart the AI client after installation.
+- Assistant skips dry-run:
+  - Tell it: "follow nxspub skill policy: dry-run first".
+- Deploy ran too early:
+  - Require explicit gate in prompt: "do not execute non-dry without my YES".
+
+## Team Recommendation
+
+- Keep one shared skill policy across the team.
+- Use the same approval phrase (`YES`) to reduce ambiguity.
+- Keep production execution in CI/CD when possible; use Skills + MCP for safe human-in-the-loop operations.

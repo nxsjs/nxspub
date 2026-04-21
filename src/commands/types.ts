@@ -107,3 +107,18 @@ export interface DeployOptions extends DryRunOptions {
   /** @en Output machine-readable JSON. @zh 输出机器可读 JSON。 */
   json?: boolean
 }
+
+/**
+ * @en Command options for mcp command.
+ * @zh mcp 命令参数。
+ */
+export interface McpOptions extends CwdOptions {}
+
+/**
+ * @en Command options for mcp init command.
+ * @zh mcp init 命令参数。
+ */
+export interface McpInitOptions extends CwdOptions {
+  /** @en MCP client name. @zh MCP 客户端名称。 */
+  client?: 'claude' | 'cursor' | 'vscode' | 'codex' | 'opencode'
+}

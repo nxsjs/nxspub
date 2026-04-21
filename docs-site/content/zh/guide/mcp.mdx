@@ -1,0 +1,140 @@
+---
+title: MCP Server
+---
+
+# MCP Server
+
+`nxspub` 提供 MCP 服务，让 AI 客户端可以“看懂并安全执行”发布流程。
+
+如果你是第一次接触 MCP，可以这样理解：
+- AI 客户端负责发请求。
+- `nxspub` MCP 负责返回发布/部署上下文与计划。
+- 真正写入操作由 dry-run 与确认参数保护。
+
+## MCP 能帮你做什么
+
+- 读取仓库发布上下文（`mode`、`branch`、策略、包管理器）。
+- 预览版本与 changelog，不先写文件。
+- 检查 changelog 草稿健康度。
+- 从 `nxspub.config.ts` 生成部署计划。
+- 在明确确认后执行 `version`、`release`、`deploy`。
+
+## 快速开始（推荐）
+
+1. 在项目中初始化客户端配置：
+
+```bash
+nxspub mcp init --client codex
+```
+
+2. 重启 AI 客户端。
+3. 发出预览优先指令：
+
+```text
+先给我当前分支的 nxspub preview，再执行 dry version 和 dry release。
+```
+
+支持的客户端：
+- `claude`
+- `cursor`
+- `vscode`
+- `codex`
+- `opencode`
+
+## 手动配置
+
+如果你不想用 `nxspub mcp init`，可以手动写配置。
+
+### Codex（`~/.codex/config.toml`）
+
+```toml
+[mcp_servers.nxspub]
+command = "npx"
+args = ["nxspub@latest", "mcp"]
+```
+
+### Claude Code（`.mcp.json`）
+
+```json
+{
+  "mcpServers": {
+    "nxspub": {
+      "command": "npx",
+      "args": ["nxspub@latest", "mcp"]
+    }
+  }
+}
+```
+
+### Cursor（`.cursor/mcp.json`）
+
+```json
+{
+  "mcpServers": {
+    "nxspub": {
+      "command": "npx",
+      "args": ["nxspub@latest", "mcp"]
+    }
+  }
+}
+```
+
+### VS Code（`.vscode/mcp.json`）
+
+```json
+{
+  "servers": {
+    "nxspub": {
+      "command": "npx",
+      "args": ["nxspub@latest", "mcp"]
+    }
+  }
+}
+```
+
+## 工具说明
+
+- `nxspub_get_context`：读取当前发布上下文。
+- `nxspub_preview`：生成版本与 changelog 预览。
+- `nxspub_draft_health`：检查草稿健康度。
+- `nxspub_deploy_plan`：生成部署计划。
+- `nxspub_validate_config`：快速校验配置。
+- `nxspub_version`：执行版本升级流程。
+- `nxspub_release`：执行发布流程。
+- `nxspub_deploy_execute`：执行部署/回滚。
+
+## 安全模型（必须了解）
+
+- `nxspub_version`、`nxspub_release` 默认 `dry=true`。
+- `nxspub_deploy_execute` 普通部署默认 `dry=true`。
+- 任何非 dry 写入必须传 `confirm: "YES"`。
+- 回滚必须同时传 `confirm: "YES"` 与 `to`。
+
+这意味着：除非你明确确认，否则不会执行真实写入。
+
+## 示例提示词
+
+- `给我当前分支的 nxspub preview。`
+- `执行 nxspub version dry，并总结会改哪些文件。`
+- `执行 nxspub release dry，tag=alpha。`
+- `现在执行真实 release，confirm YES。`
+- `先给 production canary 部署计划，再等我确认。`
+- `按 <deploymentId> 回滚，confirm YES。`
+
+## 常见问题排查
+
+- 客户端看不到 MCP：
+  - 修改配置后重启客户端。
+  - 检查配置文件路径和 key 是否为 `nxspub`。
+- MCP 已启动但工具报错：
+  - 本地执行 `nxspub mcp` 查看启动报错。
+  - 检查 `nxspub.config.ts` 是否有效。
+- 出现意外写入：
+  - 检查 `dry` 参数是否为 `false`。
+  - 检查是否传了 `confirm: "YES"`。
+
+## 生产实践建议
+
+- 生产发布仍建议以 CLI/CI 为主路径。
+- MCP 适合做预览、审阅和受控执行。
+- 配置漂移时可重复执行 `nxspub mcp init`（幂等更新）。

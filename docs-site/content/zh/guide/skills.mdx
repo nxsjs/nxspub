@@ -1,0 +1,97 @@
+---
+title: Skills
+---
+
+# Skills
+
+`nxspub` 支持通过 Skills 与 MCP 统一 AI 工作流。
+
+Skills 和 MCP 不是替代关系，而是互补：
+
+- MCP：提供可调用能力（工具、数据、执行通道）。
+- Skills：提供项目级流程规范与执行约束。
+
+## 重要说明
+
+- Skills 由外部 Skills 生态和 AI 客户端（Codex、Claude Code、Cursor 等）消费。
+- 本仓库内置 skill 文件路径：`skills/nxspub/SKILL.md`。
+
+## 为什么 Skills 很重要
+
+MCP 解决“能调用什么能力”；  
+Skills 解决“按什么流程做才安全、稳定、可复用”。
+
+可理解为两层：
+
+- MCP：能力层（读、预览、执行工具）。
+- Skills：策略层（顺序、门禁、失败处理、输出规范）。
+
+## 快速开始（新手可直接照做）
+
+1. 从 npm/GitHub 安装 skill：
+
+```bash
+npx skills add nxsjs/nxspub --skill nxspub
+```
+
+2. 重启你的 AI 客户端，让它重新加载 skills。
+3. 对助手说清楚策略要求：
+
+```text
+请按 nxspub 发布流程执行，先 dry-run，再等我确认后执行非 dry。
+```
+
+4. 确认执行顺序是否正确：
+- `version --dry`
+- `release --dry`
+- `deploy --plan`
+
+## 从本地仓库安装（无需联网）
+
+如果你已经克隆了本仓库，可直接本地安装：
+
+```bash
+npx skills add ./skills --skill nxspub
+```
+
+## 这个 Skill 约束什么
+
+- 先预览/计划，再执行。
+- 非 dry 写入必须显式确认。
+- `version -> release -> deploy` 任一步失败即停止。
+- rollback 必须有明确目标部署 ID。
+- 每一步执行后输出结构化摘要，方便团队复核。
+
+## MCP + Skills 组合建议
+
+- MCP 负责“能力”：预览、计划、执行。
+- Skills 负责“策略”：顺序、安全门禁、报告格式。
+- 团队环境建议两者同时开启。
+
+## Open Skills 生态（skills.sh）
+
+排行榜与发现页：
+
+- https://skills.sh
+
+## 安全与遥测说明
+
+- `skills` 生态使用匿名聚合安装数据做排行榜排序。
+- 不包含个人身份信息，也不记录细粒度使用轨迹。
+- 安装第三方 skill 前，建议先审查源码。
+
+## 常见问题排查
+
+- skill 没生效：
+  - 检查安装名是否为 `nxspub`。
+  - 安装后重启 AI 客户端。
+- 助手跳过 dry-run：
+  - 明确要求："按 nxspub skill 规则先 dry-run"。
+- 助手过早执行 deploy：
+  - 在提示中加门禁："没有我的 YES 不允许执行非 dry"。
+
+## 团队实践建议
+
+- 团队统一一套 skill 策略，减少人和人之间执行偏差。
+- 统一确认口令（例如 `YES`），避免歧义。
+- 生产执行尽量走 CI/CD；Skills + MCP 用于“可审阅、可确认”的人机协同流程。

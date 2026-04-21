@@ -5,6 +5,7 @@ import { deployCommand } from './commands/deploy'
 import { draftDoctorCommand } from './commands/draft-doctor'
 import { gitHooksCommand } from './commands/git-hooks'
 import { lintCommand } from './commands/lint'
+import { mcpCommand, mcpInitCommand } from './commands/mcp'
 import { releaseCommand } from './commands/release'
 import type {
   ConsoleOptions,
@@ -12,6 +13,8 @@ import type {
   DeployOptions,
   GitHooksOptions,
   LintOptions,
+  McpInitOptions,
+  McpOptions,
   ReleaseOptions,
   VersionOptions,
 } from './commands/types'
@@ -71,6 +74,31 @@ cli
     withCliErrorHandling(async options => {
       const typedOptions = options as LintOptions
       await lintCommand(typedOptions)
+    }),
+  )
+
+cli
+  .command('mcp', 'Start nxspub MCP server over stdio')
+  .option('--cwd <cwd>', 'Specify the working directory', {
+    default: process.cwd(),
+  })
+  .action(
+    withCliErrorHandling(async options => {
+      const typedOptions = options as McpOptions
+      await mcpCommand(typedOptions)
+    }),
+  )
+
+cli
+  .command('mcp init', 'Generate MCP client config for nxspub')
+  .option('--cwd <cwd>', 'Specify the working directory', {
+    default: process.cwd(),
+  })
+  .option('--client <client>', 'claude | cursor | vscode | codex | opencode')
+  .action(
+    withCliErrorHandling(async options => {
+      const typedOptions = options as McpInitOptions
+      await mcpInitCommand(typedOptions)
     }),
   )
 
