@@ -2,6 +2,19 @@
 title: Latest Changelog
 ---
 
+## [0.9.1](https://github.com/nxsjs/nxspub/compare/0.9.0...0.9.1) (2026-04-21)
+
+### Bug Fixes
+
+* format changelog bodies as bullet lists ([862c262](https://github.com/nxsjs/nxspub/commit/862c262d61872f604efd5494b4abd188f8335ece))
+* **console:** provide fallback for project logo in web dashboard ([0c5266f](https://github.com/nxsjs/nxspub/commit/0c5266f22adebbb055552d8b15793c9eed84aa22))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.9.0](https://github.com/nxsjs/nxspub/compare/0.8.1...0.9.0) (2026-04-21)
 
 ### Features
@@ -20,7 +33,7 @@ nyxsola
 ### Refactors
 
 * transition `preview` command to `console` ([ccac790](https://github.com/nxsjs/nxspub/commit/ccac790ec7e2265e9eb5f19bf2e50f4801b05162))
-  > [WARNING] 'preview' is deprecated and will be removed in future versions. Please use 'console' instead.
+  - [WARNING] 'preview' is deprecated and will be removed in future versions. Please use 'console' instead.
 * rename `preview` command to `console` ([142e7c0](https://github.com/nxsjs/nxspub/commit/142e7c0c8a6d539562265946beff87147db72d72))
 
 ### Contributors
@@ -154,7 +167,7 @@ nyxsola
 
 * cwd-aware git lookups and commit parsing ([5c1b5ff](https://github.com/nxsjs/nxspub/commit/5c1b5ff102e2d66833f27e4021d2479fdadb5e87))
 * Potential fix for code scanning alert no. 8: Incomplete URL substring sanitization ([#10](https://github.com/nxsjs/nxspub/pull/10)) ([43f3f82](https://github.com/nxsjs/nxspub/commit/43f3f82d7e5d3760e37a3a9deaf498899e3dead4))
-  > Co-authored-by: Copilot Autofix powered by AI <62310815+github-advanced-security[bot]@users.noreply.github.com>
+  - Co-authored-by: Copilot Autofix powered by AI <62310815+github-advanced-security[bot]@users.noreply.github.com>
 
 ### Contributors
 
