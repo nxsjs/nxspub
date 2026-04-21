@@ -553,7 +553,7 @@ pnpm run lint
 
 ## Resources
 
-- [Learn Nxspub](https://nxsjs.com)
+- [Learn Nxspub](https://nxspub.nxsjs.com)
 - [npm package](https://www.npmjs.com/package/nxspub)
 
 ## Contribution
