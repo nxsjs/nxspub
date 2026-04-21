@@ -505,7 +505,7 @@ async function updatePackageChangelog(
     let entry = `* ${scopeText}${breakingTag}${parsed.subject}${prsText} ${commitLink}${closesSuffix}`
 
     if (parsed.bodyLines.length > 0) {
-      entry += `\n  > ${parsed.bodyLines
+      const normalizedBodyLines = parsed.bodyLines
         .map(line => {
           line = line.trim()
           if (line.startsWith('-')) {
@@ -513,7 +513,10 @@ async function updatePackageChangelog(
           }
           return line
         })
-        .join('\n  \n  > ')}`
+        .filter(line => line.length > 0)
+      if (normalizedBodyLines.length > 0) {
+        entry += `\n${normalizedBodyLines.map(line => `  - ${line}`).join('\n')}`
+      }
     }
 
     if (parsed.breakingDetail) {

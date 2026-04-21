@@ -16,7 +16,7 @@ nyxsola
 ### Refactors
 
 * transition `preview` command to `console` ([ccac790](https://github.com/nxsjs/nxspub/commit/ccac790ec7e2265e9eb5f19bf2e50f4801b05162))
-  > [WARNING] 'preview' is deprecated and will be removed in future versions. Please use 'console' instead.
+  - [WARNING] 'preview' is deprecated and will be removed in future versions. Please use 'console' instead.
 * rename `preview` command to `console` ([142e7c0](https://github.com/nxsjs/nxspub/commit/142e7c0c8a6d539562265946beff87147db72d72))
 
 ### Contributors
@@ -30,17 +30,12 @@ nyxsola
 ### Features
 
 * **preview:** complete web mvp and hardening ([242c5bb](https://github.com/nxsjs/nxspub/commit/242c5bbea0386f5d2a00a9a239c39d66c3398099))
-  > add snapshot delete endpoint and UI flow
-  
-  > enforce readonly-strict on all write endpoints
-  
-  > add preview-web feature flag rollback switch
-  
-  > add web tsconfig + css side-effect type declaration
-  
-  > extend integration tests for prune/snapshot/port fallback
-  
-  > update README and preview-web-design docs
+  - add snapshot delete endpoint and UI flow
+  - enforce readonly-strict on all write endpoints
+  - add preview-web feature flag rollback switch
+  - add web tsconfig + css side-effect type declaration
+  - extend integration tests for prune/snapshot/port fallback
+  - update README and preview-web-design docs
 
 ### Contributors
 
@@ -155,7 +150,7 @@ nyxsola
 
 * cwd-aware git lookups and commit parsing ([5c1b5ff](https://github.com/nxsjs/nxspub/commit/5c1b5ff102e2d66833f27e4021d2479fdadb5e87))
 * Potential fix for code scanning alert no. 8: Incomplete URL substring sanitization ([#10](https://github.com/nxsjs/nxspub/pull/10)) ([43f3f82](https://github.com/nxsjs/nxspub/commit/43f3f82d7e5d3760e37a3a9deaf498899e3dead4))
-  > Co-authored-by: Copilot Autofix powered by AI <62310815+github-advanced-security[bot]@users.noreply.github.com>
+  - Co-authored-by: Copilot Autofix powered by AI <62310815+github-advanced-security[bot]@users.noreply.github.com>
 
 ### Contributors
 

@@ -256,7 +256,7 @@ export async function versionSingle(
     let entry = `* ${scopeText}${breakingTag}${subject}${prsText} (${commitLink})${closesSuffix}`
 
     if (bodyLines.length > 0) {
-      entry += `\n  > ${bodyLines
+      const normalizedBodyLines = bodyLines
         .map(line => {
           line = line.trim()
           if (line.startsWith('-')) {
@@ -264,7 +264,10 @@ export async function versionSingle(
           }
           return line
         })
-        .join('\n  \n  > ')}`
+        .filter(line => line.length > 0)
+      if (normalizedBodyLines.length > 0) {
+        entry += `\n${normalizedBodyLines.map(line => `  - ${line}`).join('\n')}`
+      }
     }
 
     if (breakingDetail) {

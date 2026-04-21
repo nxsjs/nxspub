@@ -34,17 +34,12 @@ nyxsola
 ### Features
 
 * **preview:** complete web mvp and hardening ([242c5bb](https://github.com/nxsjs/nxspub/commit/242c5bbea0386f5d2a00a9a239c39d66c3398099))
-  > add snapshot delete endpoint and UI flow
-  
-  > enforce readonly-strict on all write endpoints
-  
-  > add preview-web feature flag rollback switch
-  
-  > add web tsconfig + css side-effect type declaration
-  
-  > extend integration tests for prune/snapshot/port fallback
-  
-  > update README and preview-web-design docs
+  - add snapshot delete endpoint and UI flow
+  - enforce readonly-strict on all write endpoints
+  - add preview-web feature flag rollback switch
+  - add web tsconfig + css side-effect type declaration
+  - extend integration tests for prune/snapshot/port fallback
+  - update README and preview-web-design docs
 
 ### Contributors
 
