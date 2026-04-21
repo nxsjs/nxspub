@@ -1,7 +1,6 @@
-import { generateStaticParamsFor, importPage } from 'nextra/pages'
-import { notFound } from 'next/navigation'
 import { cookies, headers } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { generateStaticParamsFor, importPage } from 'nextra/pages'
 import { useMDXComponents as getMDXComponents } from '../../../mdx-components'
 
 const SUPPORTED_LOCALES = new Set(['en', 'zh'])
@@ -23,7 +22,9 @@ async function resolvePreferredLocale() {
   }
 
   const requestHeaders = await headers()
-  const acceptLanguage = (requestHeaders.get('accept-language') || '').toLowerCase()
+  const acceptLanguage = (
+    requestHeaders.get('accept-language') || ''
+  ).toLowerCase()
   if (acceptLanguage.includes('zh')) {
     return 'zh'
   }
@@ -32,7 +33,10 @@ async function resolvePreferredLocale() {
 
 export async function generateMetadata({ params: paramsPromise }) {
   const params = await paramsPromise
-  if (!SUPPORTED_LOCALES.has(params.lang) || shouldIgnoreRoute(params.mdxPath)) {
+  if (
+    !SUPPORTED_LOCALES.has(params.lang) ||
+    shouldIgnoreRoute(params.mdxPath)
+  ) {
     return {}
   }
   const { metadata } = await importPage(params.mdxPath, params.lang)
@@ -52,6 +56,7 @@ export default async function Page({ params: paramsPromise }) {
   }
   const result = await importPage(params.mdxPath, params.lang)
   const { default: MDXContent, toc, metadata, sourceCode } = result
+
   return (
     <Wrapper toc={toc} metadata={metadata} sourceCode={sourceCode}>
       <MDXContent params={params} />

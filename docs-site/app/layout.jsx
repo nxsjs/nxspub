@@ -1,4 +1,5 @@
 import 'nextra-theme-docs/style.css'
+import { LanguageGuard } from './components/language-guard'
 import './global.css'
 
 export const metadata = {
@@ -12,7 +13,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <LanguageGuard />
+        {children}
+      </body>
     </html>
   )
 }
