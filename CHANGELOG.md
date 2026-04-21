@@ -1,3 +1,16 @@
+## [0.9.0](https://github.com/nxsjs/nxspub/compare/0.8.1...0.9.0) (2026-04-21)
+
+### Features
+
+* nxspub deploy ([53c09eb](https://github.com/nxsjs/nxspub/commit/53c09eb790f2a2f21f31474435f76791ac499fcd))
+* **console:** implement strict pre-flight validation logic ([3768a27](https://github.com/nxsjs/nxspub/commit/3768a2754a38fc8ecc5e3a99b0df00f251645eb5))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.8.1](https://github.com/nxsjs/nxspub/compare/0.8.0...0.8.1) (2026-04-20)
 
 ### Refactors
