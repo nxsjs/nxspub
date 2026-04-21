@@ -1,4 +1,3 @@
-/** @type {import('nextra-theme-docs').DocsThemeConfig} */
 const config = {
   i18n: [
     { locale: 'en', name: 'English' },

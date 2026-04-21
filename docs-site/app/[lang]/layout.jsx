@@ -61,6 +61,7 @@ export default async function DocsLocaleLayout({ children, params }) {
           projectLink={themeConfig.project?.link}
         />
       }
+      i18n={themeConfig.i18n}
       pageMap={localizedPageMap}
       docsRepositoryBase={themeConfig.docsRepositoryBase}
     >

@@ -1,0 +1,8 @@
+/* Fallback for mobile sidebar panel background when --nextra-bg is missing. */
+.nextra-mobile-nav {
+  background-color: rgb(var(--nextra-bg, 255 255 255)) !important;
+}
+
+.dark .nextra-mobile-nav {
+  background-color: rgb(var(--nextra-bg, 17 17 17)) !important;
+}
