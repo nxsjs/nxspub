@@ -16,6 +16,7 @@ import {
   type PackageManagerInfo,
 } from '../utils/package-manager'
 import { readJSON } from '../utils/packages'
+import type { ReleaseExecutionSummary } from './release'
 
 interface InternalReleaseOptions extends ReleaseOptions {
   resolvedPackageManager?: PackageManagerInfo
@@ -40,7 +41,7 @@ interface InternalReleaseOptions extends ReleaseOptions {
 export async function releaseSingle(
   options: InternalReleaseOptions,
   config: NxspubConfig,
-) {
+): Promise<ReleaseExecutionSummary> {
   const {
     cwd,
     dry,
@@ -101,7 +102,16 @@ export async function releaseSingle(
     cliLogger.warn(
       `Skip: ${packageJson.name}@${packageJson.version} is already published.`,
     )
-    return
+    return {
+      published: [],
+      skipped: [
+        {
+          name: packageJson.name,
+          version: packageJson.version,
+          reason: 'already_published',
+        },
+      ],
+    }
   }
 
   if (!skipBuild) {
@@ -150,6 +160,15 @@ export async function releaseSingle(
     await run(command.bin, command.args, { cwd })
     if (!dry) {
       cliLogger.success(`Released ${packageJson.name}@${packageJson.version}`)
+    }
+    return {
+      published: [
+        {
+          name: packageJson.name,
+          version: packageJson.version,
+        },
+      ],
+      skipped: [],
     }
   } catch {
     cliLogger.error(`NPM Publish failed for ${packageJson.name}`)

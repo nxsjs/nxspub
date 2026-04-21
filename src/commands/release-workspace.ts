@@ -17,6 +17,7 @@ import {
   scanWorkspacePackages,
   topologicalSort,
 } from '../utils/packages'
+import type { ReleaseExecutionSummary } from './release'
 import { releaseSingle } from './release-single'
 
 /**
@@ -38,7 +39,7 @@ import { releaseSingle } from './release-single'
 export async function releaseWorkspace(
   options: ReleaseOptions,
   config: NxspubConfig,
-) {
+): Promise<ReleaseExecutionSummary> {
   const { cwd, dry, branch, skipSync } = options
 
   const currentBranch = branch || (await getCurrentBranch(cwd))
@@ -57,7 +58,6 @@ export async function releaseWorkspace(
       `Admission Denied: Branch "${currentBranch}" not configured.`,
     )
     abort(1)
-    return
   }
 
   cliLogger.step('Workspace Release: Initializing Pipeline')
@@ -76,7 +76,7 @@ export async function releaseWorkspace(
 
   if (publicPackages.length === 0) {
     cliLogger.success('No public packages found in workspace.')
-    return
+    return { published: [], skipped: [] }
   }
 
   const isPrereleasePolicy = branchReleasePolicy.startsWith('pre')
@@ -109,7 +109,14 @@ export async function releaseWorkspace(
     cliLogger.success(
       `No packages match branch policy "${branchReleasePolicy}" for release.`,
     )
-    return
+    return {
+      published: [],
+      skipped: skippedPackages.map(pkg => ({
+        name: pkg.name,
+        version: pkg.version,
+        reason: 'branch_policy_mismatch',
+      })),
+    }
   }
 
   cliLogger.step('Building all workspace packages...')
@@ -130,8 +137,17 @@ export async function releaseWorkspace(
     }
   }
 
+  const summary: ReleaseExecutionSummary = {
+    published: [],
+    skipped: skippedPackages.map(pkg => ({
+      name: pkg.name,
+      version: pkg.version,
+      reason: 'branch_policy_mismatch',
+    })),
+  }
+
   for (const packageInfo of eligiblePackages) {
-    await releaseSingle(
+    const singleResult = await releaseSingle(
       {
         ...options,
         cwd: packageInfo.dir,
@@ -140,7 +156,10 @@ export async function releaseWorkspace(
       },
       config,
     )
+    summary.published.push(...(singleResult?.published || []))
+    summary.skipped.push(...(singleResult?.skipped || []))
   }
 
   cliLogger.success('Workspace release completed successfully.')
+  return summary
 }

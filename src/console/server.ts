@@ -9,7 +9,9 @@ import { strToU8, zipSync } from 'fflate'
 import { createApp, eventHandler, toNodeListener } from 'h3'
 import path from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
-import { NxspubError } from '../utils/errors'
+import { releaseCommand } from '../commands/release'
+import { versionCommand } from '../commands/version'
+import { NxspubError, toErrorMessage } from '../utils/errors'
 import { cliLogger } from '../utils/logger'
 import {
   buildPreviewChecksReport,
@@ -92,6 +94,24 @@ class PreviewRequestTimeoutError extends Error {
     super(message)
     this.name = 'PreviewRequestTimeoutError'
   }
+}
+
+type ExecutionTaskKind = 'version' | 'release'
+
+interface ExecutionTaskState {
+  kind: ExecutionTaskKind
+  startedAt: string
+  requestId: string
+}
+
+interface ExecutionLogItem {
+  level: 'info' | 'warn' | 'error'
+  message: string
+  at: string
+}
+
+interface ExecutionGuardResult {
+  checks: Awaited<ReturnType<typeof buildPreviewChecksReport>>
 }
 
 function createRequestId(seed: string): string {
@@ -194,6 +214,31 @@ function requireWritableMode(
     `${endpointName} is disabled in readonly-strict mode.`,
   )
   return false
+}
+
+async function evaluateExecutionGuards(
+  cwd: string,
+  branch: string,
+  requestTimeoutMs: number,
+): Promise<ExecutionGuardResult> {
+  const preview = await withRequestTimeout(
+    buildPreviewResult({
+      cwd,
+      branch,
+      includeChangelog: false,
+      includeChecks: false,
+    }),
+    requestTimeoutMs,
+    'Request timed out while computing execution preview context.',
+  )
+
+  const checks = await withRequestTimeout(
+    buildPreviewChecksReport(cwd, preview),
+    requestTimeoutMs,
+    'Request timed out while computing execution checks.',
+  )
+
+  return { checks }
 }
 
 async function tryServeLogo(
@@ -355,7 +400,7 @@ async function buildDiagnosticBundle(
 }
 
 function getSnapshotDir(cwd: string): string {
-  return path.join(cwd, '.nxspub', 'preview-snapshots')
+  return path.join(cwd, '.nxspub', 'console-snapshots')
 }
 
 function normalizeSnapshotId(input: string): string {
@@ -456,6 +501,12 @@ export async function startConsoleWebServer(
   const staticRoot = apiOnly ? null : await resolveWebStaticRoot()
   let lastPreviewResult: PreviewResult | null = null
   let previewInFlight = false
+  let executionInFlight: ExecutionTaskState | null = null
+  let lastSuccessfulVersionExecution: {
+    branch: string
+    dry: boolean
+    executedAt: string
+  } | null = null
   const eventClients = new Set<ServerResponse>()
 
   const emitEvent = (event: PreviewSseEvent) => {
@@ -722,6 +773,324 @@ export async function startConsoleWebServer(
           message: `Draft prune completed. pruned=${result.prunedCount}`,
           timestamp: new Date().toISOString(),
         })
+        return
+      }
+
+      if (pathname === '/api/execution/status' && method === 'GET') {
+        writeSuccess(response, {
+          running: executionInFlight !== null,
+          currentTask: executionInFlight || undefined,
+        })
+        return
+      }
+
+      if (pathname === '/api/version/run' && method === 'POST') {
+        if (!requireWritableMode(response, readonlyStrict, 'Version run')) {
+          return
+        }
+        if (executionInFlight) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            `Another execution task is running: ${executionInFlight.kind}.`,
+          )
+          return
+        }
+
+        const body = await readJsonBody<{
+          dry?: boolean
+          branch?: string
+        }>(request)
+        const dry = body.dry !== false
+        const context = await withRequestTimeout(
+          getPreviewContext(cwd),
+          requestTimeoutMs,
+          'Request timed out while loading execution context.',
+        )
+
+        if (body.branch && body.branch !== context.currentBranch) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            `Execution branch mismatch: current="${context.currentBranch}", requested="${body.branch}".`,
+          )
+          return
+        }
+        const guardResult = await evaluateExecutionGuards(
+          cwd,
+          context.currentBranch,
+          requestTimeoutMs,
+        )
+        if (!guardResult.checks.policy.ok) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            guardResult.checks.policy.message ||
+              'Branch policy check failed for version execution.',
+          )
+          return
+        }
+        if (!guardResult.checks.gitSync.ok) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            `Git sync check failed: dirty=${guardResult.checks.gitSync.dirty}, ahead=${guardResult.checks.gitSync.ahead}, behind=${guardResult.checks.gitSync.behind}.`,
+          )
+          return
+        }
+
+        const executionRequestId = createRequestId(
+          `${Date.now()}:version:${Math.random()}`,
+        )
+        executionInFlight = {
+          kind: 'version',
+          startedAt: new Date().toISOString(),
+          requestId: executionRequestId,
+        }
+        emitEvent({
+          kind: 'execution',
+          phase: 'start',
+          message: `Running version (${dry ? 'dry-run' : 'apply'}).`,
+          timestamp: new Date().toISOString(),
+        })
+
+        try {
+          await versionCommand({ cwd, dry })
+          const nextPreview = await withRequestTimeout(
+            buildPreviewResult({
+              cwd,
+              branch: context.currentBranch,
+              includeChangelog: false,
+              includeChecks: false,
+            }),
+            requestTimeoutMs,
+            'Request timed out while refreshing execution summary.',
+          )
+          lastPreviewResult = nextPreview
+          writeSuccess(response, {
+            status: 'success' as const,
+            dry,
+            summary: {
+              mode: nextPreview.mode,
+              targetVersion: nextPreview.targetVersion,
+              releasePackageCount: nextPreview.releasePackageCount,
+            },
+            logs: [
+              {
+                level: 'info',
+                message: dry
+                  ? 'Version dry-run finished successfully.'
+                  : 'Version execution finished successfully.',
+                at: new Date().toISOString(),
+              } satisfies ExecutionLogItem,
+            ],
+          })
+          emitEvent({
+            kind: 'execution',
+            phase: 'success',
+            message: `Version ${dry ? 'dry-run' : 'apply'} completed.`,
+            timestamp: new Date().toISOString(),
+          })
+          lastSuccessfulVersionExecution = {
+            branch: context.currentBranch,
+            dry,
+            executedAt: new Date().toISOString(),
+          }
+        } catch (error) {
+          const message = toErrorMessage(error) || 'Version execution failed.'
+          writeSuccess(response, {
+            status: 'failed' as const,
+            dry,
+            summary: {
+              mode: context.mode,
+              releasePackageCount: 0,
+            },
+            logs: [
+              {
+                level: 'error',
+                message,
+                at: new Date().toISOString(),
+              } satisfies ExecutionLogItem,
+            ],
+          })
+          emitEvent({
+            kind: 'execution',
+            phase: 'error',
+            message,
+            timestamp: new Date().toISOString(),
+          })
+        } finally {
+          executionInFlight = null
+        }
+        return
+      }
+
+      if (pathname === '/api/release/run' && method === 'POST') {
+        if (!requireWritableMode(response, readonlyStrict, 'Release run')) {
+          return
+        }
+        if (executionInFlight) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            `Another execution task is running: ${executionInFlight.kind}.`,
+          )
+          return
+        }
+
+        const body = await readJsonBody<{
+          dry?: boolean
+          branch?: string
+          registry?: string
+          tag?: string
+          access?: string
+          provenance?: boolean
+          skipBuild?: boolean
+          skipSync?: boolean
+        }>(request)
+        const dry = body.dry !== false
+        const context = await withRequestTimeout(
+          getPreviewContext(cwd),
+          requestTimeoutMs,
+          'Request timed out while loading execution context.',
+        )
+
+        if (body.branch && body.branch !== context.currentBranch) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            `Execution branch mismatch: current="${context.currentBranch}", requested="${body.branch}".`,
+          )
+          return
+        }
+        const guardResult = await evaluateExecutionGuards(
+          cwd,
+          context.currentBranch,
+          requestTimeoutMs,
+        )
+        if (!guardResult.checks.policy.ok) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            guardResult.checks.policy.message ||
+              'Branch policy check failed for release execution.',
+          )
+          return
+        }
+        if (!guardResult.checks.gitSync.ok) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            `Git sync check failed: dirty=${guardResult.checks.gitSync.dirty}, ahead=${guardResult.checks.gitSync.ahead}, behind=${guardResult.checks.gitSync.behind}.`,
+          )
+          return
+        }
+        if (
+          !lastSuccessfulVersionExecution ||
+          lastSuccessfulVersionExecution.branch !== context.currentBranch
+        ) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            `Release execution requires a successful version run in this session on branch "${context.currentBranch}".`,
+          )
+          return
+        }
+        if (!dry && lastSuccessfulVersionExecution.dry) {
+          writeError(
+            response,
+            409,
+            'CONFLICT',
+            'Release publish requires a prior non-dry version run in this session.',
+          )
+          return
+        }
+
+        const executionRequestId = createRequestId(
+          `${Date.now()}:release:${Math.random()}`,
+        )
+        executionInFlight = {
+          kind: 'release',
+          startedAt: new Date().toISOString(),
+          requestId: executionRequestId,
+        }
+        emitEvent({
+          kind: 'execution',
+          phase: 'start',
+          message: `Running release (${dry ? 'dry-run' : 'publish'}).`,
+          timestamp: new Date().toISOString(),
+        })
+
+        try {
+          const releaseResult = await releaseCommand({
+            cwd,
+            dry,
+            branch: body.branch,
+            registry: body.registry,
+            tag: body.tag,
+            access: body.access,
+            provenance: body.provenance,
+            skipBuild: body.skipBuild,
+            skipSync: body.skipSync,
+          })
+          writeSuccess(response, {
+            status: 'success' as const,
+            dry,
+            published: releaseResult.published,
+            skipped: releaseResult.skipped,
+            logs: [
+              {
+                level: 'info',
+                message: dry
+                  ? 'Release dry-run finished successfully.'
+                  : 'Release publish finished successfully.',
+                at: new Date().toISOString(),
+              } satisfies ExecutionLogItem,
+            ],
+          })
+          emitEvent({
+            kind: 'execution',
+            phase: 'success',
+            message: `Release ${dry ? 'dry-run' : 'publish'} completed.`,
+            timestamp: new Date().toISOString(),
+          })
+        } catch (error) {
+          const message = toErrorMessage(error) || 'Release execution failed.'
+          writeSuccess(response, {
+            status: 'failed' as const,
+            dry,
+            published: [] as Array<{ name: string; version: string }>,
+            skipped: [] as Array<{
+              name: string
+              version: string
+              reason: string
+            }>,
+            logs: [
+              {
+                level: 'error',
+                message,
+                at: new Date().toISOString(),
+              } satisfies ExecutionLogItem,
+            ],
+          })
+          emitEvent({
+            kind: 'execution',
+            phase: 'error',
+            message,
+            timestamp: new Date().toISOString(),
+          })
+        } finally {
+          executionInFlight = null
+        }
         return
       }
 

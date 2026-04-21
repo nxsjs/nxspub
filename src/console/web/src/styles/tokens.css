@@ -142,4 +142,64 @@
   .check.blocker {
     @apply border-[#b02500] bg-[#ffd9cf];
   }
+
+  .execution-grid {
+    @apply grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .execution-kv {
+    @apply border-[2px] border-black bg-[#f6f6f6] p-2;
+  }
+
+  .execution-kv strong {
+    @apply block text-[10px] font-black uppercase tracking-[0.08em] text-[#5b5b5b];
+  }
+
+  .execution-kv span {
+    @apply mt-1 block text-[13px] font-extrabold;
+  }
+
+  .timeline-list {
+    @apply grid gap-2;
+  }
+
+  .timeline-item {
+    @apply flex items-center justify-between border-[2px] border-black px-3 py-2;
+  }
+
+  .timeline-item.pending {
+    @apply bg-[#f6f6f6];
+  }
+
+  .timeline-item.running {
+    @apply bg-[#fff5cd];
+  }
+
+  .timeline-item.success {
+    @apply bg-[#f5ffe0];
+  }
+
+  .timeline-item.error {
+    @apply border-[#b02500] bg-[#ffd9cf];
+  }
+
+  .log-item {
+    @apply grid gap-1 border-[2px] border-black bg-white p-2;
+  }
+
+  .log-level {
+    @apply w-fit border-[2px] border-black px-2 py-0.5 text-[10px];
+  }
+
+  .log-level.info {
+    @apply bg-[#f5ffe0];
+  }
+
+  .log-level.warn {
+    @apply bg-[#fff5cd];
+  }
+
+  .log-level.error {
+    @apply bg-[#ffd9cf];
+  }
 }

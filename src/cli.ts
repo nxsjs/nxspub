@@ -74,7 +74,6 @@ cli
 
 cli
   .command('console', 'Interactive release console with preview capabilities')
-  .alias('preview')
   .option('--cwd <cwd>', 'Specify the working directory', {
     default: process.cwd(),
   })

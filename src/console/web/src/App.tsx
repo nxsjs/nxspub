@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   createPreviewEventSource,
   deleteSnapshot as deleteSnapshotApi,
+  fetchExecutionStatus,
   fetchChecks,
   fetchContext,
   fetchDiagnosticBundleJson,
@@ -13,6 +14,8 @@ import {
   fetchPreview,
   pruneDrafts,
   parsePreviewSseEvent,
+  runReleaseCommand,
+  runVersionCommand,
   saveSnapshot,
 } from './api'
 import { ChangelogPreview } from './components/ChangelogPreview'
@@ -25,12 +28,16 @@ import { createTranslator } from './i18n'
 import type { PreviewLocale, Translator } from './i18n'
 import type {
   DraftPruneResult,
+  ExecutionLogItem,
+  ExecutionStatusPayload,
   PreviewChecksReport,
   PreviewContext,
   PreviewDraftHealth,
   PreviewResult,
+  ReleaseRunResult,
   PreviewSseEvent,
   PreviewSnapshotSummary,
+  VersionRunResult,
 } from './types'
 
 function exportAsJson(data: unknown, filename: string) {
@@ -52,12 +59,15 @@ interface AppProps {
   locale: PreviewLocale
 }
 
+type TimelineStepState = 'pending' | 'running' | 'success' | 'error'
+
 type ViewMode =
   | 'overview'
   | 'comparison'
   | 'drafts'
   | 'dependencies'
   | 'diagnostics'
+  | 'execution'
 
 export function App({ locale }: AppProps) {
   const t: Translator = createTranslator(locale)
@@ -87,6 +97,19 @@ export function App({ locale }: AppProps) {
   const [pruneResult, setPruneResult] = useState<DraftPruneResult | null>(null)
   const [lastDryRunTarget, setLastDryRunTarget] = useState<string | null>(null)
   const [lastDryRunAffectedCount, setLastDryRunAffectedCount] = useState(0)
+  const [executionStatus, setExecutionStatus] =
+    useState<ExecutionStatusPayload | null>(null)
+  const [executionLogs, setExecutionLogs] = useState<ExecutionLogItem[]>([])
+  const [lastVersionResult, setLastVersionResult] =
+    useState<VersionRunResult | null>(null)
+  const [lastReleaseResult, setLastReleaseResult] =
+    useState<ReleaseRunResult | null>(null)
+  const [releaseRegistry, setReleaseRegistry] = useState('')
+  const [releaseTag, setReleaseTag] = useState('')
+  const [releaseAccess, setReleaseAccess] = useState('')
+  const [releaseProvenance, setReleaseProvenance] = useState(false)
+  const [releaseSkipBuild, setReleaseSkipBuild] = useState(false)
+  const [releaseSkipSync, setReleaseSkipSync] = useState(false)
   const previewAbortRef = useRef<AbortController | null>(null)
   const requestSerialRef = useRef(0)
   const currentPruneTarget = preview?.targetVersion?.split('-')[0] || null
@@ -106,6 +129,64 @@ export function App({ locale }: AppProps) {
       snapshot.compareBranch === snapshotFilterBranch
     return hitKeyword && hitBranch
   })
+
+  function toLocalTimestamp(timestamp: string): string {
+    const date = new Date(timestamp)
+    if (Number.isNaN(date.getTime())) return timestamp
+    return date.toLocaleString()
+  }
+
+  function stepStateLabel(state: TimelineStepState): string {
+    if (state === 'running') return t('stepRunning')
+    if (state === 'success') return t('stepSuccess')
+    if (state === 'error') return t('stepError')
+    return t('stepPending')
+  }
+
+  function buildExecutionTimeline(): Array<{
+    key: string
+    label: string
+    state: TimelineStepState
+  }> {
+    const isRunning = executionStatus?.running === true
+    const hasVersionResult = lastVersionResult !== null
+    const hasReleaseResult = lastReleaseResult !== null
+    const latestResult = hasReleaseResult
+      ? lastReleaseResult
+      : lastVersionResult
+    const hasResult = hasVersionResult || hasReleaseResult
+    const failed = latestResult?.status === 'failed'
+    const succeeded = latestResult?.status === 'success'
+
+    return [
+      {
+        key: 'validate',
+        label: t('timelineValidate'),
+        state: isRunning || hasResult ? 'success' : 'pending',
+      },
+      {
+        key: 'plan',
+        label: t('timelinePlan'),
+        state: isRunning || hasResult ? 'success' : 'pending',
+      },
+      {
+        key: 'execute',
+        label: t('timelineExecute'),
+        state: isRunning
+          ? 'running'
+          : failed
+            ? 'error'
+            : succeeded
+              ? 'success'
+              : 'pending',
+      },
+      {
+        key: 'finalize',
+        label: t('timelineFinalize'),
+        state: succeeded ? 'success' : 'pending',
+      },
+    ]
+  }
 
   async function runPreview(branchOverride: string, showLoading = true) {
     const requestId = ++requestSerialRef.current
@@ -397,6 +478,75 @@ export function App({ locale }: AppProps) {
     }
   }
 
+  async function refreshExecutionStatus() {
+    try {
+      const next = await fetchExecutionStatus()
+      setExecutionStatus(next)
+      return next
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      return null
+    }
+  }
+
+  async function runVersionExecution(dry: boolean) {
+    setLoading(true)
+    setError('')
+    try {
+      const status = await refreshExecutionStatus()
+      if (status?.running) {
+        throw new Error(t('errExecutionBusy'))
+      }
+      if (!dry) {
+        const confirmed = window.confirm(t('confirmVersionApply'))
+        if (!confirmed) return
+      }
+      const result = await runVersionCommand({
+        dry,
+        branch: branchInput || undefined,
+      })
+      setLastVersionResult(result)
+      setExecutionLogs(result.logs)
+      await Promise.all([refreshExecutionStatus(), refreshPreview()])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function runReleaseExecution(dry: boolean) {
+    setLoading(true)
+    setError('')
+    try {
+      const status = await refreshExecutionStatus()
+      if (status?.running) {
+        throw new Error(t('errExecutionBusy'))
+      }
+      if (!dry) {
+        const confirmed = window.confirm(t('confirmReleasePublish'))
+        if (!confirmed) return
+      }
+      const result = await runReleaseCommand({
+        dry,
+        branch: branchInput || undefined,
+        registry: releaseRegistry || undefined,
+        tag: releaseTag || undefined,
+        access: releaseAccess || undefined,
+        provenance: releaseProvenance || undefined,
+        skipBuild: releaseSkipBuild || undefined,
+        skipSync: releaseSkipSync || undefined,
+      })
+      setLastReleaseResult(result)
+      setExecutionLogs(result.logs)
+      await refreshExecutionStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="app">
       <header className="neo-border neo-shadow topbar">
@@ -489,6 +639,16 @@ export function App({ locale }: AppProps) {
             onClick={() => setActiveView('diagnostics')}
           >
             {t('viewDiagnostics')}
+          </button>
+          <button
+            type="button"
+            className={`neo-pressable ${activeView === 'execution' ? 'primary' : ''}`}
+            onClick={() => {
+              setActiveView('execution')
+              void refreshExecutionStatus()
+            }}
+          >
+            {t('viewExecution')}
           </button>
         </div>
       </section>
@@ -733,6 +893,198 @@ export function App({ locale }: AppProps) {
               {t('bundleZip')}
             </button>
           </div>
+        </section>
+      ) : null}
+
+      {activeView === 'execution' ? (
+        <section className="stack">
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('executionWorkspace')}</h2>
+            <div className="controls">
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void refreshExecutionStatus()}
+              >
+                {t('refreshStatus')}
+              </button>
+            </div>
+            <div className="meta-grid" style={{ marginTop: 10 }}>
+              <div>
+                {t('executionStatus')}:{' '}
+                {executionStatus?.running ? t('running') : t('idle')}
+              </div>
+              {executionStatus?.currentTask ? (
+                <>
+                  <div>
+                    {t('inFlightTask')}: {executionStatus.currentTask.kind}
+                  </div>
+                  <div>
+                    {t('startedAt')}: {executionStatus.currentTask.startedAt}
+                  </div>
+                  <div>
+                    {t('requestId')}: {executionStatus.currentTask.requestId}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </article>
+
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('versionRunner')}</h2>
+            <div className="controls">
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void runVersionExecution(true)}
+              >
+                {t('runVersionDry')}
+              </button>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void runVersionExecution(false)}
+              >
+                {t('runVersionApply')}
+              </button>
+            </div>
+            {lastVersionResult ? (
+              <div className="execution-grid" style={{ marginTop: 10 }}>
+                <div className="execution-kv">
+                  <strong>{t('status')}</strong>
+                  <span>{lastVersionResult.status}</span>
+                </div>
+                <div className="execution-kv">
+                  <strong>{t('dryRun')}</strong>
+                  <span>{String(lastVersionResult.dry)}</span>
+                </div>
+                <div className="execution-kv">
+                  <strong>{t('mode')}</strong>
+                  <span>{lastVersionResult.summary.mode}</span>
+                </div>
+                <div className="execution-kv">
+                  <strong>{t('targetVersion')}</strong>
+                  <span>{lastVersionResult.summary.targetVersion || '-'}</span>
+                </div>
+                <div className="execution-kv">
+                  <strong>{t('releasePackages')}</strong>
+                  <span>{lastVersionResult.summary.releasePackageCount}</span>
+                </div>
+              </div>
+            ) : null}
+          </article>
+
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('releaseRunner')}</h2>
+            <div className="controls">
+              <input
+                placeholder={t('releaseRegistry')}
+                value={releaseRegistry}
+                onChange={event => setReleaseRegistry(event.target.value)}
+              />
+              <input
+                placeholder={t('releaseTag')}
+                value={releaseTag}
+                onChange={event => setReleaseTag(event.target.value)}
+              />
+              <input
+                placeholder={t('releaseAccess')}
+                value={releaseAccess}
+                onChange={event => setReleaseAccess(event.target.value)}
+              />
+              <label>
+                <input
+                  type="checkbox"
+                  checked={releaseProvenance}
+                  onChange={event => setReleaseProvenance(event.target.checked)}
+                />
+                {t('releaseProvenance')}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={releaseSkipBuild}
+                  onChange={event => setReleaseSkipBuild(event.target.checked)}
+                />
+                {t('skipBuild')}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={releaseSkipSync}
+                  onChange={event => setReleaseSkipSync(event.target.checked)}
+                />
+                {t('skipSync')}
+              </label>
+            </div>
+            <div className="controls" style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void runReleaseExecution(true)}
+              >
+                {t('runReleaseDry')}
+              </button>
+              <button
+                type="button"
+                className="neo-pressable"
+                onClick={() => void runReleaseExecution(false)}
+              >
+                {t('runReleasePublish')}
+              </button>
+            </div>
+            {lastReleaseResult ? (
+              <div className="execution-grid" style={{ marginTop: 10 }}>
+                <div className="execution-kv">
+                  <strong>{t('status')}</strong>
+                  <span>{lastReleaseResult.status}</span>
+                </div>
+                <div className="execution-kv">
+                  <strong>{t('dryRun')}</strong>
+                  <span>{String(lastReleaseResult.dry)}</span>
+                </div>
+                <div className="execution-kv">
+                  <strong>{t('published')}</strong>
+                  <span>{lastReleaseResult.published.length}</span>
+                </div>
+                <div className="execution-kv">
+                  <strong>{t('skipped')}</strong>
+                  <span>{lastReleaseResult.skipped.length}</span>
+                </div>
+              </div>
+            ) : null}
+          </article>
+
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('executionTimeline')}</h2>
+            <div className="timeline-list">
+              {buildExecutionTimeline().map(step => (
+                <div key={step.key} className={`timeline-item ${step.state}`}>
+                  <strong>{step.label}</strong>
+                  <span>{stepStateLabel(step.state)}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="neo-border neo-shadow panel">
+            <h2>{t('executionLogs')}</h2>
+            {executionLogs.length ? (
+              <div className="timeline-list">
+                {executionLogs.map((item, index) => (
+                  <div key={`${item.at}-${index}`} className="log-item">
+                    <strong className={`log-level ${item.level}`}>
+                      {item.level.toUpperCase()}
+                    </strong>
+                    <span>{item.message}</span>
+                    <span className="meta">{toLocalTimestamp(item.at)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="meta">{t('noExecutionLogs')}</div>
+            )}
+          </article>
         </section>
       ) : null}
     </div>

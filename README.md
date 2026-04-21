@@ -426,7 +426,7 @@ Snapshot endpoints:
 - `GET /api/snapshots/:id` load snapshot payload
 - `DELETE /api/snapshots/:id` delete a saved snapshot
 
-Snapshots are stored under `.nxspub/preview-snapshots`.
+Snapshots are stored under `.nxspub/console-snapshots`.
 
 Realtime status stream:
 

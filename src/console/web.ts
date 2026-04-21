@@ -1,6 +1,6 @@
 /**
- * @en Build the preview web app HTML with inline CSS/JS.
- * @zh 构建内联 CSS/JS 的预览网页 HTML。
+ * @en Build the console web app HTML with inline CSS/JS.
+ * @zh 构建内联 CSS/JS 的控制台网页 HTML。
  *
  * @param sessionToken
  * @en One-time session token required by API requests.
@@ -16,7 +16,7 @@ export function renderPreviewWebPage(sessionToken: string): string {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NXSPUB Preview</title>
+    <title>NXSPUB Console</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
@@ -84,7 +84,7 @@ export function renderPreviewWebPage(sessionToken: string): string {
       <header class="topbar neo-border neo-shadow">
         <div class="brand">
           <img src="/logo.svg" alt="NXSPUB Logo" />
-          <span>NXSPUB Preview</span>
+          <span>NXSPUB Console</span>
         </div>
         <div class="muted" id="ctx">Loading context...</div>
       </header>
@@ -132,7 +132,7 @@ export function renderPreviewWebPage(sessionToken: string): string {
           method,
           headers: {
             "content-type": "application/json",
-            "x-nxspub-preview-token": SESSION_TOKEN
+            "x-nxspub-console-token": SESSION_TOKEN
           },
           body: body ? JSON.stringify(body) : undefined
         });
@@ -260,7 +260,7 @@ export function renderPreviewWebPage(sessionToken: string): string {
           const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: "application/json" });
           const a = document.createElement("a");
           a.href = URL.createObjectURL(blob);
-          a.download = "nxspub-preview.json";
+          a.download = "nxspub-console-preview.json";
           a.click();
           URL.revokeObjectURL(a.href);
         } catch (e) {

@@ -304,6 +304,669 @@ describe('preview web server APIs', () => {
     }
   })
 
+  it('returns 403 for execution endpoints in readonly-strict mode', async () => {
+    const versionCommand = vi.fn()
+    const releaseCommand = vi.fn()
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/commands/version', () => ({ versionCommand }))
+    vi.doMock('../src/commands/release', () => ({ releaseCommand }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: true,
+    })
+
+    try {
+      const versionResponse = await fetch(`${handle.url}/api/version/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: true }),
+      })
+      expect(versionResponse.status).toBe(403)
+
+      const releaseResponse = await fetch(`${handle.url}/api/release/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: true }),
+      })
+      expect(releaseResponse.status).toBe(403)
+
+      expect(versionCommand).not.toHaveBeenCalled()
+      expect(releaseCommand).not.toHaveBeenCalled()
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('blocks version run when branch policy check fails', async () => {
+    const versionCommand = vi.fn()
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: false, message: 'Branch policy denied.' },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: null, ok: false },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/commands/version', () => ({ versionCommand }))
+    vi.doMock('../src/commands/release', () => ({
+      releaseCommand: vi.fn(),
+    }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: false,
+    })
+
+    try {
+      const response = await fetch(`${handle.url}/api/version/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: true }),
+      })
+      expect(response.status).toBe(409)
+      expect(versionCommand).not.toHaveBeenCalled()
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('blocks version run when git sync check fails', async () => {
+    const versionCommand = vi.fn()
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: false, ahead: 1, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/commands/version', () => ({ versionCommand }))
+    vi.doMock('../src/commands/release', () => ({
+      releaseCommand: vi.fn(),
+    }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: false,
+    })
+
+    try {
+      const response = await fetch(`${handle.url}/api/version/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: true }),
+      })
+      expect(response.status).toBe(409)
+      expect(versionCommand).not.toHaveBeenCalled()
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('blocks release run when no successful version run exists in session', async () => {
+    const releaseCommand = vi.fn()
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/commands/version', () => ({
+      versionCommand: vi.fn().mockResolvedValue(undefined),
+    }))
+    vi.doMock('../src/commands/release', () => ({ releaseCommand }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: false,
+    })
+
+    try {
+      const response = await fetch(`${handle.url}/api/release/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: true }),
+      })
+      expect(response.status).toBe(409)
+      expect(releaseCommand).not.toHaveBeenCalled()
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('blocks release publish when previous version run was dry-run only', async () => {
+    const versionCommand = vi.fn().mockResolvedValue(undefined)
+    const releaseCommand = vi.fn()
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 1,
+        targetVersion: '1.2.3',
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/commands/version', () => ({ versionCommand }))
+    vi.doMock('../src/commands/release', () => ({ releaseCommand }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: false,
+    })
+
+    try {
+      const versionResponse = await fetch(`${handle.url}/api/version/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: true }),
+      })
+      expect(versionResponse.status).toBe(200)
+      expect(versionCommand).toHaveBeenCalledTimes(1)
+
+      const releaseResponse = await fetch(`${handle.url}/api/release/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: false }),
+      })
+      expect(releaseResponse.status).toBe(409)
+      expect(releaseCommand).not.toHaveBeenCalled()
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('returns published/skipped matrix from release execution result', async () => {
+    const versionCommand = vi.fn().mockResolvedValue(undefined)
+    const releaseCommand = vi.fn().mockResolvedValue({
+      published: [{ name: '@scope/a', version: '1.2.3' }],
+      skipped: [
+        {
+          name: '@scope/b',
+          version: '1.2.3',
+          reason: 'already_published',
+        },
+      ],
+    })
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 1,
+        targetVersion: '1.2.3',
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/commands/version', () => ({ versionCommand }))
+    vi.doMock('../src/commands/release', () => ({ releaseCommand }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: false,
+    })
+
+    try {
+      const versionResponse = await fetch(`${handle.url}/api/version/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: false }),
+      })
+      expect(versionResponse.status).toBe(200)
+
+      const releaseResponse = await fetch(`${handle.url}/api/release/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: false }),
+      })
+      expect(releaseResponse.status).toBe(200)
+      const payload = (await releaseResponse.json()) as {
+        data: {
+          published: Array<{ name: string; version: string }>
+          skipped: Array<{ name: string; version: string; reason: string }>
+        }
+      }
+      expect(payload.data.published).toEqual([
+        { name: '@scope/a', version: '1.2.3' },
+      ])
+      expect(payload.data.skipped).toEqual([
+        { name: '@scope/b', version: '1.2.3', reason: 'already_published' },
+      ])
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('returns 409 when another execution task is already in-flight', async () => {
+    let releaseFirstExecution: (() => void) | undefined
+    const versionCommand = vi.fn().mockImplementation(async () => {
+      await new Promise<void>(resolve => {
+        releaseFirstExecution = resolve
+      })
+    })
+    const releaseCommand = vi.fn()
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 0,
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/commands/version', () => ({ versionCommand }))
+    vi.doMock('../src/commands/release', () => ({ releaseCommand }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: false,
+    })
+
+    try {
+      const firstRun = fetch(`${handle.url}/api/version/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: true }),
+      })
+      await new Promise(resolve => setTimeout(resolve, 20))
+
+      const secondResponse = await fetch(`${handle.url}/api/release/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: true }),
+      })
+      expect(secondResponse.status).toBe(409)
+      expect(releaseCommand).not.toHaveBeenCalled()
+
+      releaseFirstExecution?.()
+      const firstResponse = await firstRun
+      expect(firstResponse.status).toBe(200)
+      expect(versionCommand).toHaveBeenCalledTimes(1)
+    } finally {
+      await handle.close()
+    }
+  })
+
+  it('reports execution status transitions for version run', async () => {
+    let releaseFirstExecution: (() => void) | undefined
+    const versionCommand = vi.fn().mockImplementation(async () => {
+      await new Promise<void>(resolve => {
+        releaseFirstExecution = resolve
+      })
+    })
+
+    vi.doMock('../src/console/core', () => ({
+      buildPreviewChecksReport: vi.fn().mockResolvedValue({
+        policy: { ok: true },
+        gitSync: { ok: true, ahead: 0, behind: 0, dirty: false },
+        tagConflicts: [],
+        registryConflicts: [],
+        items: [],
+      }),
+      buildPreviewResult: vi.fn().mockResolvedValue({
+        mode: 'single',
+        branch: 'main',
+        policy: { branch: 'main', policy: 'latest', ok: true },
+        commitCount: 0,
+        releasePackageCount: 1,
+        targetVersion: '1.2.3',
+      }),
+      getDraftHealthSummary: vi.fn().mockResolvedValue({
+        target: '1.0.0',
+        matching: 0,
+        behind: 0,
+        ahead: 0,
+        invalid: 0,
+        malformedFileCount: 0,
+        behindSamples: [],
+      }),
+      getPreviewContext: vi.fn().mockResolvedValue({
+        cwd: '/repo',
+        mode: 'single',
+        packageManager: 'pnpm',
+        currentBranch: 'main',
+        availableBranches: ['main'],
+      }),
+      pruneDrafts: vi.fn().mockResolvedValue({
+        prunedCount: 0,
+        remaining: 0,
+        affectedFiles: [],
+      }),
+    }))
+    vi.doMock('../src/commands/version', () => ({ versionCommand }))
+    vi.doMock('../src/commands/release', () => ({
+      releaseCommand: vi.fn(),
+    }))
+
+    const { startConsoleWebServer } = await import('../src/console/server')
+    const handle = await startConsoleWebServer({
+      cwd: process.cwd(),
+      host: '127.0.0.1',
+      port: 0,
+      readonlyStrict: false,
+    })
+
+    try {
+      const firstRun = fetch(`${handle.url}/api/version/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-nxspub-console-token': handle.token,
+        },
+        body: JSON.stringify({ dry: true }),
+      })
+      await new Promise(resolve => setTimeout(resolve, 20))
+
+      const runningResponse = await fetch(
+        `${handle.url}/api/execution/status`,
+        {
+          headers: {
+            'x-nxspub-console-token': handle.token,
+          },
+        },
+      )
+      expect(runningResponse.status).toBe(200)
+      const runningPayload = (await runningResponse.json()) as {
+        data: {
+          running: boolean
+          currentTask?: { kind: string }
+        }
+      }
+      expect(runningPayload.data.running).toBe(true)
+      expect(runningPayload.data.currentTask?.kind).toBe('version')
+
+      releaseFirstExecution?.()
+      const completedResponse = await firstRun
+      expect(completedResponse.status).toBe(200)
+
+      const idleResponse = await fetch(`${handle.url}/api/execution/status`, {
+        headers: {
+          'x-nxspub-console-token': handle.token,
+        },
+      })
+      expect(idleResponse.status).toBe(200)
+      const idlePayload = (await idleResponse.json()) as {
+        data: {
+          running: boolean
+        }
+      }
+      expect(idlePayload.data.running).toBe(false)
+    } finally {
+      await handle.close()
+    }
+  })
+
   it('executes prune endpoint in writable mode', async () => {
     const pruneDrafts = vi.fn().mockResolvedValue({
       prunedCount: 2,

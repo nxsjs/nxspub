@@ -113,6 +113,42 @@ export interface PreviewSseEvent {
   timestamp: string
 }
 
+export type ExecutionTaskKind = 'version' | 'release'
+
+export interface ExecutionLogItem {
+  level: 'info' | 'warn' | 'error'
+  message: string
+  at: string
+}
+
+export interface ExecutionStatusPayload {
+  running: boolean
+  currentTask?: {
+    kind: ExecutionTaskKind
+    startedAt: string
+    requestId: string
+  }
+}
+
+export interface VersionRunResult {
+  status: 'success' | 'failed'
+  dry: boolean
+  summary: {
+    mode: 'single' | 'workspace'
+    targetVersion?: string
+    releasePackageCount: number
+  }
+  logs: ExecutionLogItem[]
+}
+
+export interface ReleaseRunResult {
+  status: 'success' | 'failed'
+  dry: boolean
+  published: Array<{ name: string; version: string }>
+  skipped: Array<{ name: string; version: string; reason: string }>
+  logs: ExecutionLogItem[]
+}
+
 export interface PreviewResult {
   mode: 'single' | 'workspace'
   branch: string

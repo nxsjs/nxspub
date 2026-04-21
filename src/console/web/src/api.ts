@@ -2,6 +2,7 @@ import type {
   ApiError,
   ApiSuccess,
   DraftPruneResult,
+  ExecutionStatusPayload,
   PreviewDiagnosticBundle,
   PreviewChecksReport,
   PreviewContext,
@@ -10,6 +11,8 @@ import type {
   PreviewSseEvent,
   PreviewSnapshotPayload,
   PreviewSnapshotSummary,
+  ReleaseRunResult,
+  VersionRunResult,
 } from './types'
 
 function getSessionToken(): string {
@@ -136,6 +139,39 @@ export async function fetchDiagnosticBundleZip(): Promise<Blob> {
     throw new Error(message)
   }
   return await response.blob()
+}
+
+export async function fetchExecutionStatus(): Promise<ExecutionStatusPayload> {
+  const result = await request<ExecutionStatusPayload>('/api/execution/status')
+  return result.data
+}
+
+export async function runVersionCommand(params: {
+  dry: boolean
+  branch?: string
+}): Promise<VersionRunResult> {
+  const result = await request<VersionRunResult>('/api/version/run', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+  return result.data
+}
+
+export async function runReleaseCommand(params: {
+  dry: boolean
+  branch?: string
+  registry?: string
+  tag?: string
+  access?: string
+  provenance?: boolean
+  skipBuild?: boolean
+  skipSync?: boolean
+}): Promise<ReleaseRunResult> {
+  const result = await request<ReleaseRunResult>('/api/release/run', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+  return result.data
 }
 
 export async function saveSnapshot(payload: {

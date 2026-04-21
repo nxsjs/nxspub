@@ -50,12 +50,16 @@ describe('release workspace', () => {
 
     const { releaseWorkspace } =
       await import('../src/commands/release-workspace')
-    await releaseWorkspace(
+    const result = await releaseWorkspace(
       { cwd: '/repo', dry: true },
       { branches: { main: 'latest' } },
     )
 
     expect(releaseSingle).toHaveBeenCalledTimes(1)
+    expect(result).toMatchObject({
+      published: [],
+      skipped: [],
+    })
     expect(releaseSingle.mock.calls[0][0]).toMatchObject({
       cwd: '/repo/packages/a',
       skipBuild: true,
@@ -110,7 +114,16 @@ describe('release workspace', () => {
         { cwd: '/repo', dry: true },
         { branches: { main: 'latest' } },
       ),
-    ).resolves.toBeUndefined()
+    ).resolves.toMatchObject({
+      published: [],
+      skipped: [
+        {
+          name: '@scope/a',
+          version: '1.0.0-alpha.1',
+          reason: 'branch_policy_mismatch',
+        },
+      ],
+    })
 
     expect(releaseSingle).not.toHaveBeenCalled()
   })
