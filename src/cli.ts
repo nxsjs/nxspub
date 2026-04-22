@@ -86,11 +86,12 @@ cli
     default: false,
   })
   .option('--client <client>', 'claude | cursor | vscode | codex | opencode')
-  .action(
-    withCliErrorHandling(async options => {
+  .action(async (action, options) => {
+    try {
       const typedOptions = options as McpOptions
-      const action = typedOptions.action || ''
-      const shouldRunInit = action === 'init' || typedOptions.init === true
+      const normalizedAction = typeof action === 'string' ? action : ''
+      const shouldRunInit =
+        normalizedAction === 'init' || typedOptions.init === true
       if (shouldRunInit || typedOptions.client) {
         const initOptions = {
           cwd: typedOptions.cwd,
@@ -101,8 +102,10 @@ cli
       }
 
       await mcpCommand(typedOptions)
-    }),
-  )
+    } catch (error) {
+      handleCliError(error)
+    }
+  })
 
 cli
   .command('console', 'Interactive release console with preview capabilities')
