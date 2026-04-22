@@ -29,6 +29,7 @@
     "docs:dev": "pnpm --dir docs-site dev",
     "docs:dev:fast": "pnpm --dir docs-site dev:fast",
     "docs:build": "pnpm --dir docs-site build",
+    "docs:start": "pnpm --dir docs-site start",
     "test": "tsdown && vitest",
     "check": "tsc --incremental --noEmit",
     "lint": "eslint --cache .",
