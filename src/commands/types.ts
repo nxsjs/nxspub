@@ -112,7 +112,14 @@ export interface DeployOptions extends DryRunOptions {
  * @en Command options for mcp command.
  * @zh mcp 命令参数。
  */
-export interface McpOptions extends CwdOptions {}
+export interface McpOptions extends CwdOptions {
+  /** @en MCP sub-action. @zh MCP 子动作。 */
+  action?: string
+  /** @en Initialize client config mode. @zh 初始化客户端配置模式。 */
+  init?: boolean
+  /** @en MCP client name (for init mode). @zh MCP 客户端名称（用于初始化模式）。 */
+  client?: 'claude' | 'cursor' | 'vscode' | 'codex' | 'opencode'
+}
 
 /**
  * @en Command options for mcp init command.

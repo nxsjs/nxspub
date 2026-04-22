@@ -78,27 +78,29 @@ cli
   )
 
 cli
-  .command('mcp', 'Start nxspub MCP server over stdio')
+  .command('mcp [action]', 'Start nxspub MCP server over stdio')
   .option('--cwd <cwd>', 'Specify the working directory', {
     default: process.cwd(),
   })
-  .action(
-    withCliErrorHandling(async options => {
-      const typedOptions = options as McpOptions
-      await mcpCommand(typedOptions)
-    }),
-  )
-
-cli
-  .command('mcp init', 'Generate MCP client config for nxspub')
-  .option('--cwd <cwd>', 'Specify the working directory', {
-    default: process.cwd(),
+  .option('--init', 'Generate MCP client config for nxspub', {
+    default: false,
   })
   .option('--client <client>', 'claude | cursor | vscode | codex | opencode')
   .action(
     withCliErrorHandling(async options => {
-      const typedOptions = options as McpInitOptions
-      await mcpInitCommand(typedOptions)
+      const typedOptions = options as McpOptions
+      const action = typedOptions.action || ''
+      const shouldRunInit = action === 'init' || typedOptions.init === true
+      if (shouldRunInit || typedOptions.client) {
+        const initOptions = {
+          cwd: typedOptions.cwd,
+          client: typedOptions.client,
+        } as McpInitOptions
+        await mcpInitCommand(initOptions)
+        return
+      }
+
+      await mcpCommand(typedOptions)
     }),
   )
 
