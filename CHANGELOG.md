@@ -1,3 +1,15 @@
+## [0.10.2](https://github.com/nxsjs/nxspub/compare/0.10.1...0.10.2) (2026-04-22)
+
+### Bug Fixes
+
+* mcp init action handling ([a01d724](https://github.com/nxsjs/nxspub/commit/a01d724d89b22ce280571be642400c9a97dc8ce9))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.10.1](https://github.com/nxsjs/nxspub/compare/0.10.0...0.10.1) (2026-04-22)
 
 ### Refactors
