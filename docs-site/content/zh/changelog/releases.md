@@ -2,6 +2,18 @@
 title: 最新 Changelog
 ---
 
+## [0.10.1](https://github.com/nxsjs/nxspub/compare/0.10.0...0.10.1) (2026-04-22)
+
+### Refactors
+
+* mcp init handling into mcp command ([563b7be](https://github.com/nxsjs/nxspub/commit/563b7be83941825c6805d5296783fdd4c8a6631e))
+
+### Contributors
+
+<div><a href="https://github.com/nyxsola"><img src="https://unavatar.io/github/16678506+nyxsola@users.noreply.github.com?fallback=https%3A%2F%2Fwww.gravatar.com%2Favatar%2Fd8efd9dde99e5c03ce528af9c9c7c6e2%3Fd%3Didenticon" width="32" title="nyxsola"></a>&nbsp;&nbsp;</div>
+
+nyxsola
+
 ## [0.10.0](https://github.com/nxsjs/nxspub/compare/0.9.1...0.10.0) (2026-04-21)
 
 ### Features
